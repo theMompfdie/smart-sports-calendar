@@ -5,6 +5,8 @@ services:
       dockerfile: Dockerfile
 
     image: smart-sports-calendar:develop
+    pull_policy: build
+
     container_name: smart-sports-calendar
     restart: unless-stopped
 
