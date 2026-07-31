@@ -1,6 +1,6 @@
 import logging
 import signal
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from threading import Event
 from types import FrameType
 
@@ -13,9 +13,7 @@ from app.scheduler.scheduler import Scheduler
 class ApplicationContainer:
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or load_settings()
-        self.logger: logging.Logger = configure_logging(
-            self.settings.log_level
-        )
+        self.logger: logging.Logger = configure_logging(self.settings.log_level)
 
         self.database = Database(self.settings.database_path)
         self.scheduler = Scheduler(
@@ -56,5 +54,5 @@ class ApplicationContainer:
     def _heartbeat(self) -> None:
         self.logger.info(
             "Heartbeat: %s",
-            datetime.now(timezone.utc).isoformat(),
+            datetime.now(UTC).isoformat(),
         )
