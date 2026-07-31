@@ -1,18 +1,9 @@
-import logging
 import time
 from datetime import UTC, datetime
 
 from app.config.settings import load_settings
 from app.database.database import Database
-
-
-def configure_logging(log_level: str) -> logging.Logger:
-    logging.basicConfig(
-        level=log_level,
-        format="%(asctime)s | %(levelname)s | %(message)s",
-    )
-
-    return logging.getLogger("smart-sports-calendar")
+from app.logging.logger import configure_logging
 
 
 def main() -> None:
