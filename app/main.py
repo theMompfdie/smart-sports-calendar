@@ -1,63 +1,38 @@
 import logging
-import os
-import sqlite3
 import time
 from datetime import UTC, datetime
-from pathlib import Path
 
-DATABASE_PATH = Path(os.getenv("DATABASE_PATH", "/data/sports.db"))
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
-HEARTBEAT_INTERVAL = int(os.getenv("HEARTBEAT_INTERVAL", "300"))
+from app.config.settings import load_settings
+from app.database.database import Database
 
 
-logging.basicConfig(
-    level=LOG_LEVEL,
-    format="%(asctime)s | %(levelname)s | %(message)s",
-)
+def configure_logging(log_level: str) -> logging.Logger:
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s | %(levelname)s | %(message)s",
+    )
 
-logger = logging.getLogger("smart-sports-calendar")
-
-
-def initialize_database() -> None:
-    DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
-
-    with sqlite3.connect(DATABASE_PATH) as connection:
-        connection.execute(
-            """
-            CREATE TABLE IF NOT EXISTS system_status (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                started_at TEXT NOT NULL,
-                status TEXT NOT NULL
-            )
-            """
-        )
-
-        connection.execute(
-            """
-            INSERT INTO system_status (started_at, status)
-            VALUES (?, ?)
-            """,
-            (
-                datetime.now(UTC).isoformat(),
-                "started",
-            ),
-        )
-
-        connection.commit()
+    return logging.getLogger("smart-sports-calendar")
 
 
 def main() -> None:
-    initialize_database()
+    settings = load_settings()
+    logger = configure_logging(settings.log_level)
+
+    database = Database(settings.database_path)
+    database.initialize()
+    database.record_startup()
 
     logger.info("SMART Sports Calendar container started")
-    logger.info("Database path: %s", DATABASE_PATH)
+    logger.info("Database path: %s", settings.database_path)
 
     while True:
         logger.info(
             "Heartbeat: %s",
             datetime.now(UTC).isoformat(),
         )
-        time.sleep(HEARTBEAT_INTERVAL)
+
+        time.sleep(settings.heartbeat_interval)
 
 
 if __name__ == "__main__":
