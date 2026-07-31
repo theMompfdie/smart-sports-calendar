@@ -1,0 +1,17 @@
+.git
+.github
+.gitignore
+.env
+.env.*
+__pycache__
+*.py[cod]
+*.db
+*.sqlite
+*.sqlite3
+data
+logs
+.vscode
+.pytest_cache
+.venv
+venv
+README.md

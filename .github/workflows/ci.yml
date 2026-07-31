@@ -1,0 +1,151 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+
+  pull_request:
+    branches:
+      - develop
+      - main
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  code-quality:
+    name: Code quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install Ruff
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ruff
+
+      - name: Run Ruff linting
+        run: |
+          ruff check app
+
+      - name: Check Ruff formatting
+        run: |
+          ruff format --check app
+
+  python-validation:
+    name: Python validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+
+          if [ -s requirements.txt ]; then
+            python -m pip install --requirement requirements.txt
+          fi
+
+      - name: Compile Python source
+        run: |
+          python -m compileall -q app
+
+  docker-validation:
+    name: Docker validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Show Docker versions
+        run: |
+          docker --version
+          docker compose version
+
+      - name: Validate Docker Compose configuration
+        run: |
+          docker compose config --quiet
+
+      - name: Build Docker image
+        run: |
+          docker compose build --pull
+
+      - name: Start application
+        run: |
+          docker compose up --detach
+
+      - name: Wait for healthy container
+        shell: bash
+        run: |
+          for attempt in {1..12}; do
+            status="$(docker inspect \
+              --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' \
+              smart-sports-calendar 2>/dev/null || true)"
+
+            echo "Container status: ${status:-not available}"
+
+            if [ "$status" = "healthy" ]; then
+              exit 0
+            fi
+
+            if [ "$status" = "exited" ] || [ "$status" = "dead" ]; then
+              docker compose logs
+              exit 1
+            fi
+
+            sleep 10
+          done
+
+          echo "Container did not become healthy in time."
+          docker compose ps
+          docker compose logs
+          exit 1
+
+      - name: Verify SQLite database
+        run: |
+          docker compose exec -T calendar-sync \
+            python -c "
+          import sqlite3
+
+          connection = sqlite3.connect('/data/sports.db')
+          result = connection.execute(
+              'SELECT COUNT(*) FROM system_status'
+          ).fetchone()[0]
+          connection.close()
+
+          assert result >= 1
+          print(f'system_status records: {result}')
+          "
+
+      - name: Show application logs
+        if: always()
+        run: |
+          docker compose logs
+
+      - name: Stop application
+        if: always()
+        run: |
+          docker compose down --volumes
