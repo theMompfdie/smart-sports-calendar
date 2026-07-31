@@ -2,9 +2,8 @@ import logging
 import os
 import sqlite3
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-
 
 DATABASE_PATH = Path(os.getenv("DATABASE_PATH", "/data/sports.db"))
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -39,7 +38,7 @@ def initialize_database() -> None:
             VALUES (?, ?)
             """,
             (
-                datetime.now(timezone.utc).isoformat(),
+                datetime.now(UTC).isoformat(),
                 "started",
             ),
         )
@@ -56,7 +55,7 @@ def main() -> None:
     while True:
         logger.info(
             "Heartbeat: %s",
-            datetime.now(timezone.utc).isoformat(),
+            datetime.now(UTC).isoformat(),
         )
         time.sleep(HEARTBEAT_INTERVAL)
 
