@@ -6,6 +6,7 @@ from types import FrameType
 
 from app.config.settings import Settings, load_settings
 from app.database.database import Database
+from app.graph.authentication import GraphTokenProvider
 from app.logging.logger import configure_logging
 from app.scheduler.scheduler import Scheduler
 
@@ -16,6 +17,11 @@ class ApplicationContainer:
         self.logger: logging.Logger = configure_logging(self.settings.log_level)
 
         self.database = Database(self.settings.database_path)
+        self.graph_token_provider = GraphTokenProvider(
+            tenant_id=self.settings.m365_tenant_id,
+            client_id=self.settings.m365_client_id,
+            client_secret=self.settings.m365_client_secret,
+        )
         self.scheduler = Scheduler(
             interval_seconds=self.settings.heartbeat_interval,
             logger=self.logger,
@@ -30,6 +36,9 @@ class ApplicationContainer:
 
         self.logger.info("SMART Sports Calendar container started")
         self.logger.info("Database path: %s", self.settings.database_path)
+
+        self.graph_token_provider.get_access_token()
+        self.logger.info("Microsoft Graph authentication successful")
 
         self.scheduler.run(
             task=self._heartbeat,
