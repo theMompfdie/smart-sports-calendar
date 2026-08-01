@@ -14,16 +14,14 @@ class GraphTokenProvider:
         client_id: str,
         client_secret: str,
     ) -> None:
-        authority = f"https://login.microsoftonline.com/{tenant_id}"
-
-        self._application = ConfidentialClientApplication(
-            client_id=client_id,
-            client_credential=client_secret,
-            authority=authority,
-        )
+        self._authority = f"https://login.microsoftonline.com/{tenant_id}"
+        self._client_id = client_id
+        self._client_secret = client_secret
+        self._application: ConfidentialClientApplication | None = None
 
     def get_access_token(self) -> str:
-        result = self._application.acquire_token_for_client(
+        application = self._get_application()
+        result = application.acquire_token_for_client(
             scopes=[GRAPH_SCOPE],
         )
 
@@ -36,3 +34,13 @@ class GraphTokenProvider:
         raise GraphAuthenticationError(
             f"Microsoft Graph authentication failed: {error or 'unknown error'}"
         )
+
+    def _get_application(self) -> ConfidentialClientApplication:
+        if self._application is None:
+            self._application = ConfidentialClientApplication(
+                client_id=self._client_id,
+                client_credential=self._client_secret,
+                authority=self._authority,
+            )
+
+        return self._application

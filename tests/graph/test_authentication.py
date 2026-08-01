@@ -9,6 +9,19 @@ from app.graph.authentication import (
 
 
 @patch("app.graph.authentication.ConfidentialClientApplication")
+def test_provider_does_not_initialize_msal_during_construction(
+    application_class: Mock,
+) -> None:
+    GraphTokenProvider(
+        tenant_id="test-tenant",
+        client_id="test-client",
+        client_secret="test-secret",
+    )
+
+    application_class.assert_not_called()
+
+
+@patch("app.graph.authentication.ConfidentialClientApplication")
 def test_get_access_token_returns_token(application_class: Mock) -> None:
     application = application_class.return_value
     application.acquire_token_for_client.return_value = {
