@@ -14,6 +14,7 @@ class Settings:
     m365_user_id: str
     outlook_calendar_name: str
     graph_base_url: str
+    graph_startup_validation_enabled: bool
 
 
 def get_required_environment_variable(name: str) -> str:
@@ -23,6 +24,26 @@ def get_required_environment_variable(name: str) -> str:
         raise ValueError(f"{name} must be configured.")
 
     return value
+
+
+def get_boolean_environment_variable(
+    name: str,
+    default: bool,
+) -> bool:
+    value = os.getenv(name)
+
+    if value is None:
+        return default
+
+    normalized_value = value.strip().lower()
+
+    if normalized_value in {"1", "true", "yes", "on"}:
+        return True
+
+    if normalized_value in {"0", "false", "no", "off"}:
+        return False
+
+    raise ValueError(f"{name} must be one of: true, false, 1, 0, yes, no, on, off.")
 
 
 def load_settings() -> Settings:
@@ -47,4 +68,8 @@ def load_settings() -> Settings:
             "GRAPH_BASE_URL",
             "https://graph.microsoft.com/v1.0",
         ).rstrip("/"),
+        graph_startup_validation_enabled=get_boolean_environment_variable(
+            "GRAPH_STARTUP_VALIDATION_ENABLED",
+            default=True,
+        ),
     )

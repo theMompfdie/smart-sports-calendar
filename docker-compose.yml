@@ -21,6 +21,7 @@ services:
       M365_USER_ID: ${M365_USER_ID}
       OUTLOOK_CALENDAR_NAME: ${OUTLOOK_CALENDAR_NAME:-SMART Sports Calendar}
       GRAPH_BASE_URL: ${GRAPH_BASE_URL:-https://graph.microsoft.com/v1.0}
+      GRAPH_STARTUP_VALIDATION_ENABLED: ${GRAPH_STARTUP_VALIDATION_ENABLED:-true}
 
     volumes:
       - smart_sports_data:/data

@@ -43,16 +43,19 @@ class ApplicationContainer:
         self.logger.info("SMART Sports Calendar container started")
         self.logger.info("Database path: %s", self.settings.database_path)
 
-        self.graph_token_provider.get_access_token()
-        self.logger.info("Microsoft Graph authentication successful")
+        if self.settings.graph_startup_validation_enabled:
+            self.graph_token_provider.get_access_token()
+            self.logger.info("Microsoft Graph authentication successful")
 
-        calendar = self.graph_client.find_calendar_by_name(
-            self.settings.outlook_calendar_name
-        )
-        self.logger.info(
-            "Outlook calendar reachable: %s",
-            calendar.name,
-        )
+            calendar = self.graph_client.find_calendar_by_name(
+                self.settings.outlook_calendar_name
+            )
+            self.logger.info(
+                "Outlook calendar reachable: %s",
+                calendar.name,
+            )
+        else:
+            self.logger.info("Microsoft Graph startup validation is disabled")
 
         self.scheduler.run(
             task=self._heartbeat,

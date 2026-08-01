@@ -102,6 +102,13 @@ jobs:
     name: Docker validation
     runs-on: ubuntu-latest
 
+    env:
+      M365_TENANT_ID: ci-test-tenant
+      M365_CLIENT_ID: ci-test-client
+      M365_CLIENT_SECRET: ci-test-secret
+      M365_USER_ID: ci-test@example.invalid
+      GRAPH_STARTUP_VALIDATION_ENABLED: "false"
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
