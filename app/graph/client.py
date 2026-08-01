@@ -39,8 +39,7 @@ class GraphClient:
     def find_calendar_by_name(self, calendar_name: str) -> CalendarReference:
         encoded_user_id = quote(self._user_id, safe="")
         next_url: str | None = (
-            f"{self._base_url}/users/{encoded_user_id}/calendars"
-            "?$select=id,name"
+            f"{self._base_url}/users/{encoded_user_id}/calendars?$select=id,name"
         )
         matches: list[CalendarReference] = []
 
@@ -76,9 +75,7 @@ class GraphClient:
             next_url = next_link if isinstance(next_link, str) else None
 
         if not matches:
-            raise CalendarNotFoundError(
-                f"Outlook calendar not found: {calendar_name}"
-            )
+            raise CalendarNotFoundError(f"Outlook calendar not found: {calendar_name}")
 
         if len(matches) > 1:
             raise CalendarNotUniqueError(
@@ -106,17 +103,11 @@ class GraphClient:
                 f"Microsoft Graph request failed with HTTP {error.code}."
             ) from error
         except URLError as error:
-            raise GraphClientError(
-                "Microsoft Graph could not be reached."
-            ) from error
+            raise GraphClientError("Microsoft Graph could not be reached.") from error
         except json.JSONDecodeError as error:
-            raise GraphClientError(
-                "Microsoft Graph returned invalid JSON."
-            ) from error
+            raise GraphClientError("Microsoft Graph returned invalid JSON.") from error
 
         if not isinstance(payload, dict):
-            raise GraphClientError(
-                "Microsoft Graph returned an unexpected response."
-            )
+            raise GraphClientError("Microsoft Graph returned an unexpected response.")
 
         return payload
