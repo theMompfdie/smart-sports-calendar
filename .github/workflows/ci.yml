@@ -47,7 +47,7 @@ jobs:
         run: |
           ruff format --check app tests
 
-    unit-tests:
+  unit-tests:
     name: Unit tests
     runs-on: ubuntu-latest
 
