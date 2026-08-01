@@ -2,9 +2,7 @@ import sqlite3
 from pathlib import Path
 
 import pytest
-
 from app.database.database import Database
-
 
 EXPECTED_TABLES = {
     "betting_markets",
@@ -133,9 +131,7 @@ def test_database_connections_enable_foreign_keys(
     initialized_database: Database,
 ) -> None:
     with initialized_database._connect() as connection:
-        foreign_keys_enabled = connection.execute(
-            "PRAGMA foreign_keys"
-        ).fetchone()[0]
+        foreign_keys_enabled = connection.execute("PRAGMA foreign_keys").fetchone()[0]
 
     assert foreign_keys_enabled == 1
 
@@ -144,9 +140,11 @@ def test_foreign_key_constraint_rejects_unknown_sport(
     initialized_database: Database,
     database_path: Path,
 ) -> None:
-    with connect(database_path) as connection:
-        with pytest.raises(sqlite3.IntegrityError):
-            connection.execute(
+    with (
+    connect(database_path) as connection,
+    pytest.raises(sqlite3.IntegrityError),
+    ):
+        connection.execute(
                 """
                 INSERT INTO competitions (
                     sport_id,
@@ -171,9 +169,11 @@ def test_invalid_json_is_rejected(
     initialized_database: Database,
     database_path: Path,
 ) -> None:
-    with connect(database_path) as connection:
-        with pytest.raises(sqlite3.IntegrityError):
-            connection.execute(
+    with (
+    connect(database_path) as connection,
+    pytest.raises(sqlite3.IntegrityError),
+    ):
+        connection.execute(
                 """
                 INSERT INTO sports (
                     sport_key,
@@ -338,6 +338,7 @@ def test_deleting_event_cascades_to_calendar_mapping(
         ).fetchone()[0]
 
     assert mapping_count == 0
+
 
 def write_migration(
     migrations_directory: Path,
@@ -564,10 +565,7 @@ def test_migrations_are_applied_in_version_order(
         ).fetchall()
 
         columns = {
-            row[1]
-            for row in connection.execute(
-                "PRAGMA table_info(ordered_table)"
-            )
+            row[1] for row in connection.execute("PRAGMA table_info(ordered_table)")
         }
 
     assert migrations == [
