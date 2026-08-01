@@ -5,6 +5,8 @@ from threading import Event
 from types import FrameType
 
 from app.config.settings import Settings, load_settings
+from app.database.competitions_catalog import initialize_competitions_catalog
+from app.database.competitions_repository import CompetitionsRepository
 from app.database.database import Database
 from app.database.sports_catalog import initialize_sports_catalog
 from app.database.sports_repository import SportsRepository
@@ -21,6 +23,10 @@ class ApplicationContainer:
 
         self.database = Database(self.settings.database_path)
         self.sports_repository = SportsRepository(self.settings.database_path)
+        self.competitions_repository = CompetitionsRepository(
+            self.settings.database_path
+        )
+
         self.graph_token_provider = GraphTokenProvider(
             tenant_id=self.settings.m365_tenant_id,
             client_id=self.settings.m365_client_id,
@@ -42,10 +48,17 @@ class ApplicationContainer:
 
         self.database.initialize()
         initialize_sports_catalog(self.sports_repository)
+        initialize_competitions_catalog(
+            repository=self.competitions_repository,
+            sports_repository=self.sports_repository,
+        )
         self.database.record_startup()
 
         self.logger.info("SMART Sports Calendar container started")
-        self.logger.info("Database path: %s", self.settings.database_path)
+        self.logger.info(
+            "Database path: %s",
+            self.settings.database_path,
+        )
 
         if self.settings.graph_startup_validation_enabled:
             self.graph_token_provider.get_access_token()
@@ -78,7 +91,10 @@ class ApplicationContainer:
         _frame: FrameType | None,
     ) -> None:
         signal_name = signal.Signals(signum).name
-        self.logger.info("Shutdown signal received: %s", signal_name)
+        self.logger.info(
+            "Shutdown signal received: %s",
+            signal_name,
+        )
         self.stop_event.set()
 
     def _heartbeat(self) -> None:
