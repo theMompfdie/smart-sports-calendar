@@ -6,6 +6,8 @@ from types import FrameType
 
 from app.config.settings import Settings, load_settings
 from app.database.database import Database
+from app.database.sports_catalog import initialize_sports_catalog
+from app.database.sports_repository import SportsRepository
 from app.graph.authentication import GraphTokenProvider
 from app.graph.client import GraphClient
 from app.logging.logger import configure_logging
@@ -18,6 +20,7 @@ class ApplicationContainer:
         self.logger: logging.Logger = configure_logging(self.settings.log_level)
 
         self.database = Database(self.settings.database_path)
+        self.sports_repository = SportsRepository(self.settings.database_path)
         self.graph_token_provider = GraphTokenProvider(
             tenant_id=self.settings.m365_tenant_id,
             client_id=self.settings.m365_client_id,
@@ -38,6 +41,7 @@ class ApplicationContainer:
         self._register_signal_handlers()
 
         self.database.initialize()
+        initialize_sports_catalog(self.sports_repository)
         self.database.record_startup()
 
         self.logger.info("SMART Sports Calendar container started")
