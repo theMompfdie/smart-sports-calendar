@@ -3,10 +3,7 @@ import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 
-
-MIGRATION_FILE_PATTERN = re.compile(
-    r"^(?P<number>\d{3})_[a-z0-9_]+\.sql$"
-)
+MIGRATION_FILE_PATTERN = re.compile(r"^(?P<number>\d{3})_[a-z0-9_]+\.sql$")
 
 
 class Database:
@@ -102,8 +99,7 @@ class Database:
     def _get_migration_paths(self) -> list[Path]:
         if not self.migrations_directory.exists():
             raise FileNotFoundError(
-                "Migrations directory does not exist: "
-                f"{self.migrations_directory}"
+                f"Migrations directory does not exist: {self.migrations_directory}"
             )
 
         migration_paths = sorted(
@@ -113,9 +109,7 @@ class Database:
         migration_numbers: set[str] = set()
 
         for migration_path in migration_paths:
-            match = MIGRATION_FILE_PATTERN.fullmatch(
-                migration_path.name
-            )
+            match = MIGRATION_FILE_PATTERN.fullmatch(migration_path.name)
 
             if match is None:
                 raise ValueError(
@@ -127,10 +121,7 @@ class Database:
             migration_number = match.group("number")
 
             if migration_number in migration_numbers:
-                raise ValueError(
-                    "Duplicate migration number: "
-                    f"{migration_number}"
-                )
+                raise ValueError(f"Duplicate migration number: {migration_number}")
 
             migration_numbers.add(migration_number)
 
