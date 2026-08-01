@@ -141,11 +141,11 @@ def test_foreign_key_constraint_rejects_unknown_sport(
     database_path: Path,
 ) -> None:
     with (
-    connect(database_path) as connection,
-    pytest.raises(sqlite3.IntegrityError),
+        connect(database_path) as connection,
+        pytest.raises(sqlite3.IntegrityError),
     ):
         connection.execute(
-                """
+            """
                 INSERT INTO competitions (
                     sport_id,
                     competition_key,
@@ -155,14 +155,14 @@ def test_foreign_key_constraint_rejects_unknown_sport(
                 )
                 VALUES (?, ?, ?, ?, ?)
                 """,
-                (
-                    999,
-                    "premier-league",
-                    "Premier League",
-                    "2026-08-01T12:00:00+00:00",
-                    "2026-08-01T12:00:00+00:00",
-                ),
-            )
+            (
+                999,
+                "premier-league",
+                "Premier League",
+                "2026-08-01T12:00:00+00:00",
+                "2026-08-01T12:00:00+00:00",
+            ),
+        )
 
 
 def test_invalid_json_is_rejected(
@@ -170,11 +170,11 @@ def test_invalid_json_is_rejected(
     database_path: Path,
 ) -> None:
     with (
-    connect(database_path) as connection,
-    pytest.raises(sqlite3.IntegrityError),
+        connect(database_path) as connection,
+        pytest.raises(sqlite3.IntegrityError),
     ):
         connection.execute(
-                """
+            """
                 INSERT INTO sports (
                     sport_key,
                     name,
@@ -184,14 +184,14 @@ def test_invalid_json_is_rejected(
                 )
                 VALUES (?, ?, ?, ?, ?)
                 """,
-                (
-                    "football",
-                    "Football",
-                    "{invalid-json}",
-                    "2026-08-01T12:00:00+00:00",
-                    "2026-08-01T12:00:00+00:00",
-                ),
-            )
+            (
+                "football",
+                "Football",
+                "{invalid-json}",
+                "2026-08-01T12:00:00+00:00",
+                "2026-08-01T12:00:00+00:00",
+            ),
+        )
 
 
 def test_invalid_event_status_is_rejected(
