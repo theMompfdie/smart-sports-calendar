@@ -4,31 +4,26 @@
 
 ## Current Status
 
-**Current release:** `v0.2.0-alpha.1`  
+**Current release:** `v0.3.0-alpha.1`  
 **Development stage:** Alpha  
-**Completed phases:** Phase 1 and Phase 2  
-**Automated tests:** 184 passing tests
+**Completed phases:** Phase 1, Phase 2, and Phase 3  
+**Automated tests:** 303 passing tests
 
-The project foundation, Microsoft Graph connectivity, persistent database model, catalog initialization, and repository layer are implemented.
-
-Automatic provider imports and Outlook event synchronization are not implemented yet.
+The application foundation, persistent domain model, repository layer, Microsoft Graph integration, and Outlook synchronization engine are implemented. The next development phase adds the first external football data provider.
 
 ## Project Vision
 
-SMART Sports Calendar is designed to become a reliable, extensible, and fully automated sports calendar synchronization platform.
-
-The goal is to maintain a single Outlook calendar containing all relevant sports events. Fixtures should be imported from external providers and automatically updated when schedules, participants, results, or event states change.
+SMART Sports Calendar is designed as a reliable, extensible, and fully automated sports calendar synchronization platform. It maintains a dedicated Outlook calendar containing relevant sports events and updates them when schedules, participants, results, or event states change.
 
 The application focuses on:
 
 - reliability and traceability
 - modular and maintainable architecture
 - support for multiple sports and providers
-- automatic handling of schedule changes
-- duplicate prevention
+- automatic handling of schedule changes and cancellations
+- duplicate prevention and idempotent retries
 - persistent synchronization state
-- containerized deployment
-- simple migration between Docker environments
+- containerized deployment and simple migration
 - minimal manual maintenance
 
 ## Implemented Features
@@ -40,7 +35,7 @@ The application focuses on:
 - environment-based configuration
 - structured application logging
 - graceful shutdown handling
-- heartbeat scheduler
+- scheduler integration
 - Docker image and Docker Compose deployment
 - persistent SQLite volume
 - container health check
@@ -52,127 +47,43 @@ The application focuses on:
 - application authentication through Microsoft Entra ID
 - Microsoft Graph access token acquisition
 - reusable Microsoft Graph client
-- Outlook calendar lookup by configured name
+- Outlook calendar lookup by configured name or ID
 - optional Graph authentication and calendar validation during startup
+- Outlook event creation, update, cancellation, and deletion
+- idempotent Graph event creation using a persistent transaction ID
 - configurable target mailbox and Graph API base URL
 
 ### Database and Persistence
 
 - versioned SQLite schema migrations
-- foreign-key enforcement
-- schema validation
-- persistent domain model for sports calendar data
-- synchronization history and error tracking
-- provider-to-domain mapping support
-- Outlook event mapping and lifecycle tracking
+- foreign-key enforcement and schema validation
+- persistent sports domain model
+- provider-to-domain source mappings
+- Outlook event mappings and lifecycle tracking
+- synchronization run history, counters, errors, and JSON metadata
+- persistent transaction IDs for safe event-creation retries
 
-### Catalog Initialization
+### Catalog and Repository Layer
 
-The application initializes canonical catalog data for:
+Canonical catalog initialization is implemented for sports, competitions, seasons, and participants. Initialization is idempotent and safe during repeated application startups.
 
-- sports
-- competitions
-- seasons
-- participants
+Repositories are available for sports, competitions, seasons, participants, season participants, data sources, source mappings, sports events, event participants, results, statistics, Outlook calendar mappings, and synchronization runs.
 
-Catalog initialization is idempotent and can safely run during repeated application startups.
+### Outlook Synchronization Engine
 
-### Repository Layer
-
-The following repositories are implemented and tested:
-
-- `SportsRepository`
-- `CompetitionsRepository`
-- `SeasonsRepository`
-- `ParticipantsRepository`
-- `SeasonParticipantsRepository`
-- `DataSourcesRepository`
-- `SourceMappingsRepository`
-- `SportsEventsRepository`
-- `EventParticipantsRepository`
-- `EventResultsRepository`
-- `EventStatisticsRepository`
-- `CalendarEventMappingsRepository`
-- `SyncRunsRepository`
-
-### Synchronization State
-
-The persistence layer supports:
-
-- provider source mappings
-- internal sports event identifiers
-- Outlook calendar and event identifiers
-- Outlook change keys
-- content hashes
-- pending, synchronized, failed, deletion-pending, and deleted states
-- retry preparation
-- synchronization attempt counters
-- last synchronization timestamps
-- retained synchronization errors
-- import and synchronization run history
-- progress counters
-- structured JSON metadata
+- synchronization orchestration in configurable batches
+- Outlook payload construction from canonical sports events
+- content-hash based change detection
+- event creation and update
+- cancellation and deletion reconciliation
+- unchanged-event detection without unnecessary Graph requests
+- persistent mapping and run-state transitions
+- isolated per-event failure handling within a batch
+- retry handling for pending and failed mappings
+- safe create retries using the same Graph `transactionId`
+- recovery of interrupted running synchronization runs
 - completed, completed-with-errors, and failed run results
-
-## Planned Features
-
-### Provider Integration
-
-- modular provider interface
-- provider-specific API clients
-- normalization into the internal domain model
-- provider request and rate-limit handling
-- incremental fixture imports
-- source identifier mapping
-- retry and error recovery
-
-### Outlook Synchronization
-
-- automatic event creation
-- automatic event updates
-- cancellation and deletion handling
-- duplicate prevention
-- Outlook categories
-- rich event descriptions
-- time zone conversion
-- configurable reminders
-- content-based change detection
-- synchronization reconciliation
-
-## Planned Competitions
-
-### Austria
-
-- Austrian Bundesliga
-- 2. Liga
-- ÖFB Cup
-
-### Germany
-
-- Bundesliga
-- 2. Bundesliga
-- DFB-Pokal
-
-### England
-
-- Premier League
-- Championship
-- FA Cup
-- EFL Cup
-
-### UEFA
-
-- UEFA Champions League
-- UEFA Europa League
-- UEFA Conference League
-- UEFA Nations League
-- European Championship Qualification
-
-### United States
-
-- NFL
-
-Additional sports, competitions, and providers can be added through the modular data model and provider architecture.
+- scheduler integration and synchronization reporting
 
 ## Architecture
 
@@ -198,61 +109,36 @@ Microsoft Graph API
 Dedicated Outlook Calendar
 ```
 
-The database and repository layer form the boundary between external provider data and Microsoft Outlook synchronization.
+Provider identifiers are stored separately from the canonical domain model. The synchronization engine reads canonical events from SQLite and reconciles them with persistent Outlook mappings. This keeps provider-specific logic independent from Microsoft Graph and allows providers to be replaced or combined later.
 
-External provider identifiers are stored separately from the canonical internal domain model. This allows providers to be replaced or combined without coupling Outlook events directly to one provider.
+## Synchronization Lifecycle
+
+Each calendar mapping retains its Outlook event ID, change key, content hash, transaction ID, status, attempt count, timestamps, and last error.
+
+Supported lifecycle states include:
+
+- `pending`
+- `synced`
+- `failed`
+- `deletion_pending`
+- `deleted`
+
+New Outlook events are created with a stable, persisted transaction ID. If the first Graph request succeeds but the local process fails before persistence completes, a retry reuses the same transaction ID instead of creating another Outlook event.
+
+Synchronization runs retain progress counters and final results. Failures are isolated to the affected event so the remaining batch can continue. Interrupted `running` runs are recovered during startup.
 
 ## Domain Model
 
-The current database model covers:
-
-- sports
-- competitions
-- seasons
-- participants
-- season participants
-- data sources
-- source mappings
-- sports events
-- event participants
-- event results
-- event statistics
-- calendar event mappings
-- synchronization runs
-
-This structure supports both team-based competitions such as football and participant-based sports that may be added later.
+The database model covers sports, competitions, seasons, participants, season participants, data sources, source mappings, sports events, event participants, results, statistics, calendar event mappings, and synchronization runs. It supports team-based competitions and participant-based sports that may be added later.
 
 ## Design Principles
 
-### Separation of Responsibilities
-
-The application is divided into dedicated layers:
-
-- configuration
-- application lifecycle
-- provider integration
-- normalization
-- persistence
-- synchronization
-- Microsoft Graph communication
-- scheduling
-- logging
-
-### Canonical Internal Data
-
-Provider-specific data is converted into a stable internal model before it is synchronized to Outlook.
-
-### Idempotent Processing
-
-Repeated imports and synchronization runs must update existing records rather than create duplicates.
-
-### Persistent Traceability
-
-Mappings, synchronization states, attempts, errors, and execution history are stored persistently in SQLite.
-
-### Extensibility
-
-New sports, competitions, seasons, participants, and provider integrations can be added without redesigning the synchronization layer.
+- **Separation of responsibilities:** configuration, lifecycle, providers, persistence, synchronization, Graph, scheduling, and logging remain independent.
+- **Canonical internal data:** provider data is normalized before Outlook synchronization.
+- **Idempotent processing:** repeated imports, synchronization runs, and Graph create retries must not create duplicates.
+- **Persistent traceability:** mappings, attempts, errors, and run history remain in SQLite.
+- **Failure isolation:** one failed event does not abort the complete synchronization batch.
+- **Extensibility:** additional sports, competitions, and providers do not require a redesign of the synchronization layer.
 
 ## Technology Stack
 
@@ -277,29 +163,22 @@ New sports, competitions, seasons, participants, and provider integrations can b
 smart-sports-calendar/
 ├── app/
 │   ├── application/
-│   │   └── container.py
 │   ├── config/
-│   │   └── settings.py
 │   ├── database/
-│   │   ├── migrations/
-│   │   ├── database.py
-│   │   ├── *_catalog.py
-│   │   └── *_repository.py
+│   │   └── migrations/
 │   ├── graph/
-│   │   ├── authentication.py
-│   │   └── client.py
 │   ├── logging/
-│   │   └── logger.py
 │   ├── scheduler/
-│   │   └── scheduler.py
+│   ├── synchronization/
 │   └── main.py
 ├── config/
 ├── docs/
-│   └── deployment.md
 ├── tests/
 │   ├── application/
 │   ├── database/
-│   └── graph/
+│   ├── graph/
+│   ├── scheduler/
+│   └── synchronization/
 ├── .env.example
 ├── docker-compose.yml
 ├── Dockerfile
@@ -310,8 +189,6 @@ smart-sports-calendar/
 ```
 
 ## Configuration
-
-Configuration is supplied through environment variables.
 
 Copy the example configuration before starting the application:
 
@@ -328,7 +205,7 @@ M365_CLIENT_SECRET=your-client-secret
 M365_USER_ID=your-mailbox@example.com
 ```
 
-Optional application settings:
+Application and synchronization settings:
 
 ```env
 TZ=Europe/Vienna
@@ -336,130 +213,75 @@ DATABASE_PATH=/data/sports.db
 LOG_LEVEL=INFO
 HEARTBEAT_INTERVAL=300
 OUTLOOK_CALENDAR_NAME=SMART Sports Calendar
+OUTLOOK_CALENDAR_ID=
+SYNCHRONIZATION_BATCH_LIMIT=100
 GRAPH_BASE_URL=https://graph.microsoft.com/v1.0
 GRAPH_STARTUP_VALIDATION_ENABLED=true
 ```
 
-`GRAPH_STARTUP_VALIDATION_ENABLED` should remain enabled during normal deployments. It can be disabled for isolated tests or environments without Microsoft Graph connectivity.
+`OUTLOOK_CALENDAR_ID` may be supplied directly. Otherwise, the configured calendar name is resolved through Microsoft Graph. `SYNCHRONIZATION_BATCH_LIMIT` limits the number of events processed in one run.
 
-Secrets must not be committed to the repository.
+Keep `GRAPH_STARTUP_VALIDATION_ENABLED` enabled for normal deployments. Disable it only for isolated tests or environments without Graph connectivity. Never commit secrets.
 
 ## Deployment
 
-The application is designed for deployment on any Docker-compatible host.
-
-Typical environments include:
-
-- Docker Engine
-- Docker Compose
-- Portainer
-- Linux-based container hosts
-
-### Start with Docker Compose
+The application supports Docker Engine, Docker Compose, Portainer, and Linux-based container hosts.
 
 ```bash
 docker compose up -d --build
-```
-
-### Check Container Status
-
-```bash
 docker compose ps
-```
-
-### View Logs
-
-```bash
 docker compose logs -f calendar-sync
 ```
 
-### Stop the Application
+Stop the application without deleting its persistent data:
 
 ```bash
 docker compose down
 ```
 
-The SQLite database is stored in the persistent Docker volume:
-
-```text
-smart_sports_data
-```
-
-Removing the container does not remove the database. Deleting the volume will permanently delete the stored application data.
+SQLite data is stored in the `smart_sports_data` volume. Removing the container does not remove the database; deleting the volume permanently deletes it.
 
 For additional deployment information, see [`docs/deployment.md`](docs/deployment.md).
 
 ## Local Development
 
-Create and activate a virtual environment:
-
 ```bash
 python -m venv .venv
+python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
 ```
 
-Windows PowerShell:
+Activate the environment on Windows PowerShell:
 
 ```powershell
 .venv\Scripts\Activate.ps1
 ```
 
-Linux or macOS:
+Run the complete validation:
 
 ```bash
-source .venv/bin/activate
-```
-
-Install application and development dependencies:
-
-```bash
-python -m pip install -r requirements.txt
-python -m pip install -r requirements-dev.txt
-```
-
-Run the quality checks:
-
-```bash
+python -m pytest -v
 python -m ruff check .
 python -m ruff format --check .
-python -m pytest
+docker compose config
 ```
 
-Expected result for `v0.2.0-alpha.1`:
+Expected automated test result for `v0.3.0-alpha.1`:
 
 ```text
-184 passed
-```
-
-Apply automatic formatting when required:
-
-```bash
-python -m ruff format .
+303 passed
 ```
 
 ## Development Workflow
 
 ```text
-feature/*
-    |
-    v
-develop
-    |
-    v
-release/*
-    |
-    v
-main
-    |
-    v
-Release
+feature/* -> develop -> release/* -> main -> Release
 ```
 
 - `main` contains released versions.
 - `develop` contains the integrated development state.
-- `feature/*` branches contain isolated implementation blocks.
-- `release/*` branches prepare a version for release.
-- Feature branches are merged into `develop`.
-- Release branches are merged into `main`.
+- feature and fix branches contain isolated implementation blocks.
+- release branches prepare a version for release.
 
 ## Roadmap
 
@@ -468,63 +290,47 @@ Release
 **Status: Completed**  
 **Release: `v0.1.0-alpha.1`**
 
-- Python project foundation
-- environment-based configuration
-- logging
-- application container
-- scheduler and heartbeat
+- application lifecycle, configuration, logging, and scheduler
 - SQLite initialization
-- Microsoft Graph authentication
-- Microsoft Graph client
-- Outlook calendar discovery
-- Docker image
-- Docker Compose deployment
-- persistent storage
-- Portainer deployment support
-- CI and development tooling
+- Microsoft Graph authentication and calendar discovery
+- Docker, Portainer, CI, and development tooling
 
 ### Phase 2 – Persistent Domain and Repository Layer
 
 **Status: Completed**  
 **Release: `v0.2.0-alpha.1`**
 
-- versioned database migrations
-- complete sports domain schema
-- sports and competition catalogs
-- season and participant catalogs
-- data-source management
-- external source mappings
-- sports event persistence
-- event participants
-- results and statistics
-- Outlook calendar event mappings
-- synchronization lifecycle states
-- synchronization run history
-- repository integration in the application container
-- full repository test coverage
+- versioned database migrations and complete sports domain schema
+- canonical catalogs and repository layer
+- provider and Outlook mappings
+- synchronization states and run history
 - 184 passing automated tests
 
-### Phase 3 – Synchronization Engine
+### Phase 3 – Outlook Synchronization Engine
 
-**Status: Next**
+**Status: Completed**  
+**Release: `v0.3.0-alpha.1`**
 
-- synchronization orchestration
-- import run coordination
-- event normalization workflow
-- Outlook event creation and updates
-- change detection using content hashes
-- cancellation and deletion handling
-- retry and error recovery
-- synchronization reporting
+- synchronization orchestration and batching
+- Outlook payload construction
+- create, unchanged, update, cancel, and delete lifecycle
+- content-hash based change detection
+- retry, recovery, and per-event failure isolation
+- scheduler integration and run reporting
+- persistent Graph transaction IDs for duplicate-safe creation retries
+- integration coverage using a migrated SQLite database and mocked Graph client
+- 303 passing automated tests
 
 ### Phase 4 – Initial Football Provider
 
-**Status: Planned**
+**Status: Next**
 
 - first external football data provider
 - Premier League fixture import
-- team and season mapping
-- provider-specific error and rate-limit handling
+- team, competition, and season mapping
+- provider request, error, and rate-limit handling
+- normalization into the canonical domain model
+- incremental fixture imports and updates
 
 ### Phase 5 – Additional Domestic Competitions
 
@@ -549,19 +355,30 @@ Release
 **Status: Planned**
 
 - NFL teams
-- regular season
-- playoffs
+- regular season and playoffs
 - schedule updates
 
 ## Release History
 
+### `v0.3.0-alpha.1`
+
+- complete Outlook synchronization engine
+- create, update, cancellation, and deletion reconciliation
+- content-hash based change detection
+- persistent synchronization mappings and run reporting
+- batch processing with isolated event failures
+- retry and startup recovery
+- idempotent Graph event creation using persistent transaction IDs
+- scheduler integration
+- full lifecycle integration coverage
+- 303 passing automated tests
+
 ### `v0.2.0-alpha.1`
 
 - complete persistent sports domain model
-- database migration support
-- canonical catalog initialization
+- versioned migrations and canonical catalogs
 - repository layer for all current domain entities
-- source and Outlook event mapping
+- source and Outlook mappings
 - synchronization state and execution history
 - 184 passing automated tests
 
@@ -570,35 +387,31 @@ Release
 - initial application foundation
 - Docker and Portainer deployment
 - SQLite persistence
-- configuration and logging
-- scheduler
+- configuration, logging, and scheduler
 - Microsoft Graph authentication and calendar discovery
 
 ## Current Limitations
 
-This is an alpha release.
+This remains an alpha release.
 
-The following capabilities are not available yet:
+- no external sports provider is integrated yet
+- no administrative user interface
+- synchronization locking is process-local only
+- multiple application instances must not synchronize the same calendar/database concurrently
+- distributed locking and supported multi-instance coordination are not implemented
+- production behavior still requires validation against a real provider and target calendar
 
-- external sports provider imports
-- automatic Outlook event creation
-- automatic Outlook event updates
-- cancellation reconciliation
-- production-ready synchronization scheduling
-- administrative user interface
-- multi-instance coordination
-
-The application currently provides the technical foundation and persistent data layer required for these features.
+The synchronization engine is implemented and tested with Microsoft Graph mocked. Phase 4 connects the first real fixture provider to the existing domain and synchronization pipeline.
 
 ## Project Goals
 
 - fully automated sports calendar synchronization
 - no duplicate Outlook events
 - automatic handling of rescheduled and cancelled fixtures
-- modular support for multiple data providers
+- modular support for multiple providers
 - clear synchronization history and error traceability
 - portable Docker-based deployment
-- reliable recovery after restarts
+- reliable restart recovery
 - minimal operational maintenance
 
 ## License
