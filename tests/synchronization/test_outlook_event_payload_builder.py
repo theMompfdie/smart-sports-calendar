@@ -1,7 +1,6 @@
 from dataclasses import FrozenInstanceError, replace
 
 import pytest
-
 from app.database.competitions_repository import Competition
 from app.database.event_results_repository import EventResult
 from app.database.event_statistics_repository import EventStatistic
@@ -17,7 +16,6 @@ from app.synchronization.outlook_event_payload_builder import (
     OutlookEventPayloadBuilder,
     OutlookEventPresentation,
 )
-
 
 TIMESTAMP = "2026-08-01T10:00:00+00:00"
 
