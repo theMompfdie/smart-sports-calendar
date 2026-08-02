@@ -5,6 +5,9 @@ from threading import Event
 from types import FrameType
 
 from app.config.settings import Settings, load_settings
+from app.database.calendar_event_mappings_repository import (
+    CalendarEventMappingsRepository,
+)
 from app.database.competitions_catalog import initialize_competitions_catalog
 from app.database.competitions_repository import CompetitionsRepository
 from app.database.data_sources_repository import DataSourcesRepository
@@ -44,6 +47,9 @@ class ApplicationContainer:
             self.settings.database_path
         )
         self.event_statistics_repository = EventStatisticsRepository(
+            self.settings.database_path
+        )
+        self.calendar_event_mappings_repository = CalendarEventMappingsRepository(
             self.settings.database_path
         )
         self.seasons_repository = SeasonsRepository(self.settings.database_path)
