@@ -32,6 +32,10 @@ from app.graph.authentication import GraphTokenProvider
 from app.graph.client import GraphClient
 from app.logging.logger import configure_logging
 from app.scheduler.scheduler import Scheduler
+from app.synchronization.event_synchronizer import EventSynchronizer
+from app.synchronization.outlook_event_payload_builder import (
+    OutlookEventPayloadBuilder,
+)
 
 
 class ApplicationContainer:
@@ -85,6 +89,12 @@ class ApplicationContainer:
             base_url=self.settings.graph_base_url,
             user_id=self.settings.m365_user_id,
             token_provider=self.graph_token_provider,
+        )
+        self.outlook_event_payload_builder = OutlookEventPayloadBuilder()
+        self.event_synchronizer = EventSynchronizer(
+            payload_builder=self.outlook_event_payload_builder,
+            graph_client=self.graph_client,
+            mappings_repository=self.calendar_event_mappings_repository,
         )
         self.scheduler = Scheduler(
             interval_seconds=self.settings.heartbeat_interval,
