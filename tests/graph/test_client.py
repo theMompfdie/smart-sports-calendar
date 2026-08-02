@@ -9,6 +9,7 @@ from app.graph.client import (
     CalendarNotUniqueError,
     GraphClient,
     GraphClientError,
+    OutlookEventNotFoundError,
     OutlookEventReference,
 )
 from app.synchronization.outlook_event_payload_builder import (
@@ -435,7 +436,7 @@ def test_update_event_converts_network_error() -> None:
         )
 
 
-def test_delete_event_converts_http_error() -> None:
+def test_delete_event_converts_not_found_error() -> None:
     client = create_client()
     error = HTTPError(
         url="https://graph.microsoft.com/v1.0/test",
@@ -448,8 +449,31 @@ def test_delete_event_converts_http_error() -> None:
     with (
         patch("app.graph.client.urlopen", side_effect=error),
         pytest.raises(
+            OutlookEventNotFoundError,
+            match="Outlook event was not found",
+        ),
+    ):
+        client.delete_event(
+            calendar_id="calendar-1",
+            event_id="event-1",
+        )
+
+
+def test_delete_event_converts_other_http_error() -> None:
+    client = create_client()
+    error = HTTPError(
+        url="https://graph.microsoft.com/v1.0/test",
+        code=403,
+        msg="Forbidden",
+        hdrs=None,
+        fp=None,
+    )
+
+    with (
+        patch("app.graph.client.urlopen", side_effect=error),
+        pytest.raises(
             GraphClientError,
-            match="HTTP 404",
+            match="HTTP 403",
         ),
     ):
         client.delete_event(
