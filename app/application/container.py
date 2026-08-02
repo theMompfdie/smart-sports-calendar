@@ -25,6 +25,9 @@ from app.database.sports_catalog import initialize_sports_catalog
 from app.database.sports_events_repository import SportsEventsRepository
 from app.database.sports_repository import SportsRepository
 from app.database.sync_runs_repository import SyncRunsRepository
+from app.database.synchronization_query_repository import (
+    SynchronizationQueryRepository,
+)
 from app.graph.authentication import GraphTokenProvider
 from app.graph.client import GraphClient
 from app.logging.logger import configure_logging
@@ -55,6 +58,9 @@ class ApplicationContainer:
         )
         self.seasons_repository = SeasonsRepository(self.settings.database_path)
         self.participants_repository = ParticipantsRepository(
+            self.settings.database_path
+        )
+        self.synchronization_query_repository = SynchronizationQueryRepository(
             self.settings.database_path
         )
         self.season_participants_repository = SeasonParticipantsRepository(

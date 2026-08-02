@@ -3,6 +3,9 @@ from unittest.mock import patch
 
 from app.application.container import ApplicationContainer
 from app.config.settings import Settings
+from app.database.synchronization_query_repository import (
+    SynchronizationQueryRepository,
+)
 
 
 def create_settings(
@@ -74,3 +77,20 @@ def test_run_can_be_repeated_without_duplicate_sports(
     assert second_football is not None
     assert second_football.id == first_football.id
     assert second_football.created_at == first_football.created_at
+
+
+def test_container_provides_synchronization_query_repository(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "sports.db"
+
+    container = ApplicationContainer(
+        settings=create_settings(database_path),
+    )
+
+    assert isinstance(
+        container.synchronization_query_repository,
+        SynchronizationQueryRepository,
+    )
+
+    assert container.synchronization_query_repository.database_path == database_path
