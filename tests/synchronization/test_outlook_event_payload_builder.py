@@ -1,6 +1,7 @@
 from dataclasses import FrozenInstanceError, replace
 
 import pytest
+
 from app.database.competitions_repository import Competition
 from app.database.event_results_repository import EventResult
 from app.database.event_statistics_repository import EventStatistic
