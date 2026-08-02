@@ -96,12 +96,22 @@ class EventSynchronizer:
             )
 
         if mapping.outlook_event_id is None:
-            error = EventSynchronizationError(
-                "Existing calendar mapping has no Outlook event ID: "
-                f"mapping_id={mapping.id}"
+            if mapping.sync_status not in {"pending", "failed"}:
+                error = EventSynchronizationError(
+                    "Existing calendar mapping has no Outlook event ID and "
+                    "cannot be retried: "
+                    f"mapping_id={mapping.id}, sync_status={mapping.sync_status}"
+                )
+                self._record_failure(mapping, error)
+                raise error
+
+            return self._create_event(
+                event_id=event.id,
+                calendar_id=calendar_id,
+                payload=payload,
+                content_hash=content_hash,
+                mapping=mapping,
             )
-            self._record_failure(mapping, error)
-            raise error
 
         if mapping.content_hash == content_hash:
             return EventSynchronizationResult(
@@ -134,21 +144,41 @@ class EventSynchronizer:
         calendar_id: str,
         payload: OutlookEventPayload,
         content_hash: str,
+        mapping: CalendarEventMapping | None = None,
     ) -> EventSynchronizationResult:
-        try:
-            mapping = self._mappings_repository.create_pending(
-                event_id=event_id,
-                calendar_id=calendar_id,
-            )
-        except Exception as error:
-            raise EventSynchronizationError(
-                f"Pending calendar mapping could not be created for event {event_id}."
-            ) from error
+        if mapping is None:
+            try:
+                mapping = self._mappings_repository.create_pending(
+                    event_id=event_id,
+                    calendar_id=calendar_id,
+                )
+            except Exception as error:
+                raise EventSynchronizationError(
+                    f"Pending calendar mapping could not be created for "
+                    f"event {event_id}."
+                ) from error
+        elif mapping.sync_status == "failed":
+            try:
+                pending_mapping = self._mappings_repository.mark_pending(
+                    mapping_id=mapping.id,
+                )
+            except Exception as error:
+                raise EventSynchronizationError(
+                    f"Calendar mapping could not be prepared for retry: {mapping.id}"
+                ) from error
+
+            if pending_mapping is None:
+                raise EventSynchronizationError(
+                    f"Calendar mapping disappeared before retry: {mapping.id}"
+                )
+
+            mapping = pending_mapping
 
         try:
             event_reference = self._graph_client.create_event(
                 calendar_id=calendar_id,
                 payload=payload,
+                transaction_id=mapping.transaction_id,
             )
 
             synchronized_mapping = self._mappings_repository.mark_synced(

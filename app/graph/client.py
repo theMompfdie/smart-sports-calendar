@@ -98,11 +98,15 @@ class GraphClient:
         self,
         calendar_id: str,
         payload: OutlookEventPayload,
+        transaction_id: str,
     ) -> OutlookEventReference:
+        graph_payload = payload.to_graph_dict()
+        graph_payload["transactionId"] = transaction_id
+
         response = self._send_json(
             url=self._event_collection_url(calendar_id),
             method="POST",
-            payload=payload.to_graph_dict(),
+            payload=graph_payload,
         )
 
         return self._parse_event_reference(response)
