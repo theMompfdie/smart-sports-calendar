@@ -12,6 +12,10 @@ class GraphClientError(RuntimeError):
     pass
 
 
+class OutlookEventNotFoundError(GraphClientError):
+    pass
+
+
 class CalendarNotFoundError(GraphClientError):
     pass
 
@@ -181,6 +185,11 @@ class GraphClient:
             with urlopen(request, timeout=30) as response:
                 response.read()
         except HTTPError as error:
+            if error.code == 404:
+                raise OutlookEventNotFoundError(
+                    "Microsoft Graph Outlook event was not found."
+                ) from error
+
             raise GraphClientError(
                 f"Microsoft Graph request failed with HTTP {error.code}."
             ) from error

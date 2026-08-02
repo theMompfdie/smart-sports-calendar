@@ -6,7 +6,11 @@ from app.database.calendar_event_mappings_repository import (
     CalendarEventMappingsRepository,
 )
 from app.database.synchronization_query_repository import SynchronizationEvent
-from app.graph.client import GraphClient, OutlookEventReference
+from app.graph.client import (
+    GraphClient,
+    OutlookEventNotFoundError,
+    OutlookEventReference,
+)
 from app.synchronization.event_synchronizer import (
     EventSynchronizationError,
     EventSynchronizationStatus,
@@ -223,7 +227,7 @@ def test_synchronize_event_updates_changed_event() -> None:
     mappings_repository.mark_failed.assert_not_called()
 
 
-def test_synchronize_event_rejects_cancelled_event() -> None:
+def test_synchronize_event_skips_cancelled_event_without_mapping() -> None:
     (
         synchronizer,
         _,
@@ -233,19 +237,270 @@ def test_synchronize_event_rejects_cancelled_event() -> None:
     ) = create_synchronizer()
     synchronization_event = create_synchronization_event(status="cancelled")
 
+    result = synchronizer.synchronize_event(
+        synchronization_event=synchronization_event,
+        calendar_id="calendar-1",
+    )
+
+    assert result.status == EventSynchronizationStatus.CANCELLATION_SKIPPED
+    assert result.event_id == 1
+    assert result.calendar_id == "calendar-1"
+    assert result.outlook_event_id is None
+    assert result.content_hash is None
+
+    payload_builder.build.assert_not_called()
+    graph_client.create_event.assert_not_called()
+    graph_client.update_event.assert_not_called()
+    graph_client.delete_event.assert_not_called()
+    mappings_repository.create_pending.assert_not_called()
+
+
+def test_synchronize_event_updates_cancelled_event() -> None:
+    (
+        synchronizer,
+        payload,
+        _,
+        graph_client,
+        mappings_repository,
+    ) = create_synchronizer()
+    mapping = create_mapping(content_hash="old-hash")
+    synchronization_event = create_synchronization_event(
+        status="cancelled",
+        mapping=mapping,
+    )
+
+    graph_client.update_event.return_value = OutlookEventReference(id="outlook-event-1")
+    mappings_repository.mark_synced.return_value = create_mapping(
+        content_hash="cancelled-hash"
+    )
+
+    with patch(
+        "app.synchronization.event_synchronizer.calculate_content_hash",
+        return_value="cancelled-hash",
+    ):
+        result = synchronizer.synchronize_event(
+            synchronization_event=synchronization_event,
+            calendar_id="calendar-1",
+        )
+
+    assert result.status == EventSynchronizationStatus.CANCELLED
+    assert result.event_id == 1
+    assert result.outlook_event_id == "outlook-event-1"
+    assert result.content_hash == "cancelled-hash"
+
+    graph_client.update_event.assert_called_once_with(
+        calendar_id="calendar-1",
+        event_id="outlook-event-1",
+        payload=payload,
+    )
+    mappings_repository.mark_synced.assert_called_once_with(
+        mapping_id=mapping.id,
+        outlook_event_id="outlook-event-1",
+        outlook_change_key="change-key-1",
+        content_hash="cancelled-hash",
+    )
+
+
+def test_synchronize_event_skips_unchanged_cancelled_event() -> None:
+    (
+        synchronizer,
+        _,
+        _,
+        graph_client,
+        mappings_repository,
+    ) = create_synchronizer()
+    mapping = create_mapping(content_hash="cancelled-hash")
+    synchronization_event = create_synchronization_event(
+        status="cancelled",
+        mapping=mapping,
+    )
+
+    with patch(
+        "app.synchronization.event_synchronizer.calculate_content_hash",
+        return_value="cancelled-hash",
+    ):
+        result = synchronizer.synchronize_event(
+            synchronization_event=synchronization_event,
+            calendar_id="calendar-1",
+        )
+
+    assert result.status == EventSynchronizationStatus.CANCELLED
+    assert result.outlook_event_id == "outlook-event-1"
+    assert result.content_hash == "cancelled-hash"
+
+    graph_client.update_event.assert_not_called()
+    mappings_repository.mark_synced.assert_not_called()
+    mappings_repository.mark_failed.assert_not_called()
+
+
+def test_synchronize_event_deletes_delete_pending_mapping() -> None:
+    (
+        synchronizer,
+        _,
+        payload_builder,
+        graph_client,
+        mappings_repository,
+    ) = create_synchronizer()
+    mapping = create_mapping(sync_status="delete_pending")
+    synchronization_event = create_synchronization_event(mapping=mapping)
+
+    mappings_repository.mark_deleted.return_value = create_mapping(
+        sync_status="deleted"
+    )
+
+    result = synchronizer.synchronize_event(
+        synchronization_event=synchronization_event,
+        calendar_id="calendar-1",
+    )
+
+    assert result.status == EventSynchronizationStatus.DELETED
+    assert result.event_id == 1
+    assert result.calendar_id == "calendar-1"
+    assert result.outlook_event_id == "outlook-event-1"
+    assert result.content_hash == mapping.content_hash
+
+    graph_client.delete_event.assert_called_once_with(
+        calendar_id="calendar-1",
+        event_id="outlook-event-1",
+    )
+    mappings_repository.mark_deleted.assert_called_once_with(
+        mapping_id=mapping.id,
+    )
+    payload_builder.build.assert_not_called()
+
+
+def test_synchronize_event_treats_missing_outlook_event_as_deleted() -> None:
+    (
+        synchronizer,
+        _,
+        _,
+        graph_client,
+        mappings_repository,
+    ) = create_synchronizer()
+    mapping = create_mapping(sync_status="delete_pending")
+    synchronization_event = create_synchronization_event(mapping=mapping)
+
+    graph_client.delete_event.side_effect = OutlookEventNotFoundError(
+        "Microsoft Graph Outlook event was not found."
+    )
+    mappings_repository.mark_deleted.return_value = create_mapping(
+        sync_status="deleted"
+    )
+
+    result = synchronizer.synchronize_event(
+        synchronization_event=synchronization_event,
+        calendar_id="calendar-1",
+    )
+
+    assert result.status == EventSynchronizationStatus.DELETED
+    mappings_repository.mark_deleted.assert_called_once_with(
+        mapping_id=mapping.id,
+    )
+    mappings_repository.mark_delete_failed.assert_not_called()
+
+
+def test_synchronize_event_records_failed_deletion() -> None:
+    (
+        synchronizer,
+        _,
+        _,
+        graph_client,
+        mappings_repository,
+    ) = create_synchronizer()
+    mapping = create_mapping(sync_status="delete_pending")
+    synchronization_event = create_synchronization_event(mapping=mapping)
+
+    graph_client.delete_event.side_effect = RuntimeError("Graph unavailable")
+    mappings_repository.mark_delete_failed.return_value = create_mapping(
+        sync_status="delete_pending"
+    )
+
     with pytest.raises(
         EventSynchronizationError,
-        match="Cancelled events are not processed",
+        match="Outlook event deletion failed for event 1",
     ):
         synchronizer.synchronize_event(
             synchronization_event=synchronization_event,
             calendar_id="calendar-1",
         )
 
-    payload_builder.build.assert_not_called()
-    graph_client.create_event.assert_not_called()
-    graph_client.update_event.assert_not_called()
-    mappings_repository.create_pending.assert_not_called()
+    mappings_repository.mark_delete_failed.assert_called_once_with(
+        mapping_id=mapping.id,
+        error_message="Graph unavailable",
+    )
+    mappings_repository.mark_deleted.assert_not_called()
+
+
+def test_synchronize_event_rejects_delete_pending_mapping_without_event_id() -> None:
+    (
+        synchronizer,
+        _,
+        _,
+        graph_client,
+        mappings_repository,
+    ) = create_synchronizer()
+    mapping = create_mapping(
+        outlook_event_id=None,
+        outlook_change_key=None,
+        sync_status="delete_pending",
+    )
+    synchronization_event = create_synchronization_event(mapping=mapping)
+
+    mappings_repository.mark_delete_failed.return_value = create_mapping(
+        outlook_event_id=None,
+        outlook_change_key=None,
+        sync_status="delete_pending",
+    )
+
+    with pytest.raises(
+        EventSynchronizationError,
+        match="Delete-pending calendar mapping has no Outlook event ID",
+    ):
+        synchronizer.synchronize_event(
+            synchronization_event=synchronization_event,
+            calendar_id="calendar-1",
+        )
+
+    graph_client.delete_event.assert_not_called()
+    mappings_repository.mark_delete_failed.assert_called_once_with(
+        mapping_id=mapping.id,
+        error_message=(
+            "Delete-pending calendar mapping has no Outlook event ID: "
+            f"mapping_id={mapping.id}"
+        ),
+    )
+
+
+def test_synchronize_event_records_failed_deleted_state_persistence() -> None:
+    (
+        synchronizer,
+        _,
+        _,
+        graph_client,
+        mappings_repository,
+    ) = create_synchronizer()
+    mapping = create_mapping(sync_status="delete_pending")
+    synchronization_event = create_synchronization_event(mapping=mapping)
+
+    mappings_repository.mark_deleted.side_effect = RuntimeError("database unavailable")
+    mappings_repository.mark_delete_failed.return_value = create_mapping(
+        sync_status="delete_pending"
+    )
+
+    with pytest.raises(
+        EventSynchronizationError,
+        match="Deleted calendar mapping could not be persisted",
+    ):
+        synchronizer.synchronize_event(
+            synchronization_event=synchronization_event,
+            calendar_id="calendar-1",
+        )
+
+    graph_client.delete_event.assert_called_once()
+    mappings_repository.mark_delete_failed.assert_called_once_with(
+        mapping_id=mapping.id,
+        error_message="database unavailable",
+    )
 
 
 def test_synchronize_event_wraps_payload_builder_error() -> None:

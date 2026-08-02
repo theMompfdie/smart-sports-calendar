@@ -233,6 +233,35 @@ class CalendarEventMappingsRepository:
 
         return self.get_by_id(mapping_id)
 
+    def mark_delete_failed(
+        self,
+        mapping_id: int,
+        error_message: str,
+    ) -> CalendarEventMapping | None:
+        timestamp = self._timestamp()
+
+        with self._connect() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE calendar_event_mappings
+                SET sync_attempts = sync_attempts + 1,
+                    last_sync_error = ?,
+                    updated_at = ?
+                WHERE id = ?
+                  AND sync_status = 'delete_pending'
+                """,
+                (
+                    error_message,
+                    timestamp,
+                    mapping_id,
+                ),
+            )
+
+        if cursor.rowcount == 0:
+            return None
+
+        return self.get_by_id(mapping_id)
+
     def mark_delete_pending(
         self,
         mapping_id: int,
