@@ -105,8 +105,7 @@ class ParticipantsRepository:
         participant = self.get_by_key(sport_id, participant_key)
         if participant is None:
             raise RuntimeError(
-                "Participant could not be loaded after upsert: "
-                f"{participant_key}"
+                f"Participant could not be loaded after upsert: {participant_key}"
             )
         return participant
 
