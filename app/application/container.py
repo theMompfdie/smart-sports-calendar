@@ -36,6 +36,9 @@ from app.synchronization.event_synchronizer import EventSynchronizer
 from app.synchronization.outlook_event_payload_builder import (
     OutlookEventPayloadBuilder,
 )
+from app.synchronization.synchronization_orchestrator import (
+    SynchronizationOrchestrator,
+)
 
 
 class ApplicationContainer:
@@ -95,6 +98,11 @@ class ApplicationContainer:
             payload_builder=self.outlook_event_payload_builder,
             graph_client=self.graph_client,
             mappings_repository=self.calendar_event_mappings_repository,
+        )
+        self.synchronization_orchestrator = SynchronizationOrchestrator(
+            query_repository=self.synchronization_query_repository,
+            event_synchronizer=self.event_synchronizer,
+            sync_runs_repository=self.sync_runs_repository,
         )
         self.scheduler = Scheduler(
             interval_seconds=self.settings.heartbeat_interval,

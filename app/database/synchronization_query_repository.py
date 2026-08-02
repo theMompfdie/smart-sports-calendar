@@ -55,7 +55,11 @@ class SynchronizationQueryRepository:
     def get_candidates(
         self,
         calendar_id: str,
+        limit: int,
     ) -> list[SynchronizationEvent]:
+        if limit <= 0:
+            raise ValueError("Synchronization candidate limit must be positive.")
+
         with self._connect() as connection:
             rows = connection.execute(
                 """
@@ -77,8 +81,12 @@ class SynchronizationQueryRepository:
                 ORDER BY
                     se.start_time,
                     se.id
+                LIMIT ?
                 """,
-                (calendar_id,),
+                (
+                    calendar_id,
+                    limit,
+                ),
             ).fetchall()
 
             candidates: list[SynchronizationEvent] = []
