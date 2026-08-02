@@ -24,6 +24,7 @@ from app.database.source_mappings_repository import SourceMappingsRepository
 from app.database.sports_catalog import initialize_sports_catalog
 from app.database.sports_events_repository import SportsEventsRepository
 from app.database.sports_repository import SportsRepository
+from app.database.sync_runs_repository import SyncRunsRepository
 from app.graph.authentication import GraphTokenProvider
 from app.graph.client import GraphClient
 from app.logging.logger import configure_logging
@@ -68,6 +69,7 @@ class ApplicationContainer:
         self.source_mappings_repository = SourceMappingsRepository(
             self.settings.database_path
         )
+        self.sync_runs_repository = SyncRunsRepository(self.settings.database_path)
         self.graph_token_provider = GraphTokenProvider(
             tenant_id=self.settings.m365_tenant_id,
             client_id=self.settings.m365_client_id,
