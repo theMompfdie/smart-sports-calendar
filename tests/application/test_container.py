@@ -6,6 +6,10 @@ from app.config.settings import Settings
 from app.database.synchronization_query_repository import (
     SynchronizationQueryRepository,
 )
+from app.synchronization.event_synchronizer import EventSynchronizer
+from app.synchronization.outlook_event_payload_builder import (
+    OutlookEventPayloadBuilder,
+)
 
 
 def create_settings(
@@ -94,3 +98,32 @@ def test_container_provides_synchronization_query_repository(
     )
 
     assert container.synchronization_query_repository.database_path == database_path
+
+
+def test_container_provides_event_synchronizer(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "sports.db"
+
+    container = ApplicationContainer(
+        settings=create_settings(database_path),
+    )
+
+    assert isinstance(
+        container.outlook_event_payload_builder,
+        OutlookEventPayloadBuilder,
+    )
+    assert isinstance(
+        container.event_synchronizer,
+        EventSynchronizer,
+    )
+
+    assert (
+        container.event_synchronizer._payload_builder
+        is container.outlook_event_payload_builder
+    )
+    assert container.event_synchronizer._graph_client is container.graph_client
+    assert (
+        container.event_synchronizer._mappings_repository
+        is container.calendar_event_mappings_repository
+    )
