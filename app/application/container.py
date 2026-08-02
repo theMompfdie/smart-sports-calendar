@@ -17,6 +17,7 @@ from app.database.participants_repository import ParticipantsRepository
 from app.database.season_participants_repository import SeasonParticipantsRepository
 from app.database.seasons_catalog import initialize_seasons_catalog
 from app.database.seasons_repository import SeasonsRepository
+from app.database.source_mappings_repository import SourceMappingsRepository
 from app.database.sports_catalog import initialize_sports_catalog
 from app.database.sports_events_repository import SportsEventsRepository
 from app.database.sports_repository import SportsRepository
@@ -56,6 +57,9 @@ class ApplicationContainer:
             self.settings.database_path
         )
         self.data_sources_repository = DataSourcesRepository(
+            self.settings.database_path
+        )
+        self.source_mappings_repository = SourceMappingsRepository(
             self.settings.database_path
         )
         self.graph_token_provider = GraphTokenProvider(
