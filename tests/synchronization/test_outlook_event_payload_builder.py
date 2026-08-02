@@ -62,7 +62,8 @@ def make_aggregate(
 
     if not complete:
         return SynchronizationEvent(
-            event=event or make_sports_event(
+            event=event
+            or make_sports_event(
                 competition_id=None,
                 season_id=None,
                 parent_event_id=None,
@@ -132,12 +133,36 @@ def make_aggregate(
     )
     statistics = (
         EventStatistic(
-            2, 10, 5, None, "possession", "Possession", 46, None, "percent",
-            "full time", None, None, TIMESTAMP, TIMESTAMP,
+            2,
+            10,
+            5,
+            None,
+            "possession",
+            "Possession",
+            46,
+            None,
+            "percent",
+            "full time",
+            None,
+            None,
+            TIMESTAMP,
+            TIMESTAMP,
         ),
         EventStatistic(
-            1, 10, 4, None, "possession", "Possession", 54, None, "percent",
-            "full time", None, None, TIMESTAMP, TIMESTAMP,
+            1,
+            10,
+            4,
+            None,
+            "possession",
+            "Possession",
+            54,
+            None,
+            "percent",
+            "full time",
+            None,
+            None,
+            TIMESTAMP,
+            TIMESTAMP,
         ),
     )
     return SynchronizationEvent(
@@ -208,9 +233,10 @@ def test_build_is_deterministic_for_differently_ordered_collections() -> None:
     builder = OutlookEventPayloadBuilder()
 
     assert builder.build(aggregate) == builder.build(reordered)
-    assert builder.build(aggregate).to_graph_dict() == builder.build(
-        aggregate
-    ).to_graph_dict()
+    assert (
+        builder.build(aggregate).to_graph_dict()
+        == builder.build(aggregate).to_graph_dict()
+    )
 
 
 def test_graph_serialization_uses_expected_microsoft_graph_shape() -> None:
@@ -229,9 +255,7 @@ def test_graph_serialization_uses_expected_microsoft_graph_shape() -> None:
         "dateTime": "2026-08-21T19:00:00",
         "timeZone": "Europe/London",
     }
-    assert graph_payload["location"] == {
-        "displayName": "Emirates Stadium, London, GB"
-    }
+    assert graph_payload["location"] == {"displayName": "Emirates Stadium, London, GB"}
     assert graph_payload["isAllDay"] is False
     assert graph_payload["isReminderOn"] is True
     assert graph_payload["reminderMinutesBeforeStart"] == 30
