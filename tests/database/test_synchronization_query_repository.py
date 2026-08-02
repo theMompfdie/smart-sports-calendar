@@ -503,3 +503,33 @@ def test_get_candidates_returns_stable_chronological_order(
         second_equal_event.id,
         later_event.id,
     ]
+
+
+def test_get_candidates_includes_cancelled_event(
+    tmp_path: Path,
+) -> None:
+    database_path = create_database(tmp_path)
+
+    sport = SportsRepository(database_path).upsert(
+        sport_key="football",
+        name="Football",
+    )
+    cancelled_event = SportsEventsRepository(database_path).upsert(
+        sport_id=sport.id,
+        event_key="cancelled_event",
+        event_type="match",
+        title="Cancelled event",
+        start_time="2026-08-21T19:00:00+00:00",
+        status="cancelled",
+    )
+
+    repository = SynchronizationQueryRepository(database_path)
+
+    candidates = repository.get_candidates(
+        calendar_id="calendar-1",
+    )
+
+    assert len(candidates) == 1
+    assert candidates[0].event == cancelled_event
+    assert candidates[0].event.status == "cancelled"
+    assert candidates[0].mapping is None
