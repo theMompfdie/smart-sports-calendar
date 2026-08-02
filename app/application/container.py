@@ -10,6 +10,7 @@ from app.database.competitions_repository import CompetitionsRepository
 from app.database.database import Database
 from app.database.event_participants_repository import EventParticipantsRepository
 from app.database.event_results_repository import EventResultsRepository
+from app.database.event_statistics_repository import EventStatisticsRepository
 from app.database.participants_catalog import initialize_participants_catalog
 from app.database.participants_repository import ParticipantsRepository
 from app.database.season_participants_repository import SeasonParticipantsRepository
@@ -38,6 +39,9 @@ class ApplicationContainer:
             self.settings.database_path
         )
         self.event_results_repository = EventResultsRepository(
+            self.settings.database_path
+        )
+        self.event_statistics_repository = EventStatisticsRepository(
             self.settings.database_path
         )
         self.seasons_repository = SeasonsRepository(self.settings.database_path)
