@@ -7,6 +7,7 @@ from types import FrameType
 from app.config.settings import Settings, load_settings
 from app.database.competitions_catalog import initialize_competitions_catalog
 from app.database.competitions_repository import CompetitionsRepository
+from app.database.data_sources_repository import DataSourcesRepository
 from app.database.database import Database
 from app.database.event_participants_repository import EventParticipantsRepository
 from app.database.event_results_repository import EventResultsRepository
@@ -52,6 +53,9 @@ class ApplicationContainer:
             self.settings.database_path
         )
         self.event_participants_repository = EventParticipantsRepository(
+            self.settings.database_path
+        )
+        self.data_sources_repository = DataSourcesRepository(
             self.settings.database_path
         )
         self.graph_token_provider = GraphTokenProvider(
