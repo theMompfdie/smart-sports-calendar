@@ -73,7 +73,7 @@ def test_initialize_creates_expected_tables(
     assert table_names == EXPECTED_TABLES
 
 
-def test_initial_migration_is_registered_once(
+def test_migrations_are_registered_once(
     initialized_database: Database,
     database_path: Path,
 ) -> None:
@@ -91,7 +91,28 @@ def test_initial_migration_is_registered_once(
     assert migrations == [
         ("001_initial_schema",),
         ("002_create_season_participants",),
+        ("003_extend_sync_run_counters",),
     ]
+
+
+def test_sync_runs_contains_extended_counters(
+    initialized_database: Database,
+    database_path: Path,
+) -> None:
+    with connect(database_path) as connection:
+        columns = {
+            row[1]: row for row in connection.execute("PRAGMA table_info(sync_runs)")
+        }
+
+    assert "items_unchanged" in columns
+    assert columns["items_unchanged"][2] == "INTEGER"
+    assert columns["items_unchanged"][3] == 1
+    assert columns["items_unchanged"][4] == "0"
+
+    assert "items_cancelled" in columns
+    assert columns["items_cancelled"][2] == "INTEGER"
+    assert columns["items_cancelled"][3] == 1
+    assert columns["items_cancelled"][4] == "0"
 
 
 def test_repeated_initialize_preserves_existing_data(

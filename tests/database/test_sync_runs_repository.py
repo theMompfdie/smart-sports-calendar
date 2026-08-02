@@ -50,6 +50,8 @@ def test_start_creates_running_sync_run(
     assert sync_run.items_processed == 0
     assert sync_run.items_created == 0
     assert sync_run.items_updated == 0
+    assert sync_run.items_unchanged == 0
+    assert sync_run.items_cancelled == 0
     assert sync_run.items_deleted == 0
     assert sync_run.items_failed == 0
     assert sync_run.error_message is None
@@ -116,6 +118,8 @@ def test_update_progress_updates_running_sync_run(
         items_processed=10,
         items_created=4,
         items_updated=3,
+        items_unchanged=1,
+        items_cancelled=2,
         items_deleted=1,
         items_failed=2,
     )
@@ -126,6 +130,8 @@ def test_update_progress_updates_running_sync_run(
     assert updated_run.items_processed == 10
     assert updated_run.items_created == 4
     assert updated_run.items_updated == 3
+    assert updated_run.items_unchanged == 1
+    assert updated_run.items_cancelled == 2
     assert updated_run.items_deleted == 1
     assert updated_run.items_failed == 2
 
@@ -182,6 +188,8 @@ def test_complete_marks_run_as_completed(
         items_processed=10,
         items_created=4,
         items_updated=5,
+        items_unchanged=2,
+        items_cancelled=1,
         items_deleted=1,
         items_failed=0,
         metadata={"request_count": 3},
@@ -194,6 +202,8 @@ def test_complete_marks_run_as_completed(
     assert completed_run.items_processed == 10
     assert completed_run.items_created == 4
     assert completed_run.items_updated == 5
+    assert completed_run.items_unchanged == 2
+    assert completed_run.items_cancelled == 1
     assert completed_run.items_deleted == 1
     assert completed_run.items_failed == 0
     assert completed_run.error_message is None
@@ -241,6 +251,8 @@ def test_fail_marks_run_as_failed(
         items_processed=5,
         items_created=2,
         items_updated=1,
+        items_unchanged=1,
+        items_cancelled=1,
         items_deleted=0,
         items_failed=2,
         metadata={"http_status": 503},
@@ -252,6 +264,8 @@ def test_fail_marks_run_as_failed(
     assert failed_run.items_processed == 5
     assert failed_run.items_created == 2
     assert failed_run.items_updated == 1
+    assert failed_run.items_unchanged == 1
+    assert failed_run.items_cancelled == 1
     assert failed_run.items_deleted == 0
     assert failed_run.items_failed == 2
     assert failed_run.error_message == "Provider request failed"

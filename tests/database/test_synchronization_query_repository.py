@@ -392,7 +392,10 @@ def test_get_candidates_selects_expected_synchronization_statuses(
 
     repository = SynchronizationQueryRepository(database_path)
 
-    candidates = repository.get_candidates(calendar_id="calendar-1")
+    candidates = repository.get_candidates(
+        calendar_id="calendar-1",
+        limit=100,
+    )
     candidate_ids = {candidate.event.id for candidate in candidates}
 
     assert events_by_status["pending"].id in candidate_ids
@@ -448,9 +451,11 @@ def test_get_candidates_isolates_mappings_by_calendar(
 
     calendar_1_candidates = repository.get_candidates(
         calendar_id="calendar-1",
+        limit=100,
     )
     calendar_2_candidates = repository.get_candidates(
         calendar_id="calendar-2",
+        limit=100,
     )
 
     assert calendar_1_candidates == []
@@ -461,7 +466,25 @@ def test_get_candidates_isolates_mappings_by_calendar(
     assert calendar_2_candidates[0].mapping.calendar_id == "calendar-2"
 
 
-def test_get_candidates_returns_stable_chronological_order(
+@pytest.mark.parametrize("limit", [0, -1])
+def test_get_candidates_rejects_non_positive_limit(
+    tmp_path: Path,
+    limit: int,
+) -> None:
+    database_path = create_database(tmp_path)
+    repository = SynchronizationQueryRepository(database_path)
+
+    with pytest.raises(
+        ValueError,
+        match="Synchronization candidate limit must be positive",
+    ):
+        repository.get_candidates(
+            calendar_id="calendar-1",
+            limit=limit,
+        )
+
+
+def test_get_candidates_returns_limited_stable_chronological_order(
     tmp_path: Path,
 ) -> None:
     database_path = create_database(tmp_path)
@@ -472,13 +495,6 @@ def test_get_candidates_returns_stable_chronological_order(
     )
     events_repository = SportsEventsRepository(database_path)
 
-    later_event = events_repository.upsert(
-        sport_id=sport.id,
-        event_key="later_event",
-        event_type="match",
-        title="Later event",
-        start_time="2026-08-22T19:00:00+00:00",
-    )
     first_equal_event = events_repository.upsert(
         sport_id=sport.id,
         event_key="first_equal_event",
@@ -496,12 +512,14 @@ def test_get_candidates_returns_stable_chronological_order(
 
     repository = SynchronizationQueryRepository(database_path)
 
-    candidates = repository.get_candidates(calendar_id="calendar-1")
+    candidates = repository.get_candidates(
+        calendar_id="calendar-1",
+        limit=2,
+    )
 
     assert [candidate.event.id for candidate in candidates] == [
         first_equal_event.id,
         second_equal_event.id,
-        later_event.id,
     ]
 
 
@@ -527,6 +545,7 @@ def test_get_candidates_includes_cancelled_event(
 
     candidates = repository.get_candidates(
         calendar_id="calendar-1",
+        limit=100,
     )
 
     assert len(candidates) == 1

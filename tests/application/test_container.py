@@ -10,6 +10,9 @@ from app.synchronization.event_synchronizer import EventSynchronizer
 from app.synchronization.outlook_event_payload_builder import (
     OutlookEventPayloadBuilder,
 )
+from app.synchronization.synchronization_orchestrator import (
+    SynchronizationOrchestrator,
+)
 
 
 def create_settings(
@@ -126,4 +129,31 @@ def test_container_provides_event_synchronizer(
     assert (
         container.event_synchronizer._mappings_repository
         is container.calendar_event_mappings_repository
+    )
+
+
+def test_container_provides_synchronization_orchestrator(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "sports.db"
+
+    container = ApplicationContainer(
+        settings=create_settings(database_path),
+    )
+
+    assert isinstance(
+        container.synchronization_orchestrator,
+        SynchronizationOrchestrator,
+    )
+    assert (
+        container.synchronization_orchestrator._query_repository
+        is container.synchronization_query_repository
+    )
+    assert (
+        container.synchronization_orchestrator._event_synchronizer
+        is container.event_synchronizer
+    )
+    assert (
+        container.synchronization_orchestrator._sync_runs_repository
+        is container.sync_runs_repository
     )

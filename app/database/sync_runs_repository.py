@@ -17,6 +17,8 @@ class SyncRun:
     items_processed: int
     items_created: int
     items_updated: int
+    items_unchanged: int
+    items_cancelled: int
     items_deleted: int
     items_failed: int
     error_message: str | None
@@ -146,6 +148,8 @@ class SyncRunsRepository:
         items_processed: int,
         items_created: int,
         items_updated: int,
+        items_unchanged: int = 0,
+        items_cancelled: int = 0,
         items_deleted: int,
         items_failed: int,
     ) -> SyncRun | None:
@@ -156,6 +160,8 @@ class SyncRunsRepository:
                 SET items_processed = ?,
                     items_created = ?,
                     items_updated = ?,
+                    items_unchanged = ?,
+                    items_cancelled = ?,
                     items_deleted = ?,
                     items_failed = ?
                 WHERE id = ?
@@ -165,6 +171,8 @@ class SyncRunsRepository:
                     items_processed,
                     items_created,
                     items_updated,
+                    items_unchanged,
+                    items_cancelled,
                     items_deleted,
                     items_failed,
                     sync_run_id,
@@ -183,6 +191,8 @@ class SyncRunsRepository:
         items_processed: int,
         items_created: int,
         items_updated: int,
+        items_unchanged: int = 0,
+        items_cancelled: int = 0,
         items_deleted: int,
         items_failed: int,
         metadata: dict[str, Any] | None = None,
@@ -195,6 +205,8 @@ class SyncRunsRepository:
             items_processed=items_processed,
             items_created=items_created,
             items_updated=items_updated,
+            items_unchanged=items_unchanged,
+            items_cancelled=items_cancelled,
             items_deleted=items_deleted,
             items_failed=items_failed,
             error_message=None,
@@ -209,6 +221,8 @@ class SyncRunsRepository:
         items_processed: int = 0,
         items_created: int = 0,
         items_updated: int = 0,
+        items_unchanged: int = 0,
+        items_cancelled: int = 0,
         items_deleted: int = 0,
         items_failed: int = 0,
         metadata: dict[str, Any] | None = None,
@@ -219,6 +233,8 @@ class SyncRunsRepository:
             items_processed=items_processed,
             items_created=items_created,
             items_updated=items_updated,
+            items_unchanged=items_unchanged,
+            items_cancelled=items_cancelled,
             items_deleted=items_deleted,
             items_failed=items_failed,
             error_message=error_message,
@@ -247,6 +263,8 @@ class SyncRunsRepository:
         items_processed: int,
         items_created: int,
         items_updated: int,
+        items_unchanged: int,
+        items_cancelled: int,
         items_deleted: int,
         items_failed: int,
         error_message: str | None,
@@ -264,6 +282,8 @@ class SyncRunsRepository:
                     items_processed = ?,
                     items_created = ?,
                     items_updated = ?,
+                    items_unchanged = ?,
+                    items_cancelled = ?,
                     items_deleted = ?,
                     items_failed = ?,
                     error_message = ?,
@@ -277,6 +297,8 @@ class SyncRunsRepository:
                     items_processed,
                     items_created,
                     items_updated,
+                    items_unchanged,
+                    items_cancelled,
                     items_deleted,
                     items_failed,
                     error_message,
@@ -326,6 +348,8 @@ class SyncRunsRepository:
                 items_processed,
                 items_created,
                 items_updated,
+                items_unchanged,
+                items_cancelled,
                 items_deleted,
                 items_failed,
                 error_message,
@@ -347,6 +371,8 @@ class SyncRunsRepository:
             items_processed=row["items_processed"],
             items_created=row["items_created"],
             items_updated=row["items_updated"],
+            items_unchanged=row["items_unchanged"],
+            items_cancelled=row["items_cancelled"],
             items_deleted=row["items_deleted"],
             items_failed=row["items_failed"],
             error_message=row["error_message"],
