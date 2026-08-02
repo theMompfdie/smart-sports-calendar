@@ -17,6 +17,7 @@ EXPECTED_TABLES = {
     "event_statistics",
     "participants",
     "schema_migrations",
+    "season_participants",
     "seasons",
     "source_mappings",
     "sports",
@@ -87,7 +88,10 @@ def test_initial_migration_is_registered_once(
             """
         ).fetchall()
 
-    assert migrations == [("001_initial_schema",)]
+    assert migrations == [
+        ("001_initial_schema",),
+        ("002_create_season_participants",),
+    ]
 
 
 def test_repeated_initialize_preserves_existing_data(
