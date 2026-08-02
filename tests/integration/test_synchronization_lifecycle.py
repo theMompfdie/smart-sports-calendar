@@ -1,0 +1,429 @@
+from app.database.sports_events_repository import SportsEventsRepository
+from app.graph.client import OutlookEventReference
+
+from tests.integration.conftest import SynchronizationHarness
+
+CALENDAR_ID = "integration-calendar"
+
+
+def test_create_then_skip_unchanged_event(
+    synchronization_harness: SynchronizationHarness,
+) -> None:
+    first_result = synchronization_harness.service.run(
+        calendar_id=CALENDAR_ID,
+        limit=100,
+    )
+
+    assert first_result is not None
+    assert first_result.status == "completed"
+    assert first_result.items_processed == 1
+    assert first_result.items_created == 1
+    assert first_result.items_updated == 0
+    assert first_result.items_unchanged == 0
+    assert first_result.items_cancelled == 0
+    assert first_result.items_deleted == 0
+    assert first_result.items_failed == 0
+
+    mapping = synchronization_harness.mappings_repository.get_by_event(
+        event_id=synchronization_harness.event.id,
+        calendar_id=CALENDAR_ID,
+    )
+
+    assert mapping is not None
+    assert mapping.sync_status == "synced"
+    assert mapping.outlook_event_id == "outlook-event-1"
+    assert mapping.content_hash is not None
+    assert mapping.last_synced_at is not None
+    assert mapping.last_sync_error is None
+
+    second_result = synchronization_harness.service.run(
+        calendar_id=CALENDAR_ID,
+        limit=100,
+    )
+
+    assert second_result is not None
+    assert second_result.status == "completed"
+    assert second_result.items_processed == 1
+    assert second_result.items_created == 0
+    assert second_result.items_updated == 0
+    assert second_result.items_unchanged == 1
+    assert second_result.items_cancelled == 0
+    assert second_result.items_deleted == 0
+    assert second_result.items_failed == 0
+
+    synchronization_harness.graph_client.create_event.assert_called_once()
+    synchronization_harness.graph_client.update_event.assert_not_called()
+    synchronization_harness.graph_client.delete_event.assert_not_called()
+
+    sync_runs = synchronization_harness.sync_runs_repository.get_recent(
+        run_type="calendar_sync",
+        limit=10,
+    )
+
+    assert len(sync_runs) == 2
+    assert all(sync_run.status == "completed" for sync_run in sync_runs)
+
+    latest_run, first_run = sync_runs
+
+    assert latest_run.items_processed == 1
+    assert latest_run.items_created == 0
+    assert latest_run.items_unchanged == 1
+    assert latest_run.items_failed == 0
+
+    assert first_run.items_processed == 1
+    assert first_run.items_created == 1
+    assert first_run.items_unchanged == 0
+    assert first_run.items_failed == 0
+
+
+def test_changed_event_is_updated_in_outlook(
+    synchronization_harness: SynchronizationHarness,
+) -> None:
+    first_result = synchronization_harness.service.run(
+        calendar_id=CALENDAR_ID,
+        limit=100,
+    )
+
+    assert first_result is not None
+    assert first_result.items_created == 1
+
+    synchronization_harness.graph_client.update_event.return_value = (
+        OutlookEventReference(id="outlook-event-1")
+    )
+
+    events_repository = SportsEventsRepository(synchronization_harness.database_path)
+    event = synchronization_harness.event
+
+    events_repository.upsert(
+        sport_id=event.sport_id,
+        competition_id=event.competition_id,
+        season_id=event.season_id,
+        parent_event_id=event.parent_event_id,
+        event_key=event.event_key,
+        event_type=event.event_type,
+        title="Arsenal vs Liverpool – Rescheduled",
+        stage=event.stage,
+        round_name=event.round_name,
+        sequence_number=event.sequence_number,
+        start_time="2026-08-15T17:30:00+00:00",
+        end_time="2026-08-15T19:30:00+00:00",
+        timezone=event.timezone,
+        venue_name=event.venue_name,
+        city=event.city,
+        country_code=event.country_code,
+        status=event.status,
+        source_updated_at="2026-08-02T18:00:00+00:00",
+        cancelled_at=event.cancelled_at,
+        deleted_at=event.deleted_at,
+        metadata=event.metadata,
+    )
+
+    second_result = synchronization_harness.service.run(
+        calendar_id=CALENDAR_ID,
+        limit=100,
+    )
+
+    assert second_result is not None
+    assert second_result.status == "completed"
+    assert second_result.items_processed == 1
+    assert second_result.items_created == 0
+    assert second_result.items_updated == 1
+    assert second_result.items_unchanged == 0
+    assert second_result.items_failed == 0
+
+    synchronization_harness.graph_client.create_event.assert_called_once()
+    synchronization_harness.graph_client.update_event.assert_called_once()
+
+    update_call = synchronization_harness.graph_client.update_event.call_args
+
+    assert update_call.kwargs["calendar_id"] == CALENDAR_ID
+    assert update_call.kwargs["event_id"] == "outlook-event-1"
+    payload = update_call.kwargs["payload"]
+    assert payload.subject == "Arsenal vs Liverpool – Rescheduled"
+    mapping = synchronization_harness.mappings_repository.get_by_event(
+        event_id=event.id,
+        calendar_id=CALENDAR_ID,
+    )
+
+    assert mapping is not None
+    assert mapping.sync_status == "synced"
+    assert mapping.outlook_event_id == "outlook-event-1"
+    assert mapping.last_sync_error is None
+
+
+def test_cancelled_event_is_updated_in_outlook(
+    synchronization_harness: SynchronizationHarness,
+) -> None:
+    first_result = synchronization_harness.service.run(
+        calendar_id=CALENDAR_ID,
+        limit=100,
+    )
+
+    assert first_result is not None
+    assert first_result.items_created == 1
+
+    synchronization_harness.graph_client.update_event.return_value = (
+        OutlookEventReference(id="outlook-event-1")
+    )
+
+    events_repository = SportsEventsRepository(synchronization_harness.database_path)
+    event = synchronization_harness.event
+
+    events_repository.upsert(
+        sport_id=event.sport_id,
+        competition_id=event.competition_id,
+        season_id=event.season_id,
+        parent_event_id=event.parent_event_id,
+        event_key=event.event_key,
+        event_type=event.event_type,
+        title=event.title,
+        stage=event.stage,
+        round_name=event.round_name,
+        sequence_number=event.sequence_number,
+        start_time=event.start_time,
+        end_time=event.end_time,
+        timezone=event.timezone,
+        venue_name=event.venue_name,
+        city=event.city,
+        country_code=event.country_code,
+        status="cancelled",
+        source_updated_at="2026-08-02T18:30:00+00:00",
+        cancelled_at="2026-08-02T18:30:00+00:00",
+        deleted_at=event.deleted_at,
+        metadata=event.metadata,
+    )
+
+    second_result = synchronization_harness.service.run(
+        calendar_id=CALENDAR_ID,
+        limit=100,
+    )
+
+    assert second_result is not None
+    assert second_result.status == "completed"
+    assert second_result.items_processed == 1
+    assert second_result.items_created == 0
+    assert second_result.items_updated == 0
+    assert second_result.items_unchanged == 0
+    assert second_result.items_cancelled == 1
+    assert second_result.items_failed == 0
+
+    synchronization_harness.graph_client.create_event.assert_called_once()
+    synchronization_harness.graph_client.update_event.assert_called_once()
+
+    update_call = synchronization_harness.graph_client.update_event.call_args
+
+    assert update_call.kwargs["calendar_id"] == CALENDAR_ID
+    assert update_call.kwargs["event_id"] == "outlook-event-1"
+
+    mapping = synchronization_harness.mappings_repository.get_by_event(
+        event_id=event.id,
+        calendar_id=CALENDAR_ID,
+    )
+
+    assert mapping is not None
+    assert mapping.sync_status == "synced"
+    assert mapping.outlook_event_id == "outlook-event-1"
+    assert mapping.last_sync_error is None
+
+
+def test_delete_pending_mapping_is_deleted_from_outlook(
+    synchronization_harness: SynchronizationHarness,
+) -> None:
+    first_result = synchronization_harness.service.run(
+        calendar_id=CALENDAR_ID,
+        limit=100,
+    )
+
+    assert first_result is not None
+    assert first_result.items_created == 1
+
+    mapping = synchronization_harness.mappings_repository.get_by_event(
+        event_id=synchronization_harness.event.id,
+        calendar_id=CALENDAR_ID,
+    )
+
+    assert mapping is not None
+    assert mapping.sync_status == "synced"
+    assert mapping.outlook_event_id == "outlook-event-1"
+
+    delete_pending_mapping = (
+        synchronization_harness.mappings_repository.mark_delete_pending(
+            mapping_id=mapping.id,
+        )
+    )
+
+    assert delete_pending_mapping is not None
+    assert delete_pending_mapping.sync_status == "delete_pending"
+
+    second_result = synchronization_harness.service.run(
+        calendar_id=CALENDAR_ID,
+        limit=100,
+    )
+
+    assert second_result is not None
+    assert second_result.status == "completed"
+    assert second_result.items_processed == 1
+    assert second_result.items_created == 0
+    assert second_result.items_updated == 0
+    assert second_result.items_unchanged == 0
+    assert second_result.items_cancelled == 0
+    assert second_result.items_deleted == 1
+    assert second_result.items_failed == 0
+
+    synchronization_harness.graph_client.create_event.assert_called_once()
+    synchronization_harness.graph_client.update_event.assert_not_called()
+    synchronization_harness.graph_client.delete_event.assert_called_once_with(
+        calendar_id=CALENDAR_ID,
+        event_id="outlook-event-1",
+    )
+
+    deleted_mapping = synchronization_harness.mappings_repository.get_by_event(
+        event_id=synchronization_harness.event.id,
+        calendar_id=CALENDAR_ID,
+    )
+
+    assert deleted_mapping is not None
+    assert deleted_mapping.sync_status == "deleted"
+    assert deleted_mapping.outlook_event_id == "outlook-event-1"
+    assert deleted_mapping.outlook_change_key is None
+    assert deleted_mapping.last_sync_error is None
+
+    sync_runs = synchronization_harness.sync_runs_repository.get_recent(
+        run_type="calendar_sync",
+        limit=10,
+    )
+
+    assert len(sync_runs) == 2
+
+    latest_run = sync_runs[0]
+
+    assert latest_run.status == "completed"
+    assert latest_run.items_processed == 1
+    assert latest_run.items_deleted == 1
+    assert latest_run.items_failed == 0
+
+
+def test_graph_create_failure_is_persisted(
+    synchronization_harness: SynchronizationHarness,
+) -> None:
+    synchronization_harness.graph_client.create_event.side_effect = RuntimeError(
+        "Graph unavailable"
+    )
+
+    result = synchronization_harness.service.run(
+        calendar_id=CALENDAR_ID,
+        limit=100,
+    )
+
+    assert result is not None
+    assert result.status == "completed_with_errors"
+    assert result.items_processed == 1
+    assert result.items_created == 0
+    assert result.items_updated == 0
+    assert result.items_unchanged == 0
+    assert result.items_cancelled == 0
+    assert result.items_deleted == 0
+    assert result.items_failed == 1
+
+    mapping = synchronization_harness.mappings_repository.get_by_event(
+        event_id=synchronization_harness.event.id,
+        calendar_id=CALENDAR_ID,
+    )
+
+    assert mapping is not None
+    assert mapping.sync_status == "failed"
+    assert mapping.outlook_event_id is None
+    assert mapping.content_hash is None
+    assert mapping.sync_attempts == 1
+    assert mapping.last_synced_at is None
+    assert mapping.last_sync_error == "Graph unavailable"
+
+    synchronization_harness.graph_client.create_event.assert_called_once()
+    synchronization_harness.graph_client.update_event.assert_not_called()
+    synchronization_harness.graph_client.delete_event.assert_not_called()
+
+    sync_runs = synchronization_harness.sync_runs_repository.get_recent(
+        run_type="calendar_sync",
+        limit=10,
+    )
+
+    assert len(sync_runs) == 1
+
+    sync_run = sync_runs[0]
+
+    assert sync_run.status == "completed_with_errors"
+    assert sync_run.items_processed == 1
+    assert sync_run.items_created == 0
+    assert sync_run.items_failed == 1
+    assert sync_run.error_message is None
+
+
+def test_startup_recovers_interrupted_sync_run_before_synchronization(
+    synchronization_harness: SynchronizationHarness,
+) -> None:
+    interrupted_run = synchronization_harness.sync_runs_repository.start(
+        run_type="calendar_sync",
+        metadata={"calendar_id": CALENDAR_ID},
+    )
+
+    updated_interrupted_run = (
+        synchronization_harness.sync_runs_repository.update_progress(
+            sync_run_id=interrupted_run.id,
+            items_processed=3,
+            items_created=1,
+            items_updated=1,
+            items_unchanged=1,
+            items_cancelled=0,
+            items_deleted=0,
+            items_failed=0,
+        )
+    )
+
+    assert updated_interrupted_run is not None
+    assert updated_interrupted_run.status == "running"
+    assert updated_interrupted_run.finished_at is None
+
+    result = synchronization_harness.service.run(
+        calendar_id=CALENDAR_ID,
+        limit=100,
+    )
+
+    assert result is not None
+    assert result.status == "completed"
+    assert result.items_processed == 1
+    assert result.items_created == 1
+    assert result.items_failed == 0
+
+    recovered_run = synchronization_harness.sync_runs_repository.get_by_id(
+        interrupted_run.id
+    )
+
+    assert recovered_run is not None
+    assert recovered_run.status == "failed"
+    assert recovered_run.finished_at is not None
+    assert recovered_run.error_message == (
+        "Interrupted synchronization run recovered during application startup."
+    )
+    assert recovered_run.items_processed == 3
+    assert recovered_run.items_created == 1
+    assert recovered_run.items_updated == 1
+    assert recovered_run.items_unchanged == 1
+    assert recovered_run.metadata == {"calendar_id": CALENDAR_ID}
+
+    completed_run = synchronization_harness.sync_runs_repository.get_by_id(
+        result.sync_run_id
+    )
+
+    assert completed_run is not None
+    assert completed_run.status == "completed"
+    assert completed_run.finished_at is not None
+    assert completed_run.error_message is None
+    assert completed_run.id != recovered_run.id
+
+    running_runs = synchronization_harness.sync_runs_repository.get_by_status("running")
+
+    assert running_runs == []
+
+    synchronization_harness.graph_client.create_event.assert_called_once()
+    synchronization_harness.graph_client.update_event.assert_not_called()
+    synchronization_harness.graph_client.delete_event.assert_not_called()
