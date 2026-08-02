@@ -8,6 +8,9 @@ from app.config.settings import Settings, load_settings
 from app.database.competitions_catalog import initialize_competitions_catalog
 from app.database.competitions_repository import CompetitionsRepository
 from app.database.database import Database
+from app.database.participants_catalog import initialize_participants_catalog
+from app.database.participants_repository import ParticipantsRepository
+from app.database.season_participants_repository import SeasonParticipantsRepository
 from app.database.seasons_catalog import initialize_seasons_catalog
 from app.database.seasons_repository import SeasonsRepository
 from app.database.sports_catalog import initialize_sports_catalog
@@ -29,6 +32,12 @@ class ApplicationContainer:
             self.settings.database_path
         )
         self.seasons_repository = SeasonsRepository(self.settings.database_path)
+        self.participants_repository = ParticipantsRepository(
+            self.settings.database_path
+        )
+        self.season_participants_repository = SeasonParticipantsRepository(
+            self.settings.database_path
+        )
         self.graph_token_provider = GraphTokenProvider(
             tenant_id=self.settings.m365_tenant_id,
             client_id=self.settings.m365_client_id,
@@ -59,6 +68,13 @@ class ApplicationContainer:
             competitions_repository=self.competitions_repository,
             sports_repository=self.sports_repository,
         )
+        initialize_participants_catalog(
+            repository=self.participants_repository,
+            season_participants_repository=self.season_participants_repository,
+            sports_repository=self.sports_repository,
+            competitions_repository=self.competitions_repository,
+            seasons_repository=self.seasons_repository,
+        )
         self.database.record_startup()
 
         self.logger.info("SMART Sports Calendar container started")
@@ -85,7 +101,6 @@ class ApplicationContainer:
             task=self._heartbeat,
             stop_event=self.stop_event,
         )
-
         self.logger.info("SMART Sports Calendar container stopped")
 
     def _register_signal_handlers(self) -> None:
