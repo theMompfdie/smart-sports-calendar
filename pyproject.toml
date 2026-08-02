@@ -1,7 +1,35 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "smart-sports-calendar"
+version = "0.2.0a1"
+description = "Synchronizes sports events with a Microsoft Outlook calendar."
+requires-python = ">=3.13"
+dependencies = [
+    "tzdata>=2026.1",
+]
+
+
+[tool.setuptools.packages.find]
+include = ["app", "app.*"]
+exclude = [
+    "tests",
+    "tests.*",
+    "data",
+    "data.*",
+    "config",
+    "config.*",
+]
+
+
 [tool.ruff]
 target-version = "py313"
 line-length = 88
 src = ["app", "tests"]
+
 
 [tool.ruff.lint]
 select = [
@@ -12,13 +40,14 @@ select = [
     "B",
     "SIM",
 ]
-
 ignore = []
+
 
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
 line-ending = "auto"
+
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
