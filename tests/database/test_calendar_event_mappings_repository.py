@@ -1,5 +1,6 @@
 import sqlite3
 from pathlib import Path
+from uuid import UUID
 
 import pytest
 from app.database.calendar_event_mappings_repository import (
@@ -85,6 +86,7 @@ def test_create_pending_creates_mapping(
     assert mapping.id > 0
     assert mapping.event_id == event_id
     assert mapping.calendar_id == "calendar-1"
+    assert str(UUID(mapping.transaction_id)) == mapping.transaction_id
     assert mapping.outlook_event_id is None
     assert mapping.outlook_change_key is None
     assert mapping.content_hash == "hash-1"
@@ -189,6 +191,7 @@ def test_mark_failed_records_error_and_attempt(
     assert failed_mapping.sync_attempts == 1
     assert failed_mapping.last_sync_error == "Microsoft Graph request failed"
     assert failed_mapping.last_synced_at is None
+    assert failed_mapping.transaction_id == created_mapping.transaction_id
 
 
 def test_mark_pending_prepares_failed_mapping_for_retry(
@@ -217,6 +220,8 @@ def test_mark_pending_prepares_failed_mapping_for_retry(
     assert pending_mapping.sync_attempts == 1
     assert pending_mapping.content_hash == "retry-hash"
     assert pending_mapping.last_sync_error is None
+    assert failed_mapping.transaction_id == created_mapping.transaction_id
+    assert pending_mapping.transaction_id == created_mapping.transaction_id
 
 
 def test_mark_delete_pending_updates_status(

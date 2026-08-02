@@ -27,6 +27,7 @@ def create_mapping(
     mapping_id: int = 10,
     event_id: int = 1,
     calendar_id: str = "calendar-1",
+    transaction_id: str = "11111111-2222-4333-8444-555555555555",
     outlook_event_id: str | None = "outlook-event-1",
     outlook_change_key: str | None = "change-key-1",
     content_hash: str | None = "old-hash",
@@ -36,6 +37,7 @@ def create_mapping(
         id=mapping_id,
         event_id=event_id,
         calendar_id=calendar_id,
+        transaction_id=transaction_id,
         outlook_event_id=outlook_event_id,
         outlook_change_key=outlook_change_key,
         content_hash=content_hash,
@@ -111,7 +113,7 @@ def test_synchronize_event_creates_event_without_existing_mapping() -> None:
     synchronized_mapping = create_mapping(content_hash="new-hash")
 
     mappings_repository.create_pending.return_value = pending_mapping
-    graph_client.create_event.return_value = OutlookEventReference(id="outlook-event-1")
+    graph_client.create_event.return_value.id = "outlook-event-1"
     mappings_repository.mark_synced.return_value = synchronized_mapping
 
     with patch(
@@ -138,6 +140,7 @@ def test_synchronize_event_creates_event_without_existing_mapping() -> None:
     graph_client.create_event.assert_called_once_with(
         calendar_id="calendar-1",
         payload=payload,
+        transaction_id=pending_mapping.transaction_id,
     )
     mappings_repository.mark_synced.assert_called_once_with(
         mapping_id=pending_mapping.id,
@@ -677,7 +680,9 @@ def test_synchronize_event_records_failed_update() -> None:
     mappings_repository.mark_synced.assert_not_called()
 
 
-def test_synchronize_event_rejects_mapping_without_outlook_event_id() -> None:
+def test_synchronize_event_rejects_non_retryable_mapping_without_outlook_event_id() -> (
+    None
+):
     (
         synchronizer,
         _,
@@ -685,11 +690,12 @@ def test_synchronize_event_rejects_mapping_without_outlook_event_id() -> None:
         graph_client,
         mappings_repository,
     ) = create_synchronizer()
+
     mapping = create_mapping(
         outlook_event_id=None,
         outlook_change_key=None,
         content_hash="old-hash",
-        sync_status="pending",
+        sync_status="synced",
     )
     synchronization_event = create_synchronization_event(mapping=mapping)
 
@@ -707,7 +713,10 @@ def test_synchronize_event_rejects_mapping_without_outlook_event_id() -> None:
         ),
         pytest.raises(
             EventSynchronizationError,
-            match="Existing calendar mapping has no Outlook event ID",
+            match=(
+                "Existing calendar mapping has no Outlook event ID "
+                "and cannot be retried"
+            ),
         ),
     ):
         synchronizer.synchronize_event(
@@ -715,14 +724,10 @@ def test_synchronize_event_rejects_mapping_without_outlook_event_id() -> None:
             calendar_id="calendar-1",
         )
 
-    mappings_repository.mark_failed.assert_called_once_with(
-        mapping_id=mapping.id,
-        error_message=(
-            "Existing calendar mapping has no Outlook event ID: "
-            f"mapping_id={mapping.id}"
-        ),
-    )
-    graph_client.update_event.assert_not_called()
+    graph_client.create_event.assert_not_called()
+    mappings_repository.create_pending.assert_not_called()
+    mappings_repository.mark_pending.assert_not_called()
+    mappings_repository.mark_failed.assert_called_once()
 
 
 @pytest.mark.parametrize(
@@ -892,3 +897,108 @@ def test_synchronize_event_raises_when_failure_cannot_be_persisted() -> None:
             synchronization_event=synchronization_event,
             calendar_id="calendar-1",
         )
+
+
+def test_synchronize_event_retries_failed_mapping_without_outlook_event_id() -> None:
+    (
+        synchronizer,
+        payload,
+        _,
+        graph_client,
+        mappings_repository,
+    ) = create_synchronizer()
+
+    failed_mapping = create_mapping(
+        outlook_event_id=None,
+        outlook_change_key=None,
+        content_hash=None,
+        sync_status="failed",
+    )
+    pending_mapping = create_mapping(
+        outlook_event_id=None,
+        outlook_change_key=None,
+        content_hash=None,
+        sync_status="pending",
+        transaction_id=failed_mapping.transaction_id,
+    )
+    synchronized_mapping = create_mapping(content_hash="new-hash")
+    synchronization_event = create_synchronization_event(mapping=failed_mapping)
+
+    mappings_repository.mark_pending.return_value = pending_mapping
+    graph_client.create_event.return_value.id = "outlook-event-1"
+    mappings_repository.mark_synced.return_value = synchronized_mapping
+
+    with patch(
+        "app.synchronization.event_synchronizer.calculate_content_hash",
+        return_value="new-hash",
+    ):
+        result = synchronizer.synchronize_event(
+            synchronization_event=synchronization_event,
+            calendar_id="calendar-1",
+        )
+
+    assert result.status == EventSynchronizationStatus.CREATED
+    assert result.outlook_event_id == "outlook-event-1"
+
+    mappings_repository.create_pending.assert_not_called()
+    mappings_repository.mark_pending.assert_called_once_with(
+        mapping_id=failed_mapping.id,
+    )
+    graph_client.create_event.assert_called_once_with(
+        calendar_id="calendar-1",
+        payload=payload,
+        transaction_id=failed_mapping.transaction_id,
+    )
+    mappings_repository.mark_synced.assert_called_once_with(
+        mapping_id=failed_mapping.id,
+        outlook_event_id="outlook-event-1",
+        outlook_change_key=None,
+        content_hash="new-hash",
+    )
+
+
+def test_synchronize_event_reuses_pending_mapping_without_outlook_event_id() -> None:
+    (
+        synchronizer,
+        payload,
+        _,
+        graph_client,
+        mappings_repository,
+    ) = create_synchronizer()
+
+    pending_mapping = create_mapping(
+        outlook_event_id=None,
+        outlook_change_key=None,
+        content_hash=None,
+        sync_status="pending",
+    )
+    synchronized_mapping = create_mapping(content_hash="new-hash")
+    synchronization_event = create_synchronization_event(mapping=pending_mapping)
+
+    graph_client.create_event.return_value.id = "outlook-event-1"
+    mappings_repository.mark_synced.return_value = synchronized_mapping
+
+    with patch(
+        "app.synchronization.event_synchronizer.calculate_content_hash",
+        return_value="new-hash",
+    ):
+        result = synchronizer.synchronize_event(
+            synchronization_event=synchronization_event,
+            calendar_id="calendar-1",
+        )
+
+    assert result.status == EventSynchronizationStatus.CREATED
+
+    mappings_repository.create_pending.assert_not_called()
+    mappings_repository.mark_pending.assert_not_called()
+    graph_client.create_event.assert_called_once_with(
+        calendar_id="calendar-1",
+        payload=payload,
+        transaction_id=pending_mapping.transaction_id,
+    )
+    mappings_repository.mark_synced.assert_called_once_with(
+        mapping_id=pending_mapping.id,
+        outlook_event_id="outlook-event-1",
+        outlook_change_key=None,
+        content_hash="new-hash",
+    )

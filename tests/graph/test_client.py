@@ -17,6 +17,8 @@ from app.synchronization.outlook_event_payload_builder import (
     OutlookEventPayload,
 )
 
+TRANSACTION_ID = "11111111-2222-4333-8444-555555555555"
+
 
 def create_client() -> GraphClient:
     token_provider = Mock()
@@ -170,7 +172,11 @@ def test_create_event_sends_complete_payload_and_returns_reference() -> None:
         event = client.create_event(
             calendar_id="calendar/one",
             payload=payload,
+            transaction_id=TRANSACTION_ID,
         )
+
+    expected_payload = payload.to_graph_dict()
+    expected_payload["transactionId"] = TRANSACTION_ID
 
     assert event == OutlookEventReference(id="outlook-event-1")
     send_json.assert_called_once_with(
@@ -180,8 +186,10 @@ def test_create_event_sends_complete_payload_and_returns_reference() -> None:
             "calendars/calendar%2Fone/events"
         ),
         method="POST",
-        payload=payload.to_graph_dict(),
+        payload=expected_payload,
     )
+
+    assert "transactionId" not in payload.to_graph_dict()
 
 
 def test_update_event_sends_complete_payload_and_returns_reference() -> None:
@@ -259,6 +267,7 @@ def test_create_event_rejects_response_without_valid_event_id(
         client.create_event(
             calendar_id="calendar-1",
             payload=create_event_payload(),
+            transaction_id=TRANSACTION_ID,
         )
 
 
@@ -298,6 +307,7 @@ def test_create_event_builds_authenticated_json_request() -> None:
         event = client.create_event(
             calendar_id="calendar-1",
             payload=payload,
+            transaction_id=TRANSACTION_ID,
         )
 
     request = urlopen_mock.call_args.args[0]
@@ -310,7 +320,11 @@ def test_create_event_builds_authenticated_json_request() -> None:
     assert request.get_header("Authorization") == "Bearer test-token"
     assert request.get_header("Accept") == "application/json"
     assert request.get_header("Content-type") == "application/json"
-    assert json.loads(request.data.decode("utf-8")) == payload.to_graph_dict()
+    expected_payload = payload.to_graph_dict()
+    expected_payload["transactionId"] = TRANSACTION_ID
+
+    assert json.loads(request.data.decode("utf-8")) == expected_payload
+    assert "transactionId" not in payload.to_graph_dict()
     urlopen_mock.assert_called_once_with(request, timeout=30)
 
 
@@ -413,6 +427,7 @@ def test_create_event_converts_http_error() -> None:
         client.create_event(
             calendar_id="calendar-1",
             payload=create_event_payload(),
+            transaction_id=TRANSACTION_ID,
         )
 
 
