@@ -2,7 +2,6 @@ import sqlite3
 from pathlib import Path
 
 import pytest
-
 from app.database.competitions_catalog import initialize_competitions_catalog
 from app.database.competitions_repository import CompetitionsRepository
 from app.database.database import Database
