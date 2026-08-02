@@ -459,3 +459,137 @@ def test_delete_returns_false_for_unknown_run(
     deleted = repository.delete(999999)
 
     assert deleted is False
+
+
+def test_recover_running_marks_matching_runs_as_failed(
+    tmp_path: Path,
+) -> None:
+    _, repository = create_repository(tmp_path)
+
+    first_run = repository.start(
+        run_type="calendar_sync",
+        metadata={"calendar_id": "calendar-1"},
+    )
+    second_run = repository.start(
+        run_type="calendar_sync",
+        metadata={"calendar_id": "calendar-2"},
+    )
+
+    repository.update_progress(
+        sync_run_id=first_run.id,
+        items_processed=3,
+        items_created=1,
+        items_updated=1,
+        items_unchanged=1,
+        items_cancelled=0,
+        items_deleted=0,
+        items_failed=0,
+    )
+
+    recovered_runs = repository.recover_running(
+        run_type="calendar_sync",
+        error_message="Interrupted synchronization run recovered.",
+    )
+
+    assert [run.id for run in recovered_runs] == [
+        first_run.id,
+        second_run.id,
+    ]
+
+    recovered_first_run = recovered_runs[0]
+
+    assert recovered_first_run.status == "failed"
+    assert recovered_first_run.finished_at is not None
+    assert recovered_first_run.error_message == (
+        "Interrupted synchronization run recovered."
+    )
+    assert recovered_first_run.items_processed == 3
+    assert recovered_first_run.items_created == 1
+    assert recovered_first_run.items_updated == 1
+    assert recovered_first_run.items_unchanged == 1
+    assert recovered_first_run.metadata == {
+        "calendar_id": "calendar-1",
+    }
+
+
+def test_recover_running_does_not_modify_other_or_terminal_runs(
+    tmp_path: Path,
+) -> None:
+    _, repository = create_repository(tmp_path)
+
+    other_run = repository.start(
+        run_type="import",
+    )
+    completed_run = repository.start(
+        run_type="calendar_sync",
+    )
+    failed_run = repository.start(
+        run_type="calendar_sync",
+    )
+
+    completed_run = repository.complete(
+        sync_run_id=completed_run.id,
+        items_processed=1,
+        items_created=1,
+        items_updated=0,
+        items_deleted=0,
+        items_failed=0,
+    )
+    failed_run = repository.fail(
+        sync_run_id=failed_run.id,
+        error_message="Existing failure",
+    )
+
+    recovered_runs = repository.recover_running(
+        run_type="calendar_sync",
+        error_message="Interrupted synchronization run recovered.",
+    )
+
+    assert recovered_runs == []
+    assert repository.get_by_id(other_run.id) == other_run
+    assert repository.get_by_id(completed_run.id) == completed_run
+    assert repository.get_by_id(failed_run.id) == failed_run
+
+
+def test_recover_running_is_idempotent(
+    tmp_path: Path,
+) -> None:
+    _, repository = create_repository(tmp_path)
+
+    sync_run = repository.start(
+        run_type="calendar_sync",
+    )
+
+    first_recovery = repository.recover_running(
+        run_type="calendar_sync",
+        error_message="Interrupted synchronization run recovered.",
+    )
+    second_recovery = repository.recover_running(
+        run_type="calendar_sync",
+        error_message="Interrupted synchronization run recovered.",
+    )
+
+    assert [run.id for run in first_recovery] == [sync_run.id]
+    assert second_recovery == []
+
+
+@pytest.mark.parametrize(
+    ("run_type", "error_message", "expected_message"),
+    [
+        ("", "Recovery failure", "run_type must not be empty"),
+        ("calendar_sync", "", "error_message must not be empty"),
+    ],
+)
+def test_recover_running_rejects_empty_arguments(
+    tmp_path: Path,
+    run_type: str,
+    error_message: str,
+    expected_message: str,
+) -> None:
+    _, repository = create_repository(tmp_path)
+
+    with pytest.raises(ValueError, match=expected_message):
+        repository.recover_running(
+            run_type=run_type,
+            error_message=error_message,
+        )

@@ -241,6 +241,65 @@ class SyncRunsRepository:
             metadata=metadata,
         )
 
+    def recover_running(
+        self,
+        run_type: str,
+        error_message: str,
+    ) -> list[SyncRun]:
+        if not run_type.strip():
+            raise ValueError("run_type must not be empty")
+
+        if not error_message.strip():
+            raise ValueError("error_message must not be empty")
+
+        finished_at = self._timestamp()
+
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT id
+                FROM sync_runs
+                WHERE run_type = ?
+                  AND status = 'running'
+                ORDER BY id
+                """,
+                (run_type,),
+            ).fetchall()
+
+            sync_run_ids = [row["id"] for row in rows]
+
+            if not sync_run_ids:
+                return []
+
+            placeholders = ", ".join("?" for _ in sync_run_ids)
+
+            connection.execute(
+                f"""
+                UPDATE sync_runs
+                SET finished_at = ?,
+                    status = 'failed',
+                    error_message = ?
+                WHERE id IN ({placeholders})
+                  AND status = 'running'
+                """,
+                (
+                    finished_at,
+                    error_message,
+                    *sync_run_ids,
+                ),
+            )
+
+            recovered_rows = connection.execute(
+                f"""
+                {self._select_query()}
+                WHERE id IN ({placeholders})
+                ORDER BY id
+                """,
+                tuple(sync_run_ids),
+            ).fetchall()
+
+        return [self._map_row(row) for row in recovered_rows]
+
     def delete(
         self,
         sync_run_id: int,

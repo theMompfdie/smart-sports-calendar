@@ -30,7 +30,7 @@ def create_sync_run(
 ) -> SyncRun:
     return SyncRun(
         id=1,
-        run_type="outlook_synchronization",
+        run_type="calendar_sync",
         source_id=None,
         started_at="2026-08-02T10:00:00+00:00",
         finished_at=(None if status == "running" else "2026-08-02T10:01:00+00:00"),
@@ -188,7 +188,7 @@ def test_synchronize_processes_and_counts_all_supported_statuses() -> None:
     assert result.items_failed == 0
 
     sync_runs_repository.start.assert_called_once_with(
-        run_type="outlook_synchronization",
+        run_type="calendar_sync",
         metadata={
             "calendar_id": "calendar-1",
             "limit": 100,

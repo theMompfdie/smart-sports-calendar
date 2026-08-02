@@ -75,7 +75,7 @@ class SynchronizationOrchestrationError(RuntimeError):
 
 
 class SynchronizationOrchestrator:
-    RUN_TYPE = "outlook_synchronization"
+    RUN_TYPE = "calendar_sync"
 
     def __init__(
         self,
