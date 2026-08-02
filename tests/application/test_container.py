@@ -13,6 +13,9 @@ from app.synchronization.outlook_event_payload_builder import (
 from app.synchronization.synchronization_orchestrator import (
     SynchronizationOrchestrator,
 )
+from app.synchronization.synchronization_runtime_service import (
+    SynchronizationRuntimeService,
+)
 
 
 def create_settings(
@@ -27,6 +30,8 @@ def create_settings(
         m365_client_secret="test-secret",
         m365_user_id="test-user",
         outlook_calendar_name="SMART Sports Calendar",
+        outlook_calendar_id="calendar-1",
+        synchronization_batch_limit=100,
         graph_base_url="https://graph.microsoft.com/v1.0",
         graph_startup_validation_enabled=False,
     )
@@ -57,7 +62,7 @@ def test_run_initializes_sports_catalog(
     }
 
     scheduler_run.assert_called_once_with(
-        task=container._heartbeat,
+        task=container._run_synchronization,
         stop_event=container.stop_event,
     )
 
@@ -156,4 +161,48 @@ def test_container_provides_synchronization_orchestrator(
     assert (
         container.synchronization_orchestrator._sync_runs_repository
         is container.sync_runs_repository
+    )
+
+
+def test_container_provides_synchronization_runtime_service(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "sports.db"
+
+    container = ApplicationContainer(
+        settings=create_settings(database_path),
+    )
+
+    assert isinstance(
+        container.synchronization_runtime_service,
+        SynchronizationRuntimeService,
+    )
+    assert (
+        container.synchronization_runtime_service._orchestrator
+        is container.synchronization_orchestrator
+    )
+    assert (
+        container.synchronization_runtime_service._sync_runs_repository
+        is container.sync_runs_repository
+    )
+    assert container.synchronization_runtime_service._logger is container.logger
+
+
+def test_run_synchronization_uses_configured_calendar_and_limit(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "sports.db"
+    container = ApplicationContainer(
+        settings=create_settings(database_path),
+    )
+
+    with patch.object(
+        container.synchronization_runtime_service,
+        "run",
+    ) as runtime_run:
+        container._run_synchronization()
+
+    runtime_run.assert_called_once_with(
+        calendar_id="calendar-1",
+        limit=100,
     )

@@ -107,6 +107,7 @@ jobs:
       M365_CLIENT_ID: ci-test-client
       M365_CLIENT_SECRET: ci-test-secret
       M365_USER_ID: ci-test@example.invalid
+      OUTLOOK_CALENDAR_ID: ci-test-calendar
       GRAPH_STARTUP_VALIDATION_ENABLED: "false"
 
     steps:

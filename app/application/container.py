@@ -1,6 +1,5 @@
 import logging
 import signal
-from datetime import UTC, datetime
 from threading import Event
 from types import FrameType
 
@@ -38,6 +37,9 @@ from app.synchronization.outlook_event_payload_builder import (
 )
 from app.synchronization.synchronization_orchestrator import (
     SynchronizationOrchestrator,
+)
+from app.synchronization.synchronization_runtime_service import (
+    SynchronizationRuntimeService,
 )
 
 
@@ -104,6 +106,11 @@ class ApplicationContainer:
             event_synchronizer=self.event_synchronizer,
             sync_runs_repository=self.sync_runs_repository,
         )
+        self.synchronization_runtime_service = SynchronizationRuntimeService(
+            orchestrator=self.synchronization_orchestrator,
+            sync_runs_repository=self.sync_runs_repository,
+            logger=self.logger,
+        )
         self.scheduler = Scheduler(
             interval_seconds=self.settings.heartbeat_interval,
             logger=self.logger,
@@ -154,7 +161,7 @@ class ApplicationContainer:
             self.logger.info("Microsoft Graph startup validation is disabled")
 
         self.scheduler.run(
-            task=self._heartbeat,
+            task=self._run_synchronization,
             stop_event=self.stop_event,
         )
         self.logger.info("SMART Sports Calendar container stopped")
@@ -175,8 +182,8 @@ class ApplicationContainer:
         )
         self.stop_event.set()
 
-    def _heartbeat(self) -> None:
-        self.logger.info(
-            "Heartbeat: %s",
-            datetime.now(UTC).isoformat(),
+    def _run_synchronization(self) -> None:
+        self.synchronization_runtime_service.run(
+            calendar_id=self.settings.outlook_calendar_id,
+            limit=self.settings.synchronization_batch_limit,
         )
