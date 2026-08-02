@@ -14,6 +14,7 @@ from app.database.season_participants_repository import SeasonParticipantsReposi
 from app.database.seasons_catalog import initialize_seasons_catalog
 from app.database.seasons_repository import SeasonsRepository
 from app.database.sports_catalog import initialize_sports_catalog
+from app.database.sports_events_repository import SportsEventsRepository
 from app.database.sports_repository import SportsRepository
 from app.graph.authentication import GraphTokenProvider
 from app.graph.client import GraphClient
@@ -28,6 +29,9 @@ class ApplicationContainer:
 
         self.database = Database(self.settings.database_path)
         self.sports_repository = SportsRepository(self.settings.database_path)
+        self.sports_events_repository = SportsEventsRepository(
+            self.settings.database_path
+        )
         self.competitions_repository = CompetitionsRepository(
             self.settings.database_path
         )
