@@ -3,6 +3,19 @@ from unittest.mock import patch
 
 from app.application.container import ApplicationContainer
 from app.config.settings import Settings
+from app.database.synchronization_query_repository import (
+    SynchronizationQueryRepository,
+)
+from app.synchronization.event_synchronizer import EventSynchronizer
+from app.synchronization.outlook_event_payload_builder import (
+    OutlookEventPayloadBuilder,
+)
+from app.synchronization.synchronization_orchestrator import (
+    SynchronizationOrchestrator,
+)
+from app.synchronization.synchronization_runtime_service import (
+    SynchronizationRuntimeService,
+)
 
 
 def create_settings(
@@ -17,6 +30,8 @@ def create_settings(
         m365_client_secret="test-secret",
         m365_user_id="test-user",
         outlook_calendar_name="SMART Sports Calendar",
+        outlook_calendar_id="calendar-1",
+        synchronization_batch_limit=100,
         graph_base_url="https://graph.microsoft.com/v1.0",
         graph_startup_validation_enabled=False,
     )
@@ -47,7 +62,7 @@ def test_run_initializes_sports_catalog(
     }
 
     scheduler_run.assert_called_once_with(
-        task=container._heartbeat,
+        task=container._run_synchronization,
         stop_event=container.stop_event,
     )
 
@@ -74,3 +89,120 @@ def test_run_can_be_repeated_without_duplicate_sports(
     assert second_football is not None
     assert second_football.id == first_football.id
     assert second_football.created_at == first_football.created_at
+
+
+def test_container_provides_synchronization_query_repository(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "sports.db"
+
+    container = ApplicationContainer(
+        settings=create_settings(database_path),
+    )
+
+    assert isinstance(
+        container.synchronization_query_repository,
+        SynchronizationQueryRepository,
+    )
+
+    assert container.synchronization_query_repository.database_path == database_path
+
+
+def test_container_provides_event_synchronizer(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "sports.db"
+
+    container = ApplicationContainer(
+        settings=create_settings(database_path),
+    )
+
+    assert isinstance(
+        container.outlook_event_payload_builder,
+        OutlookEventPayloadBuilder,
+    )
+    assert isinstance(
+        container.event_synchronizer,
+        EventSynchronizer,
+    )
+
+    assert (
+        container.event_synchronizer._payload_builder
+        is container.outlook_event_payload_builder
+    )
+    assert container.event_synchronizer._graph_client is container.graph_client
+    assert (
+        container.event_synchronizer._mappings_repository
+        is container.calendar_event_mappings_repository
+    )
+
+
+def test_container_provides_synchronization_orchestrator(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "sports.db"
+
+    container = ApplicationContainer(
+        settings=create_settings(database_path),
+    )
+
+    assert isinstance(
+        container.synchronization_orchestrator,
+        SynchronizationOrchestrator,
+    )
+    assert (
+        container.synchronization_orchestrator._query_repository
+        is container.synchronization_query_repository
+    )
+    assert (
+        container.synchronization_orchestrator._event_synchronizer
+        is container.event_synchronizer
+    )
+    assert (
+        container.synchronization_orchestrator._sync_runs_repository
+        is container.sync_runs_repository
+    )
+
+
+def test_container_provides_synchronization_runtime_service(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "sports.db"
+
+    container = ApplicationContainer(
+        settings=create_settings(database_path),
+    )
+
+    assert isinstance(
+        container.synchronization_runtime_service,
+        SynchronizationRuntimeService,
+    )
+    assert (
+        container.synchronization_runtime_service._orchestrator
+        is container.synchronization_orchestrator
+    )
+    assert (
+        container.synchronization_runtime_service._sync_runs_repository
+        is container.sync_runs_repository
+    )
+    assert container.synchronization_runtime_service._logger is container.logger
+
+
+def test_run_synchronization_uses_configured_calendar_and_limit(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "sports.db"
+    container = ApplicationContainer(
+        settings=create_settings(database_path),
+    )
+
+    with patch.object(
+        container.synchronization_runtime_service,
+        "run",
+    ) as runtime_run:
+        container._run_synchronization()
+
+    runtime_run.assert_called_once_with(
+        calendar_id="calendar-1",
+        limit=100,
+    )

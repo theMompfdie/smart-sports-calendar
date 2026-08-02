@@ -1,6 +1,5 @@
 import logging
 import signal
-from datetime import UTC, datetime
 from threading import Event
 from types import FrameType
 
@@ -25,10 +24,23 @@ from app.database.sports_catalog import initialize_sports_catalog
 from app.database.sports_events_repository import SportsEventsRepository
 from app.database.sports_repository import SportsRepository
 from app.database.sync_runs_repository import SyncRunsRepository
+from app.database.synchronization_query_repository import (
+    SynchronizationQueryRepository,
+)
 from app.graph.authentication import GraphTokenProvider
 from app.graph.client import GraphClient
 from app.logging.logger import configure_logging
 from app.scheduler.scheduler import Scheduler
+from app.synchronization.event_synchronizer import EventSynchronizer
+from app.synchronization.outlook_event_payload_builder import (
+    OutlookEventPayloadBuilder,
+)
+from app.synchronization.synchronization_orchestrator import (
+    SynchronizationOrchestrator,
+)
+from app.synchronization.synchronization_runtime_service import (
+    SynchronizationRuntimeService,
+)
 
 
 class ApplicationContainer:
@@ -57,6 +69,9 @@ class ApplicationContainer:
         self.participants_repository = ParticipantsRepository(
             self.settings.database_path
         )
+        self.synchronization_query_repository = SynchronizationQueryRepository(
+            self.settings.database_path
+        )
         self.season_participants_repository = SeasonParticipantsRepository(
             self.settings.database_path
         )
@@ -79,6 +94,22 @@ class ApplicationContainer:
             base_url=self.settings.graph_base_url,
             user_id=self.settings.m365_user_id,
             token_provider=self.graph_token_provider,
+        )
+        self.outlook_event_payload_builder = OutlookEventPayloadBuilder()
+        self.event_synchronizer = EventSynchronizer(
+            payload_builder=self.outlook_event_payload_builder,
+            graph_client=self.graph_client,
+            mappings_repository=self.calendar_event_mappings_repository,
+        )
+        self.synchronization_orchestrator = SynchronizationOrchestrator(
+            query_repository=self.synchronization_query_repository,
+            event_synchronizer=self.event_synchronizer,
+            sync_runs_repository=self.sync_runs_repository,
+        )
+        self.synchronization_runtime_service = SynchronizationRuntimeService(
+            orchestrator=self.synchronization_orchestrator,
+            sync_runs_repository=self.sync_runs_repository,
+            logger=self.logger,
         )
         self.scheduler = Scheduler(
             interval_seconds=self.settings.heartbeat_interval,
@@ -130,7 +161,7 @@ class ApplicationContainer:
             self.logger.info("Microsoft Graph startup validation is disabled")
 
         self.scheduler.run(
-            task=self._heartbeat,
+            task=self._run_synchronization,
             stop_event=self.stop_event,
         )
         self.logger.info("SMART Sports Calendar container stopped")
@@ -151,8 +182,8 @@ class ApplicationContainer:
         )
         self.stop_event.set()
 
-    def _heartbeat(self) -> None:
-        self.logger.info(
-            "Heartbeat: %s",
-            datetime.now(UTC).isoformat(),
+    def _run_synchronization(self) -> None:
+        self.synchronization_runtime_service.run(
+            calendar_id=self.settings.outlook_calendar_id,
+            limit=self.settings.synchronization_batch_limit,
         )

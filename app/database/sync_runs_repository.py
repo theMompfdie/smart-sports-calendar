@@ -17,6 +17,8 @@ class SyncRun:
     items_processed: int
     items_created: int
     items_updated: int
+    items_unchanged: int
+    items_cancelled: int
     items_deleted: int
     items_failed: int
     error_message: str | None
@@ -146,6 +148,8 @@ class SyncRunsRepository:
         items_processed: int,
         items_created: int,
         items_updated: int,
+        items_unchanged: int = 0,
+        items_cancelled: int = 0,
         items_deleted: int,
         items_failed: int,
     ) -> SyncRun | None:
@@ -156,6 +160,8 @@ class SyncRunsRepository:
                 SET items_processed = ?,
                     items_created = ?,
                     items_updated = ?,
+                    items_unchanged = ?,
+                    items_cancelled = ?,
                     items_deleted = ?,
                     items_failed = ?
                 WHERE id = ?
@@ -165,6 +171,8 @@ class SyncRunsRepository:
                     items_processed,
                     items_created,
                     items_updated,
+                    items_unchanged,
+                    items_cancelled,
                     items_deleted,
                     items_failed,
                     sync_run_id,
@@ -183,6 +191,8 @@ class SyncRunsRepository:
         items_processed: int,
         items_created: int,
         items_updated: int,
+        items_unchanged: int = 0,
+        items_cancelled: int = 0,
         items_deleted: int,
         items_failed: int,
         metadata: dict[str, Any] | None = None,
@@ -195,6 +205,8 @@ class SyncRunsRepository:
             items_processed=items_processed,
             items_created=items_created,
             items_updated=items_updated,
+            items_unchanged=items_unchanged,
+            items_cancelled=items_cancelled,
             items_deleted=items_deleted,
             items_failed=items_failed,
             error_message=None,
@@ -209,6 +221,8 @@ class SyncRunsRepository:
         items_processed: int = 0,
         items_created: int = 0,
         items_updated: int = 0,
+        items_unchanged: int = 0,
+        items_cancelled: int = 0,
         items_deleted: int = 0,
         items_failed: int = 0,
         metadata: dict[str, Any] | None = None,
@@ -219,11 +233,72 @@ class SyncRunsRepository:
             items_processed=items_processed,
             items_created=items_created,
             items_updated=items_updated,
+            items_unchanged=items_unchanged,
+            items_cancelled=items_cancelled,
             items_deleted=items_deleted,
             items_failed=items_failed,
             error_message=error_message,
             metadata=metadata,
         )
+
+    def recover_running(
+        self,
+        run_type: str,
+        error_message: str,
+    ) -> list[SyncRun]:
+        if not run_type.strip():
+            raise ValueError("run_type must not be empty")
+
+        if not error_message.strip():
+            raise ValueError("error_message must not be empty")
+
+        finished_at = self._timestamp()
+
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT id
+                FROM sync_runs
+                WHERE run_type = ?
+                  AND status = 'running'
+                ORDER BY id
+                """,
+                (run_type,),
+            ).fetchall()
+
+            sync_run_ids = [row["id"] for row in rows]
+
+            if not sync_run_ids:
+                return []
+
+            placeholders = ", ".join("?" for _ in sync_run_ids)
+
+            connection.execute(
+                f"""
+                UPDATE sync_runs
+                SET finished_at = ?,
+                    status = 'failed',
+                    error_message = ?
+                WHERE id IN ({placeholders})
+                  AND status = 'running'
+                """,
+                (
+                    finished_at,
+                    error_message,
+                    *sync_run_ids,
+                ),
+            )
+
+            recovered_rows = connection.execute(
+                f"""
+                {self._select_query()}
+                WHERE id IN ({placeholders})
+                ORDER BY id
+                """,
+                tuple(sync_run_ids),
+            ).fetchall()
+
+        return [self._map_row(row) for row in recovered_rows]
 
     def delete(
         self,
@@ -247,6 +322,8 @@ class SyncRunsRepository:
         items_processed: int,
         items_created: int,
         items_updated: int,
+        items_unchanged: int,
+        items_cancelled: int,
         items_deleted: int,
         items_failed: int,
         error_message: str | None,
@@ -264,6 +341,8 @@ class SyncRunsRepository:
                     items_processed = ?,
                     items_created = ?,
                     items_updated = ?,
+                    items_unchanged = ?,
+                    items_cancelled = ?,
                     items_deleted = ?,
                     items_failed = ?,
                     error_message = ?,
@@ -277,6 +356,8 @@ class SyncRunsRepository:
                     items_processed,
                     items_created,
                     items_updated,
+                    items_unchanged,
+                    items_cancelled,
                     items_deleted,
                     items_failed,
                     error_message,
@@ -326,6 +407,8 @@ class SyncRunsRepository:
                 items_processed,
                 items_created,
                 items_updated,
+                items_unchanged,
+                items_cancelled,
                 items_deleted,
                 items_failed,
                 error_message,
@@ -347,6 +430,8 @@ class SyncRunsRepository:
             items_processed=row["items_processed"],
             items_created=row["items_created"],
             items_updated=row["items_updated"],
+            items_unchanged=row["items_unchanged"],
+            items_cancelled=row["items_cancelled"],
             items_deleted=row["items_deleted"],
             items_failed=row["items_failed"],
             error_message=row["error_message"],

@@ -2,6 +2,7 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from uuid import uuid4
 
 
 @dataclass(frozen=True)
@@ -9,6 +10,7 @@ class CalendarEventMapping:
     id: int
     event_id: int
     calendar_id: str
+    transaction_id: str
     outlook_event_id: str | None
     outlook_change_key: str | None
     content_hash: str | None
@@ -102,6 +104,7 @@ class CalendarEventMappingsRepository:
         content_hash: str | None = None,
     ) -> CalendarEventMapping:
         timestamp = self._timestamp()
+        transaction_id = str(uuid4())
 
         with self._connect() as connection:
             cursor = connection.execute(
@@ -109,17 +112,19 @@ class CalendarEventMappingsRepository:
                 INSERT INTO calendar_event_mappings (
                     event_id,
                     calendar_id,
+                    transaction_id,
                     content_hash,
                     sync_status,
                     sync_attempts,
                     created_at,
                     updated_at
                 )
-                VALUES (?, ?, ?, 'pending', 0, ?, ?)
+                VALUES (?, ?, ?, ?, 'pending', 0, ?, ?)
                 """,
                 (
                     event_id,
                     calendar_id,
+                    transaction_id,
                     content_hash,
                     timestamp,
                     timestamp,
@@ -148,7 +153,8 @@ class CalendarEventMappingsRepository:
             cursor = connection.execute(
                 """
                 UPDATE calendar_event_mappings
-                SET content_hash = ?,
+                SET
+                    content_hash = COALESCE(?, content_hash),
                     sync_status = 'pending',
                     last_sync_error = NULL,
                     updated_at = ?
@@ -220,6 +226,35 @@ class CalendarEventMappingsRepository:
                     last_sync_error = ?,
                     updated_at = ?
                 WHERE id = ?
+                """,
+                (
+                    error_message,
+                    timestamp,
+                    mapping_id,
+                ),
+            )
+
+        if cursor.rowcount == 0:
+            return None
+
+        return self.get_by_id(mapping_id)
+
+    def mark_delete_failed(
+        self,
+        mapping_id: int,
+        error_message: str,
+    ) -> CalendarEventMapping | None:
+        timestamp = self._timestamp()
+
+        with self._connect() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE calendar_event_mappings
+                SET sync_attempts = sync_attempts + 1,
+                    last_sync_error = ?,
+                    updated_at = ?
+                WHERE id = ?
+                  AND sync_status = 'delete_pending'
                 """,
                 (
                     error_message,
@@ -329,6 +364,7 @@ class CalendarEventMappingsRepository:
                 id,
                 event_id,
                 calendar_id,
+                transaction_id,
                 outlook_event_id,
                 outlook_change_key,
                 content_hash,
@@ -348,6 +384,7 @@ class CalendarEventMappingsRepository:
             event_id=row["event_id"],
             calendar_id=row["calendar_id"],
             outlook_event_id=row["outlook_event_id"],
+            transaction_id=row["transaction_id"],
             outlook_change_key=row["outlook_change_key"],
             content_hash=row["content_hash"],
             sync_status=row["sync_status"],

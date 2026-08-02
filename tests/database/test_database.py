@@ -1,5 +1,6 @@
 import sqlite3
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 from app.database.database import Database
@@ -73,7 +74,7 @@ def test_initialize_creates_expected_tables(
     assert table_names == EXPECTED_TABLES
 
 
-def test_initial_migration_is_registered_once(
+def test_migrations_are_registered_once(
     initialized_database: Database,
     database_path: Path,
 ) -> None:
@@ -91,7 +92,29 @@ def test_initial_migration_is_registered_once(
     assert migrations == [
         ("001_initial_schema",),
         ("002_create_season_participants",),
+        ("003_extend_sync_run_counters",),
+        ("004_add_mapping_transaction_id",),
     ]
+
+
+def test_sync_runs_contains_extended_counters(
+    initialized_database: Database,
+    database_path: Path,
+) -> None:
+    with connect(database_path) as connection:
+        columns = {
+            row[1]: row for row in connection.execute("PRAGMA table_info(sync_runs)")
+        }
+
+    assert "items_unchanged" in columns
+    assert columns["items_unchanged"][2] == "INTEGER"
+    assert columns["items_unchanged"][3] == 1
+    assert columns["items_unchanged"][4] == "0"
+
+    assert "items_cancelled" in columns
+    assert columns["items_cancelled"][2] == "INTEGER"
+    assert columns["items_cancelled"][3] == 1
+    assert columns["items_cancelled"][4] == "0"
 
 
 def test_repeated_initialize_preserves_existing_data(
@@ -308,19 +331,24 @@ def test_deleting_event_cascades_to_calendar_mapping(
             ),
         ).lastrowid
 
+        transaction_id = str(uuid4())
+
         connection.execute(
             """
             INSERT INTO calendar_event_mappings (
                 event_id,
                 calendar_id,
+                transaction_id,
+                sync_status,
                 created_at,
                 updated_at
             )
-            VALUES (?, ?, ?, ?)
+            VALUES (?, ?, ?, 'pending', ?, ?)
             """,
             (
                 event_id,
-                "test-calendar",
+                "calendar-id",
+                transaction_id,
                 timestamp,
                 timestamp,
             ),
@@ -631,3 +659,23 @@ def test_invalid_migration_filename_is_rejected(
         match="Invalid migration filename",
     ):
         database.initialize()
+
+
+def test_calendar_event_mappings_contains_transaction_id(
+    initialized_database: Database,
+    database_path: Path,
+) -> None:
+    with connect(database_path) as connection:
+        columns = {
+            row[1]: row
+            for row in connection.execute("PRAGMA table_info(calendar_event_mappings)")
+        }
+
+        indexes = connection.execute(
+            "PRAGMA index_list(calendar_event_mappings)"
+        ).fetchall()
+
+    assert "transaction_id" in columns
+    assert columns["transaction_id"][2] == "TEXT"
+    assert columns["transaction_id"][3] == 1
+    assert any(index[2] == 1 for index in indexes)
