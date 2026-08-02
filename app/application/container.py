@@ -8,6 +8,8 @@ from app.config.settings import Settings, load_settings
 from app.database.competitions_catalog import initialize_competitions_catalog
 from app.database.competitions_repository import CompetitionsRepository
 from app.database.database import Database
+from app.database.seasons_catalog import initialize_seasons_catalog
+from app.database.seasons_repository import SeasonsRepository
 from app.database.sports_catalog import initialize_sports_catalog
 from app.database.sports_repository import SportsRepository
 from app.graph.authentication import GraphTokenProvider
@@ -26,7 +28,7 @@ class ApplicationContainer:
         self.competitions_repository = CompetitionsRepository(
             self.settings.database_path
         )
-
+        self.seasons_repository = SeasonsRepository(self.settings.database_path)
         self.graph_token_provider = GraphTokenProvider(
             tenant_id=self.settings.m365_tenant_id,
             client_id=self.settings.m365_client_id,
@@ -50,6 +52,11 @@ class ApplicationContainer:
         initialize_sports_catalog(self.sports_repository)
         initialize_competitions_catalog(
             repository=self.competitions_repository,
+            sports_repository=self.sports_repository,
+        )
+        initialize_seasons_catalog(
+            repository=self.seasons_repository,
+            competitions_repository=self.competitions_repository,
             sports_repository=self.sports_repository,
         )
         self.database.record_startup()
