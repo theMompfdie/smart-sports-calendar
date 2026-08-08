@@ -41,8 +41,7 @@ class SynchronizationRuntimeService:
             self._recover_interrupted_runs()
 
             self._logger.info(
-                "Synchronization cycle started for calendar %s with limit %s",
-                calendar_id,
+                "Synchronization cycle started with limit %s",
                 limit,
             )
 

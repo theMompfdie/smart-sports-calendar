@@ -87,7 +87,9 @@ loaded.
 5. Confirm the SQLite database remains in the persistent volume after a normal
    container restart.
 6. Confirm the configured calendar ID and startup-validated calendar name refer
-   to the same dedicated calendar before enabling provider imports.
+   to the same dedicated calendar before enabling provider imports. Startup
+   must fail before the scheduler runs when the ID does not match the calendar
+   resolved by name; neither ID may appear in the mismatch diagnostic.
 7. Run the secret-safe evidence command before and after the restart. Confirm
    that `startup_records` increases while existing run and fixture counters
    remain available and `database_quick_check` remains `ok`.
