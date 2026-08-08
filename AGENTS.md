@@ -165,6 +165,48 @@ Phase completion normally requires:
 
 Do not release unverified code.
 
+## Current v0.4 Stabilization Boundary
+
+The active delivery track is GitHub master issue #61:
+
+`v0.4 Stabilization – Isolated Staging and Production Readiness`
+
+Target release: `v0.4.0-beta.1`.
+
+Required delivery order:
+
+1. #62 – roadmap and Portainer operating-model documentation
+2. #2 – multiple independent Docker/Portainer deployments
+3. #63 – isolated staging deployment and credential-safe live validation
+4. #64 – release-candidate qualification and manual production promotion
+
+Issue #2 is a focused implementation issue, not the stabilization master.
+Issue #3 remains broader `v1.0` configuration work; only configuration required
+for isolated staging and production belongs in the current track.
+
+The intended operating model is:
+
+* `smart-calendar-staging` may follow `develop` through automatic Portainer
+  GitOps updates during normal development.
+* During candidate qualification, staging is frozen to the immutable candidate
+  tag.
+* `smart-calendar-prod` never tracks `develop`; production updates are manual
+  and use an explicitly approved immutable release tag.
+* Staging and production have distinct stack names, volumes, SQLite databases,
+  Outlook calendars, credential configuration, and log streams.
+* No two active instances may share a writable database or target calendar.
+* Live credentials are supplied only by the operator through Portainer or an
+  ignored local secret store. They never enter source control, CI, issues, PRs,
+  logs, screenshots, or validation artifacts.
+
+Before issue #2 is complete, documentation must label the two-stack model as
+planned and must not recommend concurrent deployment from the current Compose
+file. Automated validation remains credential-free and must prove at least
+three isolated instances without productive API calls.
+
+Phase 5 competition work must not begin until the blocking acceptance criteria
+in #61 are complete and `v0.4.0-beta.1` has been published from verified code.
+
 ## Docker, Security, Dependencies
 
 Persistent state must live outside the ephemeral container filesystem. SQLite and other persistent data require mounted volumes.
