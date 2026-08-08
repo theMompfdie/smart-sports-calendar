@@ -67,7 +67,10 @@ from app.synchronization.synchronization_runtime_service import (
 class ApplicationContainer:
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or load_settings()
-        self.logger: logging.Logger = configure_logging(self.settings.log_level)
+        self.logger: logging.Logger = configure_logging(
+            self.settings.log_level,
+            self.settings.instance_name,
+        )
 
         self.database = Database(self.settings.database_path)
         self.sports_repository = SportsRepository(self.settings.database_path)
@@ -242,7 +245,10 @@ class ApplicationContainer:
         )
         self.database.record_startup()
 
-        self.logger.info("SMART Sports Calendar container started")
+        self.logger.info(
+            "SMART Sports Calendar instance %s started",
+            self.settings.instance_name,
+        )
         self.logger.info(
             "Database path: %s",
             self.settings.database_path,
@@ -271,7 +277,10 @@ class ApplicationContainer:
             task=self._run_scheduled_cycle,
             stop_event=self.stop_event,
         )
-        self.logger.info("SMART Sports Calendar container stopped")
+        self.logger.info(
+            "SMART Sports Calendar instance %s stopped",
+            self.settings.instance_name,
+        )
 
     def _register_signal_handlers(self) -> None:
         signal.signal(signal.SIGTERM, self._handle_shutdown)

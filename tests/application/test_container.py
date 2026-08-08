@@ -153,6 +153,17 @@ def test_container_disables_api_football_client_by_default(
     )
 
 
+def test_container_logger_identifies_instance(tmp_path: Path) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        instance_name="staging",
+    )
+
+    container = ApplicationContainer(settings=settings)
+
+    assert container.logger.name == "smart-sports-calendar.staging"
+
+
 def test_container_provides_enabled_api_football_client(
     tmp_path: Path,
 ) -> None:

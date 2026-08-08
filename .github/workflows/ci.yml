@@ -103,6 +103,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
+      INSTANCE_NAME: ci-default
       M365_TENANT_ID: ci-test-tenant
       M365_CLIENT_ID: ci-test-client
       M365_CLIENT_SECRET: ci-test-secret
@@ -135,9 +136,10 @@ jobs:
         shell: bash
         run: |
           for attempt in {1..12}; do
+            container_id="$(docker compose ps -q calendar-sync)"
             status="$(docker inspect \
               --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' \
-              smart-sports-calendar 2>/dev/null || true)"
+              "$container_id" 2>/dev/null || true)"
 
             echo "Container status: ${status:-not available}"
 
@@ -173,6 +175,10 @@ jobs:
           assert result >= 1
           print(f'system_status records: {result}')
           "
+
+      - name: Validate three isolated Compose instances
+        run: |
+          python scripts/validate_multi_instance.py
 
       - name: Show application logs
         if: always()

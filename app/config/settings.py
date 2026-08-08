@@ -1,10 +1,13 @@
 import os
+import re
 from dataclasses import dataclass, field
 from math import isfinite
 from pathlib import Path
 from urllib.parse import urlsplit
 
 from app.providers.api_football.exceptions import ProviderConfigurationError
+
+INSTANCE_NAME_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]{0,62}$")
 
 
 @dataclass(frozen=True)
@@ -40,6 +43,7 @@ class Settings:
             api_key="",
         )
     )
+    instance_name: str = "default"
 
 
 def get_required_environment_variable(name: str) -> str:
@@ -47,6 +51,19 @@ def get_required_environment_variable(name: str) -> str:
 
     if not value:
         raise ValueError(f"{name} must be configured.")
+
+    return value
+
+
+def get_instance_name() -> str:
+    value = os.getenv("INSTANCE_NAME", "default").strip()
+
+    if not INSTANCE_NAME_PATTERN.fullmatch(value):
+        raise ValueError(
+            "INSTANCE_NAME must start with a lowercase letter or digit and contain "
+            "only lowercase letters, digits, hyphens, or underscores (maximum 63 "
+            "characters)."
+        )
 
     return value
 
@@ -201,6 +218,7 @@ def load_api_football_settings() -> ApiFootballSettings:
 
 def load_settings() -> Settings:
     return Settings(
+        instance_name=get_instance_name(),
         database_path=Path(
             os.getenv(
                 "DATABASE_PATH",

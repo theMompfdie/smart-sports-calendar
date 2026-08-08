@@ -156,11 +156,24 @@ instance for a shared SQLite database and Outlook calendar.
 
 ## Persistent Storage
 
-Application data is stored inside the Docker named volume
+Application data is stored inside the Compose logical volume
 
 ```text
 smart_sports_data
 ```
+
+For multi-instance deployments, Docker prefixes the actual volume with the
+Compose project or Portainer stack name. Examples:
+
+```text
+smart-calendar-staging_smart_sports_data
+smart-calendar-prod_smart_sports_data
+```
+
+The released `v0.4.0-alpha.1` used the legacy unscoped physical volume name
+`smart_sports_data`. Preserve that volume during upgrade and follow an explicit
+backup/migration decision; do not attach it to staging and production at the
+same time.
 
 The SQLite database is located inside the container at
 
@@ -238,23 +251,22 @@ explicit operational decision.
 
 Deployment is performed directly from Git.
 
-### Current single-instance limitation
+### Released alpha single-instance limitation
 
 The released `v0.4.0-alpha.1` Compose definition has fixed container and volume
-names. It supports one deployment on a Docker host, but it does not yet support
-safe concurrent staging and production stacks. Multi-instance support is
-tracked by [issue #2](https://github.com/theMompfdie/smart-sports-calendar/issues/2)
-under the
-[v0.4 stabilization tracker](https://github.com/theMompfdie/smart-sports-calendar/issues/61).
+names and supports only one deployment on a Docker host. The current
+development Compose definition removes those conflicts for the target
+`v0.4.0-beta.1`. Do not use the new multi-instance procedure with the old alpha
+tag.
 
-Until issue #2 is complete, do not start a second stack from the current
-Compose file on the same host. Never work around the conflict by pointing two
-containers at the same SQLite volume or Outlook calendar.
+Never work around an old release conflict by pointing two containers at the
+same SQLite volume or Outlook calendar.
 
-### Target two-stack operating model
+### Multiple Instances
 
-The following model is planned for `v0.4.0-beta.1`; it must not be treated as
-implemented until issue #2 is merged and its three-instance validation passes.
+The current development Compose definition scopes generated container,
+image, network, and volume names through the Compose project name. Portainer
+uses the stack name as that project boundary.
 
 | Setting | Staging | Production |
 | --- | --- | --- |
@@ -271,24 +283,91 @@ Staging and production must not share writable storage, a database, an Outlook
 calendar, or secret configuration. The runtime lock is process-local and does
 not make shared state safe.
 
+Use lowercase instance identifiers containing letters, digits, hyphens, or
+underscores. The identifier appears in the application logger name and a
+non-secret Docker label. It does not replace the Portainer stack name.
+
+For a local staging example:
+
+```bash
+INSTANCE_NAME=staging IMAGE_TAG=develop \
+  docker compose --project-name smart-calendar-staging up --detach --build
+```
+
+For a PowerShell staging example:
+
+```powershell
+$env:INSTANCE_NAME = "staging"
+$env:IMAGE_TAG = "develop"
+docker compose --project-name smart-calendar-staging up --detach --build
+```
+
+The resulting resources include:
+
+```text
+smart-calendar-staging-calendar-sync-1
+smart-calendar-staging-calendar-sync:develop
+smart-calendar-staging_default
+smart-calendar-staging_smart_sports_data
+```
+
+Validate three rendered project configurations without starting containers:
+
+```bash
+python scripts/validate_multi_instance.py --config-only
+```
+
+With a running Docker daemon, execute the complete credential-free acceptance
+test:
+
+```bash
+python scripts/validate_multi_instance.py
+```
+
+The complete test starts three project-scoped probe containers concurrently,
+verifies their images, networks, volumes, SQLite data, and logs, and removes
+only those test stacks and test volumes afterward. The probe override performs
+no Microsoft Graph or provider calls.
+
+Use `smart-calendar-prod` and an approved immutable release value for
+`IMAGE_TAG` in production. The source checkout must be pinned to the same tag;
+`IMAGE_TAG` labels the locally built project image but does not select Git
+source by itself.
+
 During release-candidate qualification, freeze staging to the immutable
 candidate tag. Resume automatic `develop` updates only after qualification is
 finished. Production must never track `develop`.
 
-The complete implementation and validation order is documented in
+The implementation and remaining live-validation order is documented in
 [`v0.4-stabilization-roadmap.md`](v0.4-stabilization-roadmap.md).
 
-### Current alpha configuration
+### Portainer source configuration
 
-Configuration:
+Staging configuration:
 
 | Setting | Value |
 | ---------- | ------- |
 | Build Method | Repository |
-| Branch or tag | `main` or an immutable released tag |
+| Branch or tag | `develop` during normal development |
+| Compose File | `docker-compose.yml` |
+| Authentication | GitHub Personal Access Token |
+| GitOps Updates | Enabled |
+| Stack name | `smart-calendar-staging` |
+| `INSTANCE_NAME` | `staging` |
+| `IMAGE_TAG` | `develop` |
+
+Production configuration:
+
+| Setting | Value |
+| ---------- | ------- |
+| Build Method | Repository |
+| Branch or tag | approved immutable release tag |
 | Compose File | `docker-compose.yml` |
 | Authentication | GitHub Personal Access Token |
 | GitOps Updates | Disabled |
+| Stack name | `smart-calendar-prod` |
+| `INSTANCE_NAME` | `prod` |
+| `IMAGE_TAG` | approved immutable release tag |
 
 Portainer clones the repository and builds the application locally using the provided Dockerfile.
 
@@ -323,10 +402,13 @@ To fix ownership:
 
 ```bash
 docker run --rm \
-    -v smart_sports_data:/data \
+    -v smart-calendar-prod_smart_sports_data:/data \
     alpine:latest \
     chown -R 10001:10001 /data
 ```
+
+Replace the example with the exact project-scoped volume reported for the
+affected stack. The legacy alpha deployment uses `smart_sports_data`.
 
 Restart the container afterwards.
 
@@ -363,8 +445,9 @@ docker compose logs -f
 or through Portainer:
 
 ```text
-Containers
-→ smart-sports-calendar
+Stacks
+→ smart-calendar-staging or smart-calendar-prod
+→ calendar-sync container
 → Logs
 ```
 
@@ -485,7 +568,7 @@ docker volume ls
 ### Inspect the application volume
 
 ```bash
-docker volume inspect smart_sports_data
+docker volume inspect smart-calendar-prod_smart_sports_data
 ```
 
 ---
@@ -500,7 +583,7 @@ docker volume inspect smart_sports_data
 | Docker Compose | ✅ |
 | Local Build | ✅ |
 | Portainer Git Deployment | ✅ |
-| Concurrent Staging and Production | Planned in issue #2 |
+| Concurrent Staging and Production | Implemented; live Portainer validation pending |
 | SQLite Persistence | ✅ |
 | Health Check | ✅ |
 | Non-root Container | ✅ |
