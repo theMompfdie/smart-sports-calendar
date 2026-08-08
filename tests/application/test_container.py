@@ -19,6 +19,7 @@ from app.database.fixture_import_repository import FixtureImportRepository
 from app.database.synchronization_query_repository import (
     SynchronizationQueryRepository,
 )
+from app.graph.client import CalendarReference
 from app.synchronization.event_synchronizer import EventSynchronizer
 from app.synchronization.outlook_event_payload_builder import (
     OutlookEventPayloadBuilder,
@@ -215,6 +216,74 @@ def test_container_never_logs_api_football_key(
         container.run()
 
     assert "provider-secret" not in str(container.logger.method_calls)
+
+
+def test_graph_startup_validation_accepts_matching_calendar_target(
+    tmp_path: Path,
+) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        graph_startup_validation_enabled=True,
+    )
+    container = ApplicationContainer(settings=settings)
+
+    with (
+        patch.object(container, "_register_signal_handlers"),
+        patch.object(container.graph_token_provider, "get_access_token"),
+        patch.object(
+            container.graph_client,
+            "find_calendar_by_name",
+            return_value=CalendarReference(
+                id=settings.outlook_calendar_id,
+                name=settings.outlook_calendar_name,
+            ),
+        ),
+        patch.object(container.scheduler, "run") as scheduler_run,
+    ):
+        container.run()
+
+    scheduler_run.assert_called_once_with(
+        task=container._run_scheduled_cycle,
+        stop_event=container.stop_event,
+    )
+
+
+def test_graph_startup_validation_rejects_mismatching_calendar_target(
+    tmp_path: Path,
+) -> None:
+    configured_calendar_id = "configured-sensitive-calendar-id"
+    resolved_calendar_id = "resolved-sensitive-calendar-id"
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        graph_startup_validation_enabled=True,
+        outlook_calendar_id=configured_calendar_id,
+    )
+    container = ApplicationContainer(settings=settings)
+    container.logger = MagicMock()
+
+    with (
+        patch.object(container, "_register_signal_handlers"),
+        patch.object(container.graph_token_provider, "get_access_token"),
+        patch.object(
+            container.graph_client,
+            "find_calendar_by_name",
+            return_value=CalendarReference(
+                id=resolved_calendar_id,
+                name=settings.outlook_calendar_name,
+            ),
+        ),
+        patch.object(container.scheduler, "run") as scheduler_run,
+        pytest.raises(
+            RuntimeError,
+            match="Configured Outlook calendar target does not match",
+        ) as error,
+    ):
+        container.run()
+
+    scheduler_run.assert_not_called()
+    diagnostic_text = f"{error.value} {container.logger.method_calls}"
+    assert configured_calendar_id not in diagnostic_text
+    assert resolved_calendar_id not in diagnostic_text
 
 
 def test_run_registers_enabled_api_football_source_without_live_call(

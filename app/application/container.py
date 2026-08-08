@@ -261,8 +261,13 @@ class ApplicationContainer:
             calendar = self.graph_client.find_calendar_by_name(
                 self.settings.outlook_calendar_name
             )
+            if calendar.id != self.settings.outlook_calendar_id:
+                raise RuntimeError(
+                    "Configured Outlook calendar target does not match the "
+                    "calendar resolved by name."
+                )
             self.logger.info(
-                "Outlook calendar reachable: %s",
+                "Outlook calendar target validated: %s",
                 calendar.name,
             )
         else:

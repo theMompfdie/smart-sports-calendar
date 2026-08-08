@@ -262,15 +262,15 @@ def test_run_logs_started_and_completed_cycle() -> None:
     sync_runs_repository.recover_running.return_value = []
     orchestrator.synchronize.return_value = expected_result
 
+    sensitive_calendar_id = "sensitive-calendar-id"
     service.run(
-        calendar_id="calendar-1",
+        calendar_id=sensitive_calendar_id,
         limit=100,
     )
 
     assert logger.info.call_args_list == [
         call(
-            "Synchronization cycle started for calendar %s with limit %s",
-            "calendar-1",
+            "Synchronization cycle started with limit %s",
             100,
         ),
         call(
@@ -284,3 +284,4 @@ def test_run_logs_started_and_completed_cycle() -> None:
             expected_result.items_failed,
         ),
     ]
+    assert sensitive_calendar_id not in str(logger.method_calls)
