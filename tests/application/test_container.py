@@ -1,8 +1,9 @@
+from dataclasses import replace
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from app.application.container import ApplicationContainer
-from app.config.settings import Settings
+from app.config.settings import ApiFootballSettings, Settings
 from app.database.synchronization_query_repository import (
     SynchronizationQueryRepository,
 )
@@ -106,6 +107,56 @@ def test_container_provides_synchronization_query_repository(
     )
 
     assert container.synchronization_query_repository.database_path == database_path
+
+
+def test_container_disables_api_football_client_by_default(
+    tmp_path: Path,
+) -> None:
+    container = ApplicationContainer(
+        settings=create_settings(tmp_path / "sports.db"),
+    )
+
+    assert container.api_football_client is None
+
+
+def test_container_provides_enabled_api_football_client(
+    tmp_path: Path,
+) -> None:
+    settings = create_settings(tmp_path / "sports.db")
+    enabled_settings = replace(
+        settings,
+        api_football=ApiFootballSettings(
+            enabled=True,
+            api_key="provider-secret",
+        ),
+    )
+
+    container = ApplicationContainer(settings=enabled_settings)
+
+    assert container.api_football_client is not None
+    assert container.api_football_client._settings is enabled_settings.api_football
+
+
+def test_container_never_logs_api_football_key(
+    tmp_path: Path,
+) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        api_football=ApiFootballSettings(
+            enabled=True,
+            api_key="provider-secret",
+        ),
+    )
+    container = ApplicationContainer(settings=settings)
+    container.logger = MagicMock()
+
+    with (
+        patch.object(container, "_register_signal_handlers"),
+        patch.object(container.scheduler, "run"),
+    ):
+        container.run()
+
+    assert "provider-secret" not in str(container.logger.method_calls)
 
 
 def test_container_provides_event_synchronizer(

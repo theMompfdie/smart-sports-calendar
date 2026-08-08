@@ -311,44 +311,37 @@ v1.0.0
 
 Do not recommend or create a release from unverified code.
 
-Current Phase 4.1 Boundary
+Current Phase 4.2 Boundary
 
-The active Phase 4.1 work is tracked by GitHub Issue #43:
+The active Phase 4.2 work is tracked by GitHub Issue #45:
 
-Phase 4.1: Provider Requirements, Selection, and Integration Contract
-
-Phase 4.1 is a requirements, architecture, and contract-definition task.
+Phase 4.2: API-Football Configuration and Resilient HTTP Client
 
 In scope:
 
-define provider requirements
-define evaluation and comparison criteria
-evaluate candidate providers using evidence
-document the provider decision
-define a provider-independent integration contract
-define normalized fixture and competition semantics
-define lifecycle and status mapping rules
-define provider error categories
-define the contract-level testing strategy
-document decisions and limitations
+validated API-Football configuration
+secret-safe authentication
+explicit connect and read timeouts
+typed response-envelope and pagination metadata
+contract-aligned provider errors
+rate-limit metadata
+bounded transport retries
+application-container wiring
+deterministic mocked tests
 
-Out of scope unless Issue #43 explicitly states otherwise:
+Out of scope unless Issue #45 explicitly states otherwise:
 
-implementing a production provider client
-integrating live provider credentials
-implementing provider-specific HTTP transport
-changing Graph synchronization behavior
-adding unrelated database features
-broad refactoring
+live provider credentials or CI calls
+provider source registration
+competition, season, or team imports
+fixture normalization or persistence
+database schema changes
+scheduler or Outlook synchronization changes
 deployment or release work
 
-Do not present a provider as selected without documented evidence against the agreed criteria.
+If Issue #45 conflicts with this summary, the current GitHub issue is authoritative. Report the conflict before proceeding.
 
-Do not start provider implementation during Phase 4.1.
-
-If Issue #43 conflicts with this summary, the current GitHub issue is authoritative. Report the conflict before proceeding.
-
-This phase-specific section must be updated or removed when Phase 4.1 is completed.
+This phase-specific section must be updated or removed when Phase 4.2 is completed.
 
 Definition of Done
 

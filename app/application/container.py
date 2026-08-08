@@ -30,6 +30,7 @@ from app.database.synchronization_query_repository import (
 from app.graph.authentication import GraphTokenProvider
 from app.graph.client import GraphClient
 from app.logging.logger import configure_logging
+from app.providers.api_football.client import ApiFootballClient
 from app.scheduler.scheduler import Scheduler
 from app.synchronization.event_synchronizer import EventSynchronizer
 from app.synchronization.outlook_event_payload_builder import (
@@ -95,6 +96,11 @@ class ApplicationContainer:
             user_id=self.settings.m365_user_id,
             token_provider=self.graph_token_provider,
         )
+        self.api_football_client = (
+            ApiFootballClient(settings=self.settings.api_football)
+            if self.settings.api_football.enabled
+            else None
+        )
         self.outlook_event_payload_builder = OutlookEventPayloadBuilder()
         self.event_synchronizer = EventSynchronizer(
             payload_builder=self.outlook_event_payload_builder,
@@ -159,6 +165,11 @@ class ApplicationContainer:
             )
         else:
             self.logger.info("Microsoft Graph startup validation is disabled")
+
+        self.logger.info(
+            "API-Football provider is %s",
+            "enabled" if self.api_football_client is not None else "disabled",
+        )
 
         self.scheduler.run(
             task=self._run_synchronization,
