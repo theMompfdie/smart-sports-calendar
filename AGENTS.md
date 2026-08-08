@@ -311,38 +311,38 @@ v1.0.0
 
 Do not recommend or create a release from unverified code.
 
-Current Phase 4.7 Boundary
+Current Phase 4.8 Boundary
 
-The active Phase 4.7 work is tracked by GitHub Issue #55:
+The active Phase 4.8 work is tracked by GitHub Issue #57:
 
-Phase 4.7: End-to-End Provider-to-Outlook Integration Tests
+Phase 4.8: Documentation and Release Preparation
 
 In scope:
 
-sanitized representative API-Football HTTP response fixtures
-real provider client, adapters, catalog mapping, and normalization boundaries
-real provider-import runtime and production SQLite migrations
-real synchronization query, payload, mapping, and orchestration boundaries
-mocked provider transport and Microsoft Graph infrastructure only
-initial, unchanged, discovery, reschedule, and lifecycle scenarios
-two-observation removal and identity-preserving reappearance
-provider, persistence, finalization, and Graph failure recovery
-separate provider-import and calendar-sync reporting assertions
-secret-free logs, exceptions, request captures, and persisted metadata
-deterministic network-free CI coverage and test documentation
+README, environment example, architecture, and Phase 4 documentation audit
+accurate implemented-versus-planned and automated-versus-live distinctions
+provider, Graph, scheduling, persistence, and observability configuration reference
+Docker Compose and Portainer deployment guidance
+SQLite backup, upgrade, rollback, and data-preservation guidance
+credential-safe opt-in live-validation checklist
+v0.4.0-alpha.1 package version and release-notes preparation
+Phase 4 develop-to-main completion and post-merge release checklist
+full local, Docker Compose, documentation, and GitHub Actions verification
 
-Out of scope unless Issue #55 explicitly states otherwise:
+Out of scope unless Issue #57 explicitly states otherwise:
 
-live API-Football or Microsoft Graph calls, credentials, or recorded secrets
-production changes without a demonstrated acceptance-blocking correctness defect
-broad provider, repository, Graph, scheduler, or synchronization refactoring
-performance, load, soak, or distributed multi-instance testing
-additional providers, competitions, results, standings, statistics, or live scores
-release notes, deployment, versioning, tagging, or release publication
+new provider or synchronization features
+live API-Football or Microsoft Graph calls without separate authorization
+credentials, tokens, tenant identifiers, or secret-bearing recordings
+broad production-code refactoring or unrelated schema changes
+production deployment or migration execution
+merging develop into main
+creating the v0.4.0-alpha.1 tag or GitHub release before verification
+Phase 5 implementation
 
-If Issue #55 conflicts with this summary, the current GitHub issue is authoritative. Report the conflict before proceeding.
+If Issue #57 conflicts with this summary, the current GitHub issue is authoritative. Report the conflict before proceeding.
 
-This phase-specific section must be updated or removed when Phase 4.7 is completed.
+This phase-specific section must be updated or removed when Phase 4.8 is completed.
 
 Definition of Done
 

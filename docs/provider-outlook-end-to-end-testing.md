@@ -115,5 +115,8 @@ docker compose config --quiet
 
 The suite proves deterministic application composition and infrastructure
 requests, not provider subscription behavior or Microsoft Graph behavior in a
-real tenant. Live smoke validation, release notes, deployment verification,
-versioning, and publication of `v0.4.0-alpha.1` remain Phase 4.8 work.
+real tenant. The separate, credential-safe live procedure is documented in
+[`phase-4-live-validation.md`](phase-4-live-validation.md). Release gating and
+publication steps are documented in
+[`phase-4-release-checklist.md`](phase-4-release-checklist.md); neither live
+calls nor release publication occurs in normal CI.
