@@ -7,6 +7,9 @@ from app.application.api_football_catalog_service import (
     ApiFootballCatalogService,
     register_api_football_source,
 )
+from app.application.api_football_fixture_import_service import (
+    ApiFootballFixtureImportService,
+)
 from app.application.api_football_fixture_normalization_service import (
     ApiFootballFixtureNormalizationService,
 )
@@ -21,6 +24,7 @@ from app.database.database import Database
 from app.database.event_participants_repository import EventParticipantsRepository
 from app.database.event_results_repository import EventResultsRepository
 from app.database.event_statistics_repository import EventStatisticsRepository
+from app.database.fixture_import_repository import FixtureImportRepository
 from app.database.participants_catalog import initialize_participants_catalog
 from app.database.participants_repository import ParticipantsRepository
 from app.database.season_participants_repository import SeasonParticipantsRepository
@@ -94,6 +98,13 @@ class ApplicationContainer:
         )
         self.source_mappings_repository = SourceMappingsRepository(
             self.settings.database_path
+        )
+        self.fixture_import_repository = FixtureImportRepository(
+            self.settings.database_path
+        )
+        self.api_football_fixture_import_service = ApiFootballFixtureImportService(
+            data_sources_repository=self.data_sources_repository,
+            fixture_import_repository=self.fixture_import_repository,
         )
         self.sync_runs_repository = SyncRunsRepository(self.settings.database_path)
         self.graph_token_provider = GraphTokenProvider(

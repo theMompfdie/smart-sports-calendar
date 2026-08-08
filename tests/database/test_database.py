@@ -16,6 +16,7 @@ EXPECTED_TABLES = {
     "event_participants",
     "event_results",
     "event_statistics",
+    "fixture_reconciliation_state",
     "participants",
     "schema_migrations",
     "season_participants",
@@ -94,7 +95,29 @@ def test_migrations_are_registered_once(
         ("002_create_season_participants",),
         ("003_extend_sync_run_counters",),
         ("004_add_mapping_transaction_id",),
+        ("005_create_fixture_reconciliation_state",),
     ]
+
+
+def test_fixture_reconciliation_state_has_stable_constraints(
+    initialized_database: Database,
+    database_path: Path,
+) -> None:
+    with connect(database_path) as connection:
+        columns = {
+            row[1]: row
+            for row in connection.execute(
+                "PRAGMA table_info(fixture_reconciliation_state)"
+            )
+        }
+        indexes = connection.execute(
+            "PRAGMA index_list(fixture_reconciliation_state)"
+        ).fetchall()
+
+    assert columns["missing_observation_count"][3] == 1
+    assert columns["missing_observation_count"][4] == "0"
+    assert columns["last_observation_id"][2] == "TEXT"
+    assert sum(index[2] == 1 for index in indexes) == 2
 
 
 def test_sync_runs_contains_extended_counters(

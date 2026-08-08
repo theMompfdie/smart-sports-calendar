@@ -283,7 +283,7 @@ tests performed
 related issue
 limitations or follow-up work
 
-Use Closes #<issue> only when merging should close the issue. Otherwise use Refs #<issue>.
+Use `Closes #ISSUE_NUMBER` only when merging should close the issue. Otherwise use `Refs #ISSUE_NUMBER`.
 
 Before recommending a merge, verify:
 
@@ -311,39 +311,39 @@ v1.0.0
 
 Do not recommend or create a release from unverified code.
 
-Current Phase 4.4 Boundary
+Current Phase 4.5 Boundary
 
-The active Phase 4.4 work is tracked by GitHub Issue #49:
+The active Phase 4.5 work is tracked by GitHub Issue #51:
 
-Phase 4.4: Fixture DTO Validation and Canonical Normalization
+Phase 4.5: Idempotent Incremental Fixture Import and Lifecycle Reconciliation
 
 In scope:
 
-API-Football fixture DTO validation
-complete paginated fixture retrieval for the mapped Premier League season
-stable fixture, competition, season, and team identifiers
-timezone-aware UTC kickoff normalization
-explicit TBD kickoff semantics without fabricated midnight values
-deterministic home and away roles
-exhaustive provider-status mapping
-mapping-backed canonical-ready fixture normalization
-side-effect-free application-container integration
-sanitized fixtures and deterministic tests
+persist Phase 4.4 normalized fixtures into canonical sports events
+stable provider event mappings and project-owned event keys
+deterministic home and away participant persistence
+explicit competition, season, time-window, and authority scope
+CREATE, UPDATE, SKIP, CANCEL, DELETE, and TBD-defer decisions
+confirmed kickoff updates and last-known kickoff retention for existing TBD events
+cancellation timestamps, correction, and lifecycle-state persistence
+two-distinct-authoritative-observation removal confirmation
+non-destructive removal and identity-preserving reappearance
+atomic event, participant, mapping, and reconciliation-state transactions
+optional provider-field preservation
+deterministic migrated-SQLite integration tests and documentation
 
-Out of scope unless Issue #49 explicitly states otherwise:
+Out of scope unless Issue #51 explicitly states otherwise:
 
-inserting or updating sports events, event participants, or event mappings
-incremental fixture import, checkpoints, or lifecycle reconciliation
-removal detection or persistent import reporting
-scheduler integration
+scheduler integration or automatic provider execution
+persistent import-run reporting
+provider-specific HTTP transport changes
 Graph or Outlook behavior changes
 live provider credentials or CI calls
-database schema changes unless required by a separately documented blocker
 deployment or release work
 
-If Issue #49 conflicts with this summary, the current GitHub issue is authoritative. Report the conflict before proceeding.
+If Issue #51 conflicts with this summary, the current GitHub issue is authoritative. Report the conflict before proceeding.
 
-This phase-specific section must be updated or removed when Phase 4.4 is completed.
+This phase-specific section must be updated or removed when Phase 4.5 is completed.
 
 Definition of Done
 

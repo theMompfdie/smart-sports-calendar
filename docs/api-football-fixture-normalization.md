@@ -103,9 +103,10 @@ offsets, TBD semantics, pagination, scope checks, duplicate IDs, mapping-backed
 SQLite resolution, deterministic canonical titles, and proof that no event
 rows or event mappings are written.
 
-## Remaining Phase 4 work
+## Downstream persistence
 
-Phase 4.5 and later issues still need to implement event persistence,
-idempotent incremental imports, reschedule and lifecycle reconciliation,
-two-observation removal handling, import reporting, scheduler execution, and
+Phase 4.5 persists these normalized values through the transactional,
+idempotent boundary documented in
+[`api-football-fixture-import.md`](api-football-fixture-import.md). Later issues
+still own persistent import reporting, scheduler execution, and
 provider-to-Outlook orchestration.

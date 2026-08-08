@@ -2,8 +2,12 @@ from dataclasses import replace
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from app.application.api_football_fixture_import_service import (
+    ApiFootballFixtureImportService,
+)
 from app.application.container import ApplicationContainer
 from app.config.settings import ApiFootballSettings, Settings
+from app.database.fixture_import_repository import FixtureImportRepository
 from app.database.synchronization_query_repository import (
     SynchronizationQueryRepository,
 )
@@ -129,6 +133,14 @@ def test_container_disables_api_football_client_by_default(
     assert container.api_football_catalog_service is None
     assert container.api_football_fixture_adapter is None
     assert container.api_football_fixture_normalization_service is None
+    assert isinstance(
+        container.fixture_import_repository,
+        FixtureImportRepository,
+    )
+    assert isinstance(
+        container.api_football_fixture_import_service,
+        ApiFootballFixtureImportService,
+    )
 
 
 def test_container_provides_enabled_api_football_client(
