@@ -311,37 +311,39 @@ v1.0.0
 
 Do not recommend or create a release from unverified code.
 
-Current Phase 4.3 Boundary
+Current Phase 4.4 Boundary
 
-The active Phase 4.3 work is tracked by GitHub Issue #47:
+The active Phase 4.4 work is tracked by GitHub Issue #49:
 
-Phase 4.3: Premier League Source, Competition, Season, and Team Mapping
+Phase 4.4: Fixture DTO Validation and Canonical Normalization
 
 In scope:
 
-API-Football league, season, and team DTO validation
-exact Premier League and current-season resolution
-idempotent API-Football data-source registration
-reviewed provider-team-ID to canonical participant correlation
-competition, season, and participant source mappings
-conflict-safe mapping behavior
-deterministic season memberships
-application-container integration
+API-Football fixture DTO validation
+complete paginated fixture retrieval for the mapped Premier League season
+stable fixture, competition, season, and team identifiers
+timezone-aware UTC kickoff normalization
+explicit TBD kickoff semantics without fabricated midnight values
+deterministic home and away roles
+exhaustive provider-status mapping
+mapping-backed canonical-ready fixture normalization
+side-effect-free application-container integration
 sanitized fixtures and deterministic tests
 
-Out of scope unless Issue #47 explicitly states otherwise:
+Out of scope unless Issue #49 explicitly states otherwise:
 
-fixture normalization or persistence
-incremental fixture import or lifecycle reconciliation
+inserting or updating sports events, event participants, or event mappings
+incremental fixture import, checkpoints, or lifecycle reconciliation
+removal detection or persistent import reporting
 scheduler integration
 Graph or Outlook behavior changes
 live provider credentials or CI calls
 database schema changes unless required by a separately documented blocker
 deployment or release work
 
-If Issue #47 conflicts with this summary, the current GitHub issue is authoritative. Report the conflict before proceeding.
+If Issue #49 conflicts with this summary, the current GitHub issue is authoritative. Report the conflict before proceeding.
 
-This phase-specific section must be updated or removed when Phase 4.3 is completed.
+This phase-specific section must be updated or removed when Phase 4.4 is completed.
 
 Definition of Done
 

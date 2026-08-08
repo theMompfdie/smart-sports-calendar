@@ -127,6 +127,8 @@ def test_container_disables_api_football_client_by_default(
     assert container.api_football_client is None
     assert container.api_football_catalog_adapter is None
     assert container.api_football_catalog_service is None
+    assert container.api_football_fixture_adapter is None
+    assert container.api_football_fixture_normalization_service is None
 
 
 def test_container_provides_enabled_api_football_client(
@@ -147,6 +149,8 @@ def test_container_provides_enabled_api_football_client(
     assert container.api_football_client._settings is enabled_settings.api_football
     assert container.api_football_catalog_adapter is not None
     assert container.api_football_catalog_service is not None
+    assert container.api_football_fixture_adapter is not None
+    assert container.api_football_fixture_normalization_service is not None
 
 
 def test_container_never_logs_api_football_key(
