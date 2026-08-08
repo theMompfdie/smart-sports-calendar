@@ -7,7 +7,7 @@
 **Current release:** `v0.3.0-alpha.1`  
 **Development stage:** Alpha  
 **Completed phases:** Phase 1, Phase 2, and Phase 3  
-**Automated tests:** 468 passing tests
+**Automated tests:** 477 passing tests
 
 The application foundation, persistent domain model, repository layer, Microsoft Graph integration, Outlook synchronization engine, and the scheduled, reported API-Football Premier League import runtime are implemented.
 
@@ -76,6 +76,8 @@ The application focuses on:
 - scheduled non-overlapping provider-import orchestration
 - persistent import-run counters, recovery, and sanitized rate-limit diagnostics
 - successful-import handoff to the existing Outlook synchronization runtime
+- provider-payload-to-SQLite-to-mocked-Graph end-to-end validation
+- retry-safe Outlook deletion and identity-preserving fixture reappearance
 - deterministic mocked tests without live provider calls
 
 The catalog, normalization, fixture-import, reporting, and runtime services are
@@ -88,6 +90,8 @@ and
 [`docs/api-football-fixture-import.md`](docs/api-football-fixture-import.md)
 and
 [`docs/api-football-import-runtime.md`](docs/api-football-import-runtime.md)
+and
+[`docs/provider-outlook-end-to-end-testing.md`](docs/provider-outlook-end-to-end-testing.md)
 for the implemented boundaries.
 
 ### Database and Persistence
@@ -388,6 +392,7 @@ feature/* -> develop -> release/* -> main -> Release
 - Premier League fixture persistence and import implemented
 - idempotent incremental updates and lifecycle reconciliation implemented
 - import reporting, recovery, scheduling, and Outlook handoff implemented
+- deterministic provider-to-Outlook end-to-end integration coverage implemented
 
 ### Phase 5 – Additional Domestic Competitions
 
@@ -451,14 +456,14 @@ feature/* -> develop -> release/* -> main -> Release
 
 This remains an alpha release.
 
-- complete provider-to-SQLite-to-mocked-Graph end-to-end coverage remains Phase 4.7
+- live provider and Microsoft Graph tenant behavior is not exercised by CI
 - no administrative user interface
 - synchronization locking is process-local only
 - multiple application instances must not synchronize the same calendar/database concurrently
 - distributed locking and supported multi-instance coordination are not implemented
 - production behavior still requires validation against a real provider and target calendar
 
-The synchronization engine and scheduled API-Football catalog-to-canonical-to-Outlook runtime are implemented with external boundaries mocked. Phase 4.7 adds the complete representative provider-to-mocked-Graph end-to-end validation.
+The synchronization engine and scheduled API-Football catalog-to-canonical-to-Outlook runtime are covered by deterministic provider-payload-to-SQLite-to-mocked-Graph tests. Live provider and tenant validation remains release-preparation work.
 
 ## Project Goals
 

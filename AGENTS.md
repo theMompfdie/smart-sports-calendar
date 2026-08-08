@@ -311,41 +311,38 @@ v1.0.0
 
 Do not recommend or create a release from unverified code.
 
-Current Phase 4.6 Boundary
+Current Phase 4.7 Boundary
 
-The active Phase 4.6 work is tracked by GitHub Issue #53:
+The active Phase 4.7 work is tracked by GitHub Issue #55:
 
-Phase 4.6: Rate Limits, Retry, Import Reporting, and Scheduler Integration
+Phase 4.7: End-to-End Provider-to-Outlook Integration Tests
 
 In scope:
 
-provider fetch, normalization, and Phase 4.5 import orchestration
-explicit complete authoritative current-season import scopes
-persistent provider-import run status and decision counters
-sanitized request-attempt and rate-limit diagnostics
-reuse of the bounded Phase 4.2 retry policy without another retry loop
-interrupted provider-import recovery
-process-local non-overlapping provider runtime execution
-external provider-import scheduling configuration
-disabled-provider behavior without provider calls or misleading runs
-successful-import handoff to existing Outlook synchronization
-separate provider-import and calendar-sync outcomes
-deterministic mocked-boundary and migrated-SQLite tests
-README, environment, architecture, and operational documentation
+sanitized representative API-Football HTTP response fixtures
+real provider client, adapters, catalog mapping, and normalization boundaries
+real provider-import runtime and production SQLite migrations
+real synchronization query, payload, mapping, and orchestration boundaries
+mocked provider transport and Microsoft Graph infrastructure only
+initial, unchanged, discovery, reschedule, and lifecycle scenarios
+two-observation removal and identity-preserving reappearance
+provider, persistence, finalization, and Graph failure recovery
+separate provider-import and calendar-sync reporting assertions
+secret-free logs, exceptions, request captures, and persisted metadata
+deterministic network-free CI coverage and test documentation
 
-Out of scope unless Issue #53 explicitly states otherwise:
+Out of scope unless Issue #55 explicitly states otherwise:
 
-changes to the Phase 4.2 retry algorithm without a correctness defect
-redesign of Phase 4.5 canonical persistence or reconciliation
-complete provider-to-SQLite-to-mocked-Graph end-to-end coverage
-distributed locking or multi-instance scheduling
-additional competitions, providers, results, standings, or live scores
-live provider credentials or CI calls
-deployment or release work
+live API-Football or Microsoft Graph calls, credentials, or recorded secrets
+production changes without a demonstrated acceptance-blocking correctness defect
+broad provider, repository, Graph, scheduler, or synchronization refactoring
+performance, load, soak, or distributed multi-instance testing
+additional providers, competitions, results, standings, statistics, or live scores
+release notes, deployment, versioning, tagging, or release publication
 
-If Issue #53 conflicts with this summary, the current GitHub issue is authoritative. Report the conflict before proceeding.
+If Issue #55 conflicts with this summary, the current GitHub issue is authoritative. Report the conflict before proceeding.
 
-This phase-specific section must be updated or removed when Phase 4.6 is completed.
+This phase-specific section must be updated or removed when Phase 4.7 is completed.
 
 Definition of Done
 

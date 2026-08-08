@@ -404,7 +404,7 @@ def test_get_candidates_selects_expected_synchronization_statuses(
     assert events_by_status["delete_pending"].id in candidate_ids
     assert unmapped_event.id in candidate_ids
 
-    assert events_by_status["deleted"].id not in candidate_ids
+    assert events_by_status["deleted"].id in candidate_ids
     assert deleted_unmapped_event.id not in candidate_ids
 
 
@@ -458,7 +458,10 @@ def test_get_candidates_isolates_mappings_by_calendar(
         limit=100,
     )
 
-    assert calendar_1_candidates == []
+    assert len(calendar_1_candidates) == 1
+    assert calendar_1_candidates[0].event == event
+    assert calendar_1_candidates[0].mapping is not None
+    assert calendar_1_candidates[0].mapping.sync_status == "deleted"
 
     assert len(calendar_2_candidates) == 1
     assert calendar_2_candidates[0].event == event
