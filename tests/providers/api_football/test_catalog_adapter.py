@@ -2,6 +2,7 @@ import json
 from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import dataclass
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 from app.config.settings import ApiFootballSettings
@@ -25,7 +26,7 @@ class StubCollectionClient:
         self._collections = list(collections)
         self.requests: list[tuple[str, dict[str, str | int] | None]] = []
 
-    def get_all(
+    def get_unpaginated(
         self,
         endpoint: str,
         query: dict[str, str | int] | None = None,
@@ -113,26 +114,27 @@ def test_adapter_fetches_complete_typed_team_collection() -> None:
     assert client.requests == [("/teams", {"league": 39, "season": 2026})]
 
 
-def test_adapter_fetches_all_team_pages_through_resilient_client() -> None:
-    items = load_envelope("premier_league_teams.json")["response"]
+def test_adapter_omits_page_for_unpaginated_catalog_requests() -> None:
+    league_items = load_envelope("premier_league.json")["response"]
+    team_items = load_envelope("premier_league_teams.json")["response"]
 
-    def response(page: int, page_items: list[dict[str, object]]) -> HttpResponse:
+    def response(items: list[dict[str, object]]) -> HttpResponse:
         return HttpResponse(
             status=200,
             headers={},
             body=json.dumps(
                 {
                     "errors": [],
-                    "results": len(page_items),
-                    "paging": {"current": page, "total": 2},
-                    "response": page_items,
+                    "results": len(items),
+                    "paging": {"current": 1, "total": 1},
+                    "response": items,
                 }
             ).encode(),
         )
 
     transport = PageTransport(
-        response(1, items[:10]),
-        response(2, items[10:]),
+        response(league_items),
+        response(team_items),
     )
     client = ApiFootballClient(
         settings=ApiFootballSettings(enabled=True, api_key="provider-secret"),
@@ -140,15 +142,21 @@ def test_adapter_fetches_all_team_pages_through_resilient_client() -> None:
         sleep=lambda _delay: None,
     )
 
-    teams = ApiFootballCatalogAdapter(client).fetch_teams(
+    adapter = ApiFootballCatalogAdapter(client)
+    league = adapter.find_premier_league()
+    teams = adapter.fetch_teams(
         league_id=39,
         season_year=2026,
     )
 
+    assert league.id == 39
     assert len(teams) == 20
     assert len(transport.requests) == 2
-    assert "page=1" in transport.requests[0].url
-    assert "page=2" in transport.requests[1].url
+    assert parse_qs(urlsplit(transport.requests[0].url).query) == {"id": ["39"]}
+    assert parse_qs(urlsplit(transport.requests[1].url).query) == {
+        "league": ["39"],
+        "season": ["2026"],
+    }
 
 
 def test_adapter_rejects_empty_team_collection() -> None:

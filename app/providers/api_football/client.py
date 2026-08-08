@@ -65,13 +65,52 @@ class ApiFootballClient:
         query: Mapping[str, QueryValue] | None = None,
         page: int = 1,
     ) -> ApiFootballPage:
-        if not endpoint.startswith("/") or "?" in endpoint or "#" in endpoint:
-            raise ProviderRequestError(
-                "API-Football endpoint must be an absolute path without a query."
-            )
         if page <= 0:
             raise ProviderPaginationError(
                 "API-Football page number must be greater than zero."
+            )
+
+        return self._get_page(
+            endpoint=endpoint,
+            query=query,
+            requested_page=page,
+            include_page_parameter=True,
+        )
+
+    def get_unpaginated(
+        self,
+        endpoint: str,
+        query: Mapping[str, QueryValue] | None = None,
+    ) -> ApiFootballCollection:
+        page = self._get_page(
+            endpoint=endpoint,
+            query=query,
+            requested_page=1,
+            include_page_parameter=False,
+        )
+        if page.pagination.total != 1:
+            raise ProviderPaginationError(
+                "API-Football non-paginated request returned multiple pages."
+            )
+
+        return ApiFootballCollection(
+            items=page.items,
+            page_count=1,
+            fetched_at_utc=page.metadata.fetched_at_utc,
+            rate_limits=page.metadata.rate_limits,
+            request_attempts=page.metadata.attempt_count,
+        )
+
+    def _get_page(
+        self,
+        endpoint: str,
+        query: Mapping[str, QueryValue] | None,
+        requested_page: int,
+        include_page_parameter: bool,
+    ) -> ApiFootballPage:
+        if not endpoint.startswith("/") or "?" in endpoint or "#" in endpoint:
+            raise ProviderRequestError(
+                "API-Football endpoint must be an absolute path without a query."
             )
 
         for parameter_name in query or {}:
@@ -85,17 +124,19 @@ class ApiFootballClient:
                 )
 
         parameters = dict(query or {})
-        parameters["page"] = page
+        if include_page_parameter:
+            parameters["page"] = requested_page
         encoded_query = urlencode(
             sorted(parameters.items()),
             doseq=False,
         )
-        url = f"{self._settings.base_url}{endpoint}?{encoded_query}"
+        query_suffix = f"?{encoded_query}" if encoded_query else ""
+        url = f"{self._settings.base_url}{endpoint}{query_suffix}"
         response, attempt_count = self._request_with_retries(url)
 
         return self._parse_page(
             response=response,
-            requested_page=page,
+            requested_page=requested_page,
             attempt_count=attempt_count,
         )
 
