@@ -6,6 +6,10 @@ from pathlib import Path
 from typing import Any
 
 
+class SourceMappingConflictError(RuntimeError):
+    """A provider mapping conflicts with an existing stable correlation."""
+
+
 @dataclass(frozen=True)
 class SourceMapping:
     id: int
@@ -140,45 +144,93 @@ class SourceMappingsRepository:
         source_url: str | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> SourceMapping:
+        external_mapping = self.get_by_external_id(
+            source_id=source_id,
+            object_type=object_type,
+            external_id=external_id,
+        )
+        if external_mapping is not None and external_mapping.internal_id != internal_id:
+            raise SourceMappingConflictError(
+                "External source mapping is already assigned to another "
+                f"canonical object: source_id={source_id}, "
+                f"object_type={object_type}, external_id={external_id}."
+            )
+
+        internal_mapping = self.get_by_internal_id(
+            source_id=source_id,
+            object_type=object_type,
+            internal_id=internal_id,
+        )
+        if internal_mapping is not None and internal_mapping.external_id != external_id:
+            raise SourceMappingConflictError(
+                "Canonical object is already assigned to another external ID: "
+                f"source_id={source_id}, object_type={object_type}, "
+                f"internal_id={internal_id}."
+            )
+
+        if (
+            external_mapping is not None
+            and external_mapping.source_url == source_url
+            and external_mapping.metadata == metadata
+        ):
+            return external_mapping
+
         timestamp = datetime.now(UTC).isoformat()
         metadata_json = self._serialize_metadata(metadata)
 
-        with self._connect() as connection:
-            connection.execute(
-                """
-                INSERT INTO source_mappings (
-                    source_id,
-                    object_type,
-                    internal_id,
-                    external_id,
-                    source_url,
-                    metadata_json,
-                    created_at,
-                    updated_at
+        try:
+            with self._connect() as connection:
+                connection.execute(
+                    """
+                    INSERT INTO source_mappings (
+                        source_id,
+                        object_type,
+                        internal_id,
+                        external_id,
+                        source_url,
+                        metadata_json,
+                        created_at,
+                        updated_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT (
+                        source_id,
+                        object_type,
+                        external_id
+                    )
+                    DO UPDATE SET
+                        source_url = excluded.source_url,
+                        metadata_json = excluded.metadata_json,
+                        updated_at = excluded.updated_at
+                    WHERE source_mappings.internal_id = excluded.internal_id
+                    """,
+                    (
+                        source_id,
+                        object_type,
+                        internal_id,
+                        external_id,
+                        source_url,
+                        metadata_json,
+                        timestamp,
+                        timestamp,
+                    ),
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT (
-                    source_id,
-                    object_type,
-                    external_id
-                )
-                DO UPDATE SET
-                    internal_id = excluded.internal_id,
-                    source_url = excluded.source_url,
-                    metadata_json = excluded.metadata_json,
-                    updated_at = excluded.updated_at
-                """,
-                (
-                    source_id,
-                    object_type,
-                    internal_id,
-                    external_id,
-                    source_url,
-                    metadata_json,
-                    timestamp,
-                    timestamp,
-                ),
+        except sqlite3.IntegrityError as error:
+            conflicting_mapping = self.get_by_internal_id(
+                source_id=source_id,
+                object_type=object_type,
+                internal_id=internal_id,
             )
+            if (
+                conflicting_mapping is not None
+                and conflicting_mapping.external_id != external_id
+            ):
+                raise SourceMappingConflictError(
+                    "Canonical object is already assigned to another external ID: "
+                    f"source_id={source_id}, object_type={object_type}, "
+                    f"internal_id={internal_id}."
+                ) from error
+            raise
 
         mapping = self.get_by_external_id(
             source_id=source_id,
@@ -192,6 +244,13 @@ class SourceMappingsRepository:
                 f"source_id={source_id}, "
                 f"object_type={object_type}, "
                 f"external_id={external_id}"
+            )
+
+        if mapping.internal_id != internal_id:
+            raise SourceMappingConflictError(
+                "External source mapping is already assigned to another "
+                f"canonical object: source_id={source_id}, "
+                f"object_type={object_type}, external_id={external_id}."
             )
 
         return mapping

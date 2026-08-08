@@ -41,6 +41,7 @@ def create_sync_run(
         items_unchanged=items_unchanged,
         items_cancelled=items_cancelled,
         items_deleted=items_deleted,
+        items_deferred=0,
         items_failed=items_failed,
         error_message=error_message,
         metadata={

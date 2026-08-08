@@ -54,15 +54,96 @@ def create_synchronization_event(
     *,
     event_id: int = 1,
     status: str = "scheduled",
+    deleted_at: str | None = None,
     mapping: CalendarEventMapping | None = None,
 ) -> SynchronizationEvent:
     synchronization_event = Mock(spec=SynchronizationEvent)
     synchronization_event.event = Mock()
     synchronization_event.event.id = event_id
     synchronization_event.event.status = status
+    synchronization_event.event.deleted_at = deleted_at
     synchronization_event.mapping = mapping
 
     return synchronization_event
+
+
+def test_synchronize_event_deletes_confirmed_removed_event() -> None:
+    (
+        synchronizer,
+        _payload,
+        payload_builder,
+        graph_client,
+        mappings_repository,
+    ) = create_synchronizer()
+    mapping = create_mapping()
+    delete_pending = create_mapping(sync_status="delete_pending")
+    deleted = create_mapping(sync_status="deleted")
+    mappings_repository.mark_delete_pending.return_value = delete_pending
+    mappings_repository.mark_deleted.return_value = deleted
+    synchronization_event = create_synchronization_event(
+        deleted_at="2026-08-08T16:00:00+00:00",
+        mapping=mapping,
+    )
+
+    result = synchronizer.synchronize_event(
+        synchronization_event=synchronization_event,
+        calendar_id="calendar-1",
+    )
+
+    assert result.status is EventSynchronizationStatus.DELETED
+    mappings_repository.mark_delete_pending.assert_called_once_with(mapping.id)
+    graph_client.delete_event.assert_called_once_with(
+        calendar_id="calendar-1",
+        event_id="outlook-event-1",
+    )
+    mappings_repository.mark_deleted.assert_called_once_with(mapping_id=mapping.id)
+    payload_builder.build.assert_not_called()
+
+
+def test_synchronize_event_revives_deleted_mapping_for_reappeared_event() -> None:
+    (
+        synchronizer,
+        payload,
+        payload_builder,
+        graph_client,
+        mappings_repository,
+    ) = create_synchronizer()
+    deleted = create_mapping(sync_status="deleted")
+    revived = create_mapping(
+        outlook_event_id=None,
+        outlook_change_key=None,
+        content_hash=None,
+        sync_status="pending",
+    )
+    synchronized = create_mapping(content_hash="new-hash")
+    mappings_repository.revive_deleted.return_value = revived
+    graph_client.create_event.return_value = OutlookEventReference(id="outlook-event-1")
+    mappings_repository.mark_synced.return_value = synchronized
+    synchronization_event = create_synchronization_event(mapping=deleted)
+
+    with patch(
+        "app.synchronization.event_synchronizer.calculate_content_hash",
+        return_value="new-hash",
+    ):
+        result = synchronizer.synchronize_event(
+            synchronization_event=synchronization_event,
+            calendar_id="calendar-1",
+        )
+
+    assert result.status is EventSynchronizationStatus.CREATED
+    mappings_repository.revive_deleted.assert_called_once_with(deleted.id)
+    payload_builder.build.assert_called_once_with(synchronization_event)
+    graph_client.create_event.assert_called_once_with(
+        calendar_id="calendar-1",
+        payload=payload,
+        transaction_id=deleted.transaction_id,
+    )
+    mappings_repository.mark_synced.assert_called_once_with(
+        mapping_id=deleted.id,
+        outlook_event_id="outlook-event-1",
+        outlook_change_key=None,
+        content_hash="new-hash",
+    )
 
 
 def create_synchronizer() -> tuple[

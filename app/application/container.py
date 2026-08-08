@@ -3,6 +3,22 @@ import signal
 from threading import Event
 from types import FrameType
 
+from app.application.api_football_catalog_service import (
+    ApiFootballCatalogService,
+    register_api_football_source,
+)
+from app.application.api_football_fixture_import_service import (
+    ApiFootballFixtureImportService,
+)
+from app.application.api_football_fixture_normalization_service import (
+    ApiFootballFixtureNormalizationService,
+)
+from app.application.api_football_import_orchestrator import (
+    ApiFootballImportOrchestrator,
+)
+from app.application.api_football_import_runtime_service import (
+    ApiFootballImportRuntimeService,
+)
 from app.config.settings import Settings, load_settings
 from app.database.calendar_event_mappings_repository import (
     CalendarEventMappingsRepository,
@@ -14,6 +30,7 @@ from app.database.database import Database
 from app.database.event_participants_repository import EventParticipantsRepository
 from app.database.event_results_repository import EventResultsRepository
 from app.database.event_statistics_repository import EventStatisticsRepository
+from app.database.fixture_import_repository import FixtureImportRepository
 from app.database.participants_catalog import initialize_participants_catalog
 from app.database.participants_repository import ParticipantsRepository
 from app.database.season_participants_repository import SeasonParticipantsRepository
@@ -30,6 +47,10 @@ from app.database.synchronization_query_repository import (
 from app.graph.authentication import GraphTokenProvider
 from app.graph.client import GraphClient
 from app.logging.logger import configure_logging
+from app.providers.api_football.catalog_adapter import ApiFootballCatalogAdapter
+from app.providers.api_football.client import ApiFootballClient
+from app.providers.api_football.fixture_adapter import ApiFootballFixtureAdapter
+from app.providers.api_football.team_mappings import PREMIER_LEAGUE_TEAM_MAPPING
 from app.scheduler.scheduler import Scheduler
 from app.synchronization.event_synchronizer import EventSynchronizer
 from app.synchronization.outlook_event_payload_builder import (
@@ -84,6 +105,13 @@ class ApplicationContainer:
         self.source_mappings_repository = SourceMappingsRepository(
             self.settings.database_path
         )
+        self.fixture_import_repository = FixtureImportRepository(
+            self.settings.database_path
+        )
+        self.api_football_fixture_import_service = ApiFootballFixtureImportService(
+            data_sources_repository=self.data_sources_repository,
+            fixture_import_repository=self.fixture_import_repository,
+        )
         self.sync_runs_repository = SyncRunsRepository(self.settings.database_path)
         self.graph_token_provider = GraphTokenProvider(
             tenant_id=self.settings.m365_tenant_id,
@@ -94,6 +122,72 @@ class ApplicationContainer:
             base_url=self.settings.graph_base_url,
             user_id=self.settings.m365_user_id,
             token_provider=self.graph_token_provider,
+        )
+        self.api_football_client = (
+            ApiFootballClient(settings=self.settings.api_football)
+            if self.settings.api_football.enabled
+            else None
+        )
+        self.api_football_catalog_adapter = (
+            ApiFootballCatalogAdapter(client=self.api_football_client)
+            if self.api_football_client is not None
+            else None
+        )
+        self.api_football_catalog_service = (
+            ApiFootballCatalogService(
+                settings=self.settings.api_football,
+                adapter=self.api_football_catalog_adapter,
+                sports_repository=self.sports_repository,
+                competitions_repository=self.competitions_repository,
+                seasons_repository=self.seasons_repository,
+                participants_repository=self.participants_repository,
+                season_participants_repository=self.season_participants_repository,
+                data_sources_repository=self.data_sources_repository,
+                source_mappings_repository=self.source_mappings_repository,
+                team_mapping=PREMIER_LEAGUE_TEAM_MAPPING,
+            )
+            if self.api_football_catalog_adapter is not None
+            else None
+        )
+        self.api_football_fixture_adapter = (
+            ApiFootballFixtureAdapter(client=self.api_football_client)
+            if self.api_football_client is not None
+            else None
+        )
+        self.api_football_fixture_normalization_service = (
+            ApiFootballFixtureNormalizationService(
+                adapter=self.api_football_fixture_adapter,
+                sports_repository=self.sports_repository,
+                competitions_repository=self.competitions_repository,
+                seasons_repository=self.seasons_repository,
+                participants_repository=self.participants_repository,
+                data_sources_repository=self.data_sources_repository,
+                source_mappings_repository=self.source_mappings_repository,
+            )
+            if self.api_football_fixture_adapter is not None
+            else None
+        )
+        catalog_service = self.api_football_catalog_service
+        normalization_service = self.api_football_fixture_normalization_service
+        self.api_football_import_orchestrator = (
+            ApiFootballImportOrchestrator(
+                catalog_service=catalog_service,
+                normalization_service=normalization_service,
+                import_service=self.api_football_fixture_import_service,
+                data_sources_repository=self.data_sources_repository,
+                sync_runs_repository=self.sync_runs_repository,
+            )
+            if catalog_service is not None and normalization_service is not None
+            else None
+        )
+        self.api_football_import_runtime_service = (
+            ApiFootballImportRuntimeService(
+                orchestrator=self.api_football_import_orchestrator,
+                sync_runs_repository=self.sync_runs_repository,
+                logger=self.logger,
+            )
+            if self.api_football_import_orchestrator is not None
+            else None
         )
         self.outlook_event_payload_builder = OutlookEventPayloadBuilder()
         self.event_synchronizer = EventSynchronizer(
@@ -112,7 +206,11 @@ class ApplicationContainer:
             logger=self.logger,
         )
         self.scheduler = Scheduler(
-            interval_seconds=self.settings.heartbeat_interval,
+            interval_seconds=(
+                self.settings.api_football.import_interval_seconds
+                if self.settings.api_football.enabled
+                else self.settings.heartbeat_interval
+            ),
             logger=self.logger,
         )
         self.stop_event = Event()
@@ -138,6 +236,10 @@ class ApplicationContainer:
             competitions_repository=self.competitions_repository,
             seasons_repository=self.seasons_repository,
         )
+        register_api_football_source(
+            settings=self.settings.api_football,
+            repository=self.data_sources_repository,
+        )
         self.database.record_startup()
 
         self.logger.info("SMART Sports Calendar container started")
@@ -160,8 +262,13 @@ class ApplicationContainer:
         else:
             self.logger.info("Microsoft Graph startup validation is disabled")
 
+        self.logger.info(
+            "API-Football provider is %s",
+            "enabled" if self.api_football_client is not None else "disabled",
+        )
+
         self.scheduler.run(
-            task=self._run_synchronization,
+            task=self._run_scheduled_cycle,
             stop_event=self.stop_event,
         )
         self.logger.info("SMART Sports Calendar container stopped")
@@ -187,3 +294,10 @@ class ApplicationContainer:
             calendar_id=self.settings.outlook_calendar_id,
             limit=self.settings.synchronization_batch_limit,
         )
+
+    def _run_scheduled_cycle(self) -> None:
+        if self.api_football_import_runtime_service is not None:
+            import_result = self.api_football_import_runtime_service.run()
+            if import_result is None:
+                return
+        self._run_synchronization()

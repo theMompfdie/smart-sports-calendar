@@ -58,6 +58,34 @@ class SeasonsRepository:
 
         return self._map_row(row)
 
+    def get_current_for_competition(
+        self,
+        competition_id: int,
+    ) -> list[Season]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT
+                    id,
+                    competition_id,
+                    season_key,
+                    name,
+                    start_date,
+                    end_date,
+                    is_current,
+                    metadata_json,
+                    created_at,
+                    updated_at
+                FROM seasons
+                WHERE competition_id = ?
+                  AND is_current = 1
+                ORDER BY id
+                """,
+                (competition_id,),
+            ).fetchall()
+
+        return [self._map_row(row) for row in rows]
+
     def upsert(
         self,
         competition_id: int,

@@ -78,6 +78,10 @@ class SynchronizationQueryRepository:
                     'synced',
                     'delete_pending'
                 )
+                OR (
+                    cem.sync_status = 'deleted'
+                    AND se.deleted_at IS NULL
+                )
                 ORDER BY
                     se.start_time,
                     se.id

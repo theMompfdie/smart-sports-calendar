@@ -20,6 +20,7 @@ class SyncRun:
     items_unchanged: int
     items_cancelled: int
     items_deleted: int
+    items_deferred: int
     items_failed: int
     error_message: str | None
     metadata: dict[str, Any] | None
@@ -131,6 +132,8 @@ class SyncRunsRepository:
             )
             sync_run_id = cursor.lastrowid
 
+        if sync_run_id is None:
+            raise RuntimeError("SQLite did not return an ID for the sync run.")
         sync_run = self.get_by_id(sync_run_id)
 
         if sync_run is None:
@@ -151,6 +154,7 @@ class SyncRunsRepository:
         items_unchanged: int = 0,
         items_cancelled: int = 0,
         items_deleted: int,
+        items_deferred: int = 0,
         items_failed: int,
     ) -> SyncRun | None:
         with self._connect() as connection:
@@ -163,6 +167,7 @@ class SyncRunsRepository:
                     items_unchanged = ?,
                     items_cancelled = ?,
                     items_deleted = ?,
+                    items_deferred = ?,
                     items_failed = ?
                 WHERE id = ?
                   AND status = 'running'
@@ -174,6 +179,7 @@ class SyncRunsRepository:
                     items_unchanged,
                     items_cancelled,
                     items_deleted,
+                    items_deferred,
                     items_failed,
                     sync_run_id,
                 ),
@@ -194,6 +200,7 @@ class SyncRunsRepository:
         items_unchanged: int = 0,
         items_cancelled: int = 0,
         items_deleted: int,
+        items_deferred: int = 0,
         items_failed: int,
         metadata: dict[str, Any] | None = None,
     ) -> SyncRun | None:
@@ -208,6 +215,7 @@ class SyncRunsRepository:
             items_unchanged=items_unchanged,
             items_cancelled=items_cancelled,
             items_deleted=items_deleted,
+            items_deferred=items_deferred,
             items_failed=items_failed,
             error_message=None,
             metadata=metadata,
@@ -224,6 +232,7 @@ class SyncRunsRepository:
         items_unchanged: int = 0,
         items_cancelled: int = 0,
         items_deleted: int = 0,
+        items_deferred: int = 0,
         items_failed: int = 0,
         metadata: dict[str, Any] | None = None,
     ) -> SyncRun | None:
@@ -236,6 +245,7 @@ class SyncRunsRepository:
             items_unchanged=items_unchanged,
             items_cancelled=items_cancelled,
             items_deleted=items_deleted,
+            items_deferred=items_deferred,
             items_failed=items_failed,
             error_message=error_message,
             metadata=metadata,
@@ -325,6 +335,7 @@ class SyncRunsRepository:
         items_unchanged: int,
         items_cancelled: int,
         items_deleted: int,
+        items_deferred: int,
         items_failed: int,
         error_message: str | None,
         metadata: dict[str, Any] | None,
@@ -344,6 +355,7 @@ class SyncRunsRepository:
                     items_unchanged = ?,
                     items_cancelled = ?,
                     items_deleted = ?,
+                    items_deferred = ?,
                     items_failed = ?,
                     error_message = ?,
                     metadata_json = ?
@@ -359,6 +371,7 @@ class SyncRunsRepository:
                     items_unchanged,
                     items_cancelled,
                     items_deleted,
+                    items_deferred,
                     items_failed,
                     error_message,
                     metadata_json,
@@ -410,6 +423,7 @@ class SyncRunsRepository:
                 items_unchanged,
                 items_cancelled,
                 items_deleted,
+                items_deferred,
                 items_failed,
                 error_message,
                 metadata_json
@@ -433,6 +447,7 @@ class SyncRunsRepository:
             items_unchanged=row["items_unchanged"],
             items_cancelled=row["items_cancelled"],
             items_deleted=row["items_deleted"],
+            items_deferred=row["items_deferred"],
             items_failed=row["items_failed"],
             error_message=row["error_message"],
             metadata=(json.loads(metadata_json) if metadata_json is not None else None),

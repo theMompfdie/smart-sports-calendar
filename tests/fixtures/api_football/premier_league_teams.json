@@ -1,0 +1,30 @@
+{
+  "errors": [],
+  "results": 20,
+  "paging": {
+    "current": 1,
+    "total": 1
+  },
+  "response": [
+    {"team": {"id": 42, "name": "Arsenal", "code": "ARS", "country": "England", "national": false, "logo": "https://media.api-sports.io/football/teams/42.png"}, "venue": {"name": "Emirates Stadium", "city": "London"}},
+    {"team": {"id": 66, "name": "Aston Villa", "code": "AVL", "country": "England", "national": false, "logo": "https://media.api-sports.io/football/teams/66.png"}, "venue": {"name": "Villa Park", "city": "Birmingham"}},
+    {"team": {"id": 35, "name": "Bournemouth", "code": "BOU", "country": "England", "national": false, "logo": "https://media.api-sports.io/football/teams/35.png"}, "venue": {"name": "Vitality Stadium", "city": "Bournemouth"}},
+    {"team": {"id": 55, "name": "Brentford", "code": "BRE", "country": "England", "national": false, "logo": "https://media.api-sports.io/football/teams/55.png"}, "venue": {"name": "Brentford Community Stadium", "city": "Brentford"}},
+    {"team": {"id": 51, "name": "Brighton", "code": "BRI", "country": "England", "national": false, "logo": "https://media.api-sports.io/football/teams/51.png"}, "venue": {"name": "American Express Stadium", "city": "Falmer"}},
+    {"team": {"id": 49, "name": "Chelsea", "code": "CHE", "country": "England", "national": false, "logo": "https://media.api-sports.io/football/teams/49.png"}, "venue": {"name": "Stamford Bridge", "city": "London"}},
+    {"team": {"id": 1346, "name": "Coventry", "code": "COV", "country": "England", "national": false, "logo": "https://media.api-sports.io/football/teams/1346.png"}, "venue": {"name": "Coventry Building Society Arena", "city": "Coventry"}},
+    {"team": {"id": 52, "name": "Crystal Palace", "code": "CRY", "country": "England", "national": false, "logo": "https://media.api-sports.io/football/teams/52.png"}, "venue": {"name": "Selhurst Park", "city": "London"}},
+    {"team": {"id": 45, "name": "Everton", "code": "EVE", "country": "England", "national": false, "logo": "https://media.api-sports.io/football/teams/45.png"}, "venue": {"name": "Hill Dickinson Stadium", "city": "Liverpool"}},
+    {"team": {"id": 36, "name": "Fulham", "code": "FUL", "country": "England", "national": false, "logo": "https://media.api-sports.io/football/teams/36.png"}, "venue": {"name": "Craven Cottage", "city": "London"}},
+    {"team": {"id": 64, "name": "Hull City", "code": "HUL", "country": "England", "national": false, "logo": "https://media.api-sports.io/football/teams/64.png"}, "venue": {"name": "MKM Stadium", "city": "Hull"}},
+    {"team": {"id": 57, "name": "Ipswich", "code": "IPS", "country": "England", "national": false, "logo": "https://media.api-sports.io/football/teams/57.png"}, "venue": {"name": "Portman Road", "city": "Ipswich"}},
+    {"team": {"id": 63, "name": "Leeds", "code": "LEE", "country": "England", "national": false, "logo": "https://media.api-sports.io/football/teams/63.png"}, "venue": {"name": "Elland Road", "city": "Leeds"}},
+    {"team": {"id": 40, "name": "Liverpool", "code": "LIV", "country": "England", "national": false, "logo": "https://media.api-sports.io/football/teams/40.png"}, "venue": {"name": "Anfield", "city": "Liverpool"}},
+    {"team": {"id": 50, "name": "Manchester City", "code": "MAC", "country": "England", "national": false, "logo": "https://media.api-sports.io/football/teams/50.png"}, "venue": {"name": "Etihad Stadium", "city": "Manchester"}},
+    {"team": {"id": 33, "name": "Manchester United", "code": "MUN", "country": "England", "national": false, "logo": "https://media.api-sports.io/football/teams/33.png"}, "venue": {"name": "Old Trafford", "city": "Manchester"}},
+    {"team": {"id": 34, "name": "Newcastle", "code": "NEW", "country": "England", "national": false, "logo": "https://media.api-sports.io/football/teams/34.png"}, "venue": {"name": "St. James' Park", "city": "Newcastle upon Tyne"}},
+    {"team": {"id": 65, "name": "Nottingham Forest", "code": "NOT", "country": "England", "national": false, "logo": "https://media.api-sports.io/football/teams/65.png"}, "venue": {"name": "The City Ground", "city": "Nottingham"}},
+    {"team": {"id": 746, "name": "Sunderland", "code": "SUN", "country": "England", "national": false, "logo": "https://media.api-sports.io/football/teams/746.png"}, "venue": {"name": "Stadium of Light", "city": "Sunderland"}},
+    {"team": {"id": 47, "name": "Tottenham", "code": "TOT", "country": "England", "national": false, "logo": "https://media.api-sports.io/football/teams/47.png"}, "venue": {"name": "Tottenham Hotspur Stadium", "city": "London"}}
+  ]
+}

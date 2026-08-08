@@ -79,6 +79,15 @@ class SportsEventsRepository:
 
         return None if row is None else self._map_row(row)
 
+    def get_by_id(self, event_id: int) -> SportsEvent | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM sports_events WHERE id = ?",
+                (event_id,),
+            ).fetchone()
+
+        return None if row is None else self._map_row(row)
+
     def upsert(
         self,
         sport_id: int,

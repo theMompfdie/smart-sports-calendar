@@ -1,0 +1,20 @@
+{
+  "api_version": "3.9.3",
+  "prepared_on": "2026-08-08",
+  "provenance": "Deterministic response-shape fixtures based on the official API-Football v3 documentation and the repository-owned canonical 2026/27 Premier League catalog. No live provider request was made.",
+  "fixtures": [
+    "premier_league.json",
+    "premier_league_teams.json",
+    "premier_league_fixtures.json"
+  ],
+  "sanitization": [
+    "No request headers, account data, request identifiers, or coverage fields were included.",
+    "Retained only fields required for competition, season, team, and venue mapping tests.",
+    "Used deterministic season dates matching the repository's canonical 2026/27 test catalog.",
+    "Fixture examples cover supported lifecycle statuses without retaining provider request metadata."
+  ],
+  "source_documentation": [
+    "https://www.api-football.com/documentation-v3",
+    "https://www.api-football.com/news/post/how-to-get-all-teams-and-their-ids"
+  ]
+}

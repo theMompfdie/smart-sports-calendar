@@ -1,0 +1,57 @@
+{
+  "errors": [],
+  "results": 10,
+  "paging": {"current": 1, "total": 1},
+  "response": [
+    {
+      "fixture": {"id": 900001, "date": "2026-08-21T14:00:00+00:00", "timestamp": 1787320800, "timezone": "UTC", "updated": "2026-08-08T12:00:00+00:00", "venue": {"name": "Emirates Stadium", "city": "London"}, "status": {"long": "Not Started", "short": "NS"}},
+      "league": {"id": 39, "season": 2026, "round": "Regular Season - 1"},
+      "teams": {"home": {"id": 42, "name": "Provider Arsenal"}, "away": {"id": 66, "name": "Provider Aston Villa"}}
+    },
+    {
+      "fixture": {"id": 900002, "date": "2026-08-22T00:00:00+00:00", "timestamp": 1787356800, "timezone": "UTC", "venue": null, "status": {"long": "Time To Be Defined", "short": "TBD"}},
+      "league": {"id": 39, "season": 2026, "round": "Regular Season - 1"},
+      "teams": {"home": {"id": 33, "name": "Provider United"}, "away": {"id": 40, "name": "Provider Liverpool"}}
+    },
+    {
+      "fixture": {"id": 900003, "date": "2026-08-22T14:00:00Z", "timestamp": 1787407200, "timezone": "UTC", "venue": {"name": "Stamford Bridge", "city": "London"}, "status": {"long": "In Play", "short": "LIVE"}},
+      "league": {"id": 39, "season": 2026, "round": "Regular Season - 1"},
+      "teams": {"home": {"id": 49, "name": "Provider Chelsea"}, "away": {"id": 50, "name": "Provider City"}}
+    },
+    {
+      "fixture": {"id": 900004, "date": "2026-08-23T14:00:00+00:00", "timestamp": 1787493600, "timezone": "UTC", "venue": {"name": "Craven Cottage", "city": "London"}, "status": {"long": "Match Finished", "short": "FT"}},
+      "league": {"id": 39, "season": 2026, "round": "Regular Season - 1"},
+      "teams": {"home": {"id": 36, "name": "Provider Fulham"}, "away": {"id": 34, "name": "Provider Newcastle"}}
+    },
+    {
+      "fixture": {"id": 900005, "date": "2026-08-24T14:00:00+00:00", "timestamp": 1787580000, "timezone": "UTC", "venue": {"name": "Goodison", "city": "Liverpool"}, "status": {"long": "Match Postponed", "short": "PST"}},
+      "league": {"id": 39, "season": 2026, "round": "Regular Season - 1"},
+      "teams": {"home": {"id": 45, "name": "Provider Everton"}, "away": {"id": 47, "name": "Provider Tottenham"}}
+    },
+    {
+      "fixture": {"id": 900006, "date": "2026-08-25T14:00:00+00:00", "timestamp": 1787666400, "timezone": "UTC", "venue": {"name": "Community Stadium", "city": "Brentford"}, "status": {"long": "Match Cancelled", "short": "CANC"}},
+      "league": {"id": 39, "season": 2026, "round": "Regular Season - 1"},
+      "teams": {"home": {"id": 55, "name": "Provider Brentford"}, "away": {"id": 51, "name": "Provider Brighton"}}
+    },
+    {
+      "fixture": {"id": 900007, "date": "2026-08-26T14:00:00+00:00", "timestamp": 1787752800, "timezone": "UTC", "venue": {"name": "Selhurst Park", "city": "London"}, "status": {"long": "Match Suspended", "short": "SUSP"}},
+      "league": {"id": 39, "season": 2026, "round": "Regular Season - 1"},
+      "teams": {"home": {"id": 52, "name": "Provider Palace"}, "away": {"id": 35, "name": "Provider Bournemouth"}}
+    },
+    {
+      "fixture": {"id": 900008, "date": "2026-08-27T14:00:00+00:00", "timestamp": 1787839200, "timezone": "UTC", "venue": {"name": "Stadium of Light", "city": "Sunderland"}, "status": {"long": "Match Abandoned", "short": "ABD"}},
+      "league": {"id": 39, "season": 2026, "round": "Regular Season - 1"},
+      "teams": {"home": {"id": 746, "name": "Provider Sunderland"}, "away": {"id": 63, "name": "Provider Leeds"}}
+    },
+    {
+      "fixture": {"id": 900009, "date": "2026-08-28T14:00:00+00:00", "timestamp": 1787925600, "timezone": "UTC", "venue": {"name": "MKM Stadium", "city": "Hull"}, "status": {"long": "Match Awarded", "short": "AWD"}},
+      "league": {"id": 39, "season": 2026, "round": "Regular Season - 1"},
+      "teams": {"home": {"id": 64, "name": "Provider Hull"}, "away": {"id": 57, "name": "Provider Ipswich"}}
+    },
+    {
+      "fixture": {"id": 900010, "date": "2026-08-29T14:00:00+00:00", "timestamp": 1788012000, "timezone": "UTC", "venue": {"name": "Coventry Arena", "city": "Coventry"}, "status": {"long": "Walkover", "short": "WO"}},
+      "league": {"id": 39, "season": 2026, "round": "Regular Season - 1"},
+      "teams": {"home": {"id": 1346, "name": "Provider Coventry"}, "away": {"id": 65, "name": "Provider Forest"}}
+    }
+  ]
+}

@@ -201,3 +201,24 @@ def test_upsert_does_not_create_duplicate_source_keys(
     assert len(data_sources) == 1
     assert second_source.id == first_source.id
     assert second_source.name == "football-data.org"
+
+
+def test_upsert_returns_unchanged_source_without_timestamp_update(
+    tmp_path: Path,
+) -> None:
+    repository = create_repository(tmp_path)
+    source = repository.upsert(
+        source_key="api_football",
+        name="API-Football",
+        base_url="https://v3.football.api-sports.io",
+        metadata={"api_version_family": "v3"},
+    )
+
+    repeated_source = repository.upsert(
+        source_key="api_football",
+        name="API-Football",
+        base_url="https://v3.football.api-sports.io",
+        metadata={"api_version_family": "v3"},
+    )
+
+    assert repeated_source == source

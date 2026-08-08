@@ -52,6 +52,29 @@ class ParticipantsRepository:
 
         return None if row is None else self._map_row(row)
 
+    def get_by_id(self, participant_id: int) -> Participant | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                """
+                SELECT
+                    id,
+                    sport_id,
+                    participant_key,
+                    participant_type,
+                    name,
+                    short_name,
+                    country_code,
+                    metadata_json,
+                    created_at,
+                    updated_at
+                FROM participants
+                WHERE id = ?
+                """,
+                (participant_id,),
+            ).fetchone()
+
+        return None if row is None else self._map_row(row)
+
     def upsert(
         self,
         sport_id: int,

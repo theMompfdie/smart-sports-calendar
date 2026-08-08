@@ -21,6 +21,19 @@ def test_get_by_key_returns_none_for_unknown_participant(tmp_path: Path) -> None
     assert repository.get_by_key(sport_id, "unknown") is None
 
 
+def test_get_by_id_returns_existing_participant(tmp_path: Path) -> None:
+    _, sport_id, repository = create_repository(tmp_path)
+    created = repository.upsert(
+        sport_id=sport_id,
+        participant_key="arsenal",
+        participant_type="team",
+        name="Arsenal",
+    )
+
+    assert repository.get_by_id(created.id) == created
+    assert repository.get_by_id(created.id + 1) is None
+
+
 def test_upsert_creates_participant(tmp_path: Path) -> None:
     _, sport_id, repository = create_repository(tmp_path)
     participant = repository.upsert(
