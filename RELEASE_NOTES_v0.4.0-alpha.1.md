@@ -109,8 +109,7 @@ notes are used to publish the pre-release.
 - GHCR image publication is not implemented; the current deployment builds
   from reviewed source.
 
-## Publication gate
+## Release status
 
-Publish these notes only after the Phase 4 completion PR is merged into `main`,
-the tag target is verified, and GitHub is ready to mark the release explicitly
-as a pre-release.
+Published as the Phase 4 GitHub pre-release from the verified `main` commit
+tagged `v0.4.0-alpha.1`.
