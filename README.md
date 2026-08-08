@@ -143,7 +143,7 @@ The database model covers sports, competitions, seasons, participants, season pa
 ## Technology Stack
 
 | Component | Technology |
-|---|---|
+| --- | --- |
 | Language | Python 3.13 |
 | Containerization | Docker |
 | Orchestration | Docker Compose / Portainer |
@@ -323,7 +323,7 @@ feature/* -> develop -> release/* -> main -> Release
 
 ### Phase 4 – Initial Football Provider
 
-**Status: Next**
+**Status:** _Next_
 
 - first external football data provider
 - Premier League fixture import
@@ -334,7 +334,7 @@ feature/* -> develop -> release/* -> main -> Release
 
 ### Phase 5 – Additional Domestic Competitions
 
-**Status: Planned**
+**Status:** _Planned_
 
 - Austrian competitions
 - German competitions
@@ -342,7 +342,7 @@ feature/* -> develop -> release/* -> main -> Release
 
 ### Phase 6 – UEFA Competitions
 
-**Status: Planned**
+**Status:** _Planned_
 
 - Champions League
 - Europa League
@@ -352,7 +352,7 @@ feature/* -> develop -> release/* -> main -> Release
 
 ### Phase 7 – NFL Provider
 
-**Status: Planned**
+**Status:** _Planned_
 
 - NFL teams
 - regular season and playoffs
