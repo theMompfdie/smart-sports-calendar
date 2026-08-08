@@ -17,6 +17,7 @@ class ApiFootballSettings:
     max_attempts: int = 3
     retry_base_delay_seconds: float = 1.0
     retry_max_delay_seconds: float = 30.0
+    import_interval_seconds: int = 3600
 
 
 @dataclass(frozen=True)
@@ -171,6 +172,13 @@ def load_api_football_settings() -> ApiFootballSettings:
             "API_FOOTBALL_RETRY_MAX_DELAY_SECONDS must be greater than or "
             "equal to API_FOOTBALL_RETRY_BASE_DELAY_SECONDS."
         )
+    try:
+        import_interval_seconds = get_positive_integer_environment_variable(
+            "API_FOOTBALL_IMPORT_INTERVAL_SECONDS",
+            default=3600,
+        )
+    except ValueError as error:
+        raise ProviderConfigurationError(str(error)) from error
 
     return ApiFootballSettings(
         enabled=enabled,
@@ -187,6 +195,7 @@ def load_api_football_settings() -> ApiFootballSettings:
         max_attempts=max_attempts,
         retry_base_delay_seconds=retry_base_delay_seconds,
         retry_max_delay_seconds=retry_max_delay_seconds,
+        import_interval_seconds=import_interval_seconds,
     )
 
 

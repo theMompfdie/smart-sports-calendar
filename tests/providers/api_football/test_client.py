@@ -267,10 +267,11 @@ def test_get_page_retries_timeout_with_bounded_exponential_delay() -> None:
         create_response(),
     )
 
-    create_client(transport, sleep=delays).get_page("/fixtures")
+    page = create_client(transport, sleep=delays).get_page("/fixtures")
 
     assert delays == [1.0, 2.0]
     assert len(transport.requests) == 3
+    assert page.metadata.attempt_count == 3
 
 
 def test_get_page_honors_and_caps_rate_limit_retry_after() -> None:

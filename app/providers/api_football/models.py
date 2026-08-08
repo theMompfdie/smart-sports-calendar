@@ -27,6 +27,7 @@ class FetchMetadata:
     fetched_at_utc: datetime
     request_id: str | None
     rate_limits: RateLimitSnapshot
+    attempt_count: int = 1
 
 
 @dataclass(frozen=True)
@@ -42,3 +43,4 @@ class ApiFootballCollection:
     page_count: int
     fetched_at_utc: datetime
     rate_limits: RateLimitSnapshot
+    request_attempts: int = 1

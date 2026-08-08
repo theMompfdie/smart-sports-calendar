@@ -13,6 +13,12 @@ from app.application.api_football_fixture_import_service import (
 from app.application.api_football_fixture_normalization_service import (
     ApiFootballFixtureNormalizationService,
 )
+from app.application.api_football_import_orchestrator import (
+    ApiFootballImportOrchestrator,
+)
+from app.application.api_football_import_runtime_service import (
+    ApiFootballImportRuntimeService,
+)
 from app.config.settings import Settings, load_settings
 from app.database.calendar_event_mappings_repository import (
     CalendarEventMappingsRepository,
@@ -161,6 +167,28 @@ class ApplicationContainer:
             if self.api_football_fixture_adapter is not None
             else None
         )
+        catalog_service = self.api_football_catalog_service
+        normalization_service = self.api_football_fixture_normalization_service
+        self.api_football_import_orchestrator = (
+            ApiFootballImportOrchestrator(
+                catalog_service=catalog_service,
+                normalization_service=normalization_service,
+                import_service=self.api_football_fixture_import_service,
+                data_sources_repository=self.data_sources_repository,
+                sync_runs_repository=self.sync_runs_repository,
+            )
+            if catalog_service is not None and normalization_service is not None
+            else None
+        )
+        self.api_football_import_runtime_service = (
+            ApiFootballImportRuntimeService(
+                orchestrator=self.api_football_import_orchestrator,
+                sync_runs_repository=self.sync_runs_repository,
+                logger=self.logger,
+            )
+            if self.api_football_import_orchestrator is not None
+            else None
+        )
         self.outlook_event_payload_builder = OutlookEventPayloadBuilder()
         self.event_synchronizer = EventSynchronizer(
             payload_builder=self.outlook_event_payload_builder,
@@ -178,7 +206,11 @@ class ApplicationContainer:
             logger=self.logger,
         )
         self.scheduler = Scheduler(
-            interval_seconds=self.settings.heartbeat_interval,
+            interval_seconds=(
+                self.settings.api_football.import_interval_seconds
+                if self.settings.api_football.enabled
+                else self.settings.heartbeat_interval
+            ),
             logger=self.logger,
         )
         self.stop_event = Event()
@@ -236,7 +268,7 @@ class ApplicationContainer:
         )
 
         self.scheduler.run(
-            task=self._run_synchronization,
+            task=self._run_scheduled_cycle,
             stop_event=self.stop_event,
         )
         self.logger.info("SMART Sports Calendar container stopped")
@@ -262,3 +294,10 @@ class ApplicationContainer:
             calendar_id=self.settings.outlook_calendar_id,
             limit=self.settings.synchronization_batch_limit,
         )
+
+    def _run_scheduled_cycle(self) -> None:
+        if self.api_football_import_runtime_service is not None:
+            import_result = self.api_football_import_runtime_service.run()
+            if import_result is None:
+                return
+        self._run_synchronization()

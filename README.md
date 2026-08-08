@@ -7,9 +7,9 @@
 **Current release:** `v0.3.0-alpha.1`  
 **Development stage:** Alpha  
 **Completed phases:** Phase 1, Phase 2, and Phase 3  
-**Automated tests:** 451 passing tests
+**Automated tests:** 468 passing tests
 
-The application foundation, persistent domain model, repository layer, Microsoft Graph integration, Outlook synchronization engine, API-Football client, Premier League catalog mapping, fixture normalization, and idempotent fixture persistence are implemented. Automated provider scheduling remains planned.
+The application foundation, persistent domain model, repository layer, Microsoft Graph integration, Outlook synchronization engine, and the scheduled, reported API-Football Premier League import runtime are implemented.
 
 ## Project Vision
 
@@ -73,16 +73,21 @@ The application focuses on:
 - atomic, idempotent fixture persistence with stable event source mappings
 - explicit create, update, skip, cancel, remove, and TBD-defer decisions
 - lifecycle correction and two-observation authoritative removal handling
+- scheduled non-overlapping provider-import orchestration
+- persistent import-run counters, recovery, and sanitized rate-limit diagnostics
+- successful-import handoff to the existing Outlook synchronization runtime
 - deterministic mocked tests without live provider calls
 
-The catalog, normalization, and fixture-import services are dependency-injected
-but are not scheduled automatically. Persistent import reporting and
-provider-to-Outlook orchestration remain planned for later Phase 4 blocks.
+The catalog, normalization, fixture-import, reporting, and runtime services are
+dependency-injected. API-Football remains opt-in and performs no provider call
+unless explicitly enabled.
 See [`docs/api-football-catalog-mapping.md`](docs/api-football-catalog-mapping.md)
 and
 [`docs/api-football-fixture-normalization.md`](docs/api-football-fixture-normalization.md)
 and
 [`docs/api-football-fixture-import.md`](docs/api-football-fixture-import.md)
+and
+[`docs/api-football-import-runtime.md`](docs/api-football-import-runtime.md)
 for the implemented boundaries.
 
 ### Database and Persistence
@@ -95,6 +100,7 @@ for the implemented boundaries.
 - synchronization run history, counters, errors, and JSON metadata
 - persistent transaction IDs for safe event-creation retries
 - persistent fixture-removal candidates with distinct-observation protection
+- separately queryable provider-import and calendar-sync run history
 
 ### Catalog and Repository Layer
 
@@ -259,6 +265,7 @@ API_FOOTBALL_READ_TIMEOUT_SECONDS=30
 API_FOOTBALL_MAX_ATTEMPTS=3
 API_FOOTBALL_RETRY_BASE_DELAY_SECONDS=1
 API_FOOTBALL_RETRY_MAX_DELAY_SECONDS=30
+API_FOOTBALL_IMPORT_INTERVAL_SECONDS=3600
 ```
 
 `OUTLOOK_CALENDAR_ID` may be supplied directly. Otherwise, the configured calendar name is resolved through Microsoft Graph. `SYNCHRONIZATION_BATCH_LIMIT` limits the number of events processed in one run.
@@ -266,9 +273,11 @@ API_FOOTBALL_RETRY_MAX_DELAY_SECONDS=30
 Keep `GRAPH_STARTUP_VALIDATION_ENABLED` enabled for normal deployments. Disable it only for isolated tests or environments without Graph connectivity. Never commit secrets.
 
 API-Football is disabled by default. When `API_FOOTBALL_ENABLED=true`,
-`API_FOOTBALL_API_KEY` is required. The client is constructed at startup but
-performs no live request until a later import block invokes it. The API key is
-sent only in the `x-apisports-key` header and must never be logged.
+`API_FOOTBALL_API_KEY` is required. The application imports the mapped current
+Premier League season every `API_FOOTBALL_IMPORT_INTERVAL_SECONDS`, persists a
+separate provider-import report, and then runs Outlook synchronization after a
+successful import. The API key is sent only in the `x-apisports-key` header and
+must never be logged.
 
 ## Deployment
 
@@ -378,6 +387,7 @@ feature/* -> develop -> release/* -> main -> Release
 - Premier League fixture validation and canonical-ready normalization implemented
 - Premier League fixture persistence and import implemented
 - idempotent incremental updates and lifecycle reconciliation implemented
+- import reporting, recovery, scheduling, and Outlook handoff implemented
 
 ### Phase 5 – Additional Domestic Competitions
 
@@ -441,14 +451,14 @@ feature/* -> develop -> release/* -> main -> Release
 
 This remains an alpha release.
 
-- API-Football fetching and persistence are not orchestrated or scheduled yet
+- complete provider-to-SQLite-to-mocked-Graph end-to-end coverage remains Phase 4.7
 - no administrative user interface
 - synchronization locking is process-local only
 - multiple application instances must not synchronize the same calendar/database concurrently
 - distributed locking and supported multi-instance coordination are not implemented
 - production behavior still requires validation against a real provider and target calendar
 
-The synchronization engine, API-Football catalog mapping, fixture normalization, and transactional lifecycle-aware persistence are implemented and tested with external boundaries mocked. Later Phase 4 blocks add persistent import reporting, scheduling, and the final provider-to-Outlook path.
+The synchronization engine and scheduled API-Football catalog-to-canonical-to-Outlook runtime are implemented with external boundaries mocked. Phase 4.7 adds the complete representative provider-to-mocked-Graph end-to-end validation.
 
 ## Project Goals
 

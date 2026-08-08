@@ -89,6 +89,25 @@ docker compose down
 
 The command above **does not delete** persistent data.
 
+## Scheduled API-Football imports
+
+API-Football is opt-in. Configure these values through the deployment secret
+store or Portainer environment; never commit a real key:
+
+```env
+API_FOOTBALL_ENABLED=true
+API_FOOTBALL_API_KEY=replace-with-deployment-secret
+API_FOOTBALL_IMPORT_INTERVAL_SECONDS=3600
+```
+
+When enabled, every interval performs a complete current Premier League import
+and invokes Outlook synchronization only after the canonical import succeeds.
+When disabled, the existing calendar-only cycle uses `HEARTBEAT_INTERVAL`.
+
+Provider-import and calendar-sync outcomes are stored separately in
+`sync_runs`. The runtime lock is process-local, so deploy only one application
+instance for a shared SQLite database and Outlook calendar.
+
 ---
 
 # Persistent Storage

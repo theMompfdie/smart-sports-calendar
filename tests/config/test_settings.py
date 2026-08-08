@@ -32,6 +32,7 @@ def configure_required_environment(
         "API_FOOTBALL_MAX_ATTEMPTS",
         "API_FOOTBALL_RETRY_BASE_DELAY_SECONDS",
         "API_FOOTBALL_RETRY_MAX_DELAY_SECONDS",
+        "API_FOOTBALL_IMPORT_INTERVAL_SECONDS",
     ):
         monkeypatch.delenv(name, raising=False)
 
@@ -147,6 +148,7 @@ def test_load_settings_disables_api_football_by_default() -> None:
     assert settings.api_football.connect_timeout_seconds == 5.0
     assert settings.api_football.read_timeout_seconds == 30.0
     assert settings.api_football.max_attempts == 3
+    assert settings.api_football.import_interval_seconds == 3600
 
 
 def test_load_settings_loads_api_football_configuration(
@@ -160,6 +162,7 @@ def test_load_settings_loads_api_football_configuration(
     monkeypatch.setenv("API_FOOTBALL_MAX_ATTEMPTS", "4")
     monkeypatch.setenv("API_FOOTBALL_RETRY_BASE_DELAY_SECONDS", "0.5")
     monkeypatch.setenv("API_FOOTBALL_RETRY_MAX_DELAY_SECONDS", "8")
+    monkeypatch.setenv("API_FOOTBALL_IMPORT_INTERVAL_SECONDS", "900")
 
     settings = load_settings().api_football
 
@@ -171,6 +174,7 @@ def test_load_settings_loads_api_football_configuration(
     assert settings.max_attempts == 4
     assert settings.retry_base_delay_seconds == 0.5
     assert settings.retry_max_delay_seconds == 8.0
+    assert settings.import_interval_seconds == 900
     assert "provider-secret" not in repr(settings)
 
 
@@ -219,6 +223,7 @@ def test_load_settings_rejects_unsafe_api_football_base_url(
         ("API_FOOTBALL_READ_TIMEOUT_SECONDS", "inf"),
         ("API_FOOTBALL_RETRY_BASE_DELAY_SECONDS", "invalid"),
         ("API_FOOTBALL_RETRY_MAX_DELAY_SECONDS", "0"),
+        ("API_FOOTBALL_IMPORT_INTERVAL_SECONDS", "0"),
     ],
 )
 def test_load_settings_rejects_invalid_api_football_numeric_setting(
