@@ -305,6 +305,36 @@ class CalendarEventMappingsRepository:
 
         return self.get_by_id(mapping_id)
 
+    def revive_deleted(
+        self,
+        mapping_id: int,
+    ) -> CalendarEventMapping | None:
+        timestamp = self._timestamp()
+
+        with self._connect() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE calendar_event_mappings
+                SET outlook_event_id = NULL,
+                    outlook_change_key = NULL,
+                    content_hash = NULL,
+                    sync_status = 'pending',
+                    last_sync_error = NULL,
+                    updated_at = ?
+                WHERE id = ?
+                  AND sync_status = 'deleted'
+                """,
+                (
+                    timestamp,
+                    mapping_id,
+                ),
+            )
+
+        if cursor.rowcount == 0:
+            return None
+
+        return self.get_by_id(mapping_id)
+
     def delete(
         self,
         mapping_id: int,

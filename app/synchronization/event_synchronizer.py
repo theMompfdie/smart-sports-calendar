@@ -54,6 +54,7 @@ class EventSynchronizer:
     ) -> EventSynchronizationResult:
         event = synchronization_event.event
         mapping = synchronization_event.mapping
+        mapping_was_revived = False
 
         if mapping is not None:
             self._validate_mapping(
@@ -62,11 +63,60 @@ class EventSynchronizer:
                 calendar_id=calendar_id,
             )
 
-            if mapping.sync_status == "delete_pending":
-                return self._delete_event(
-                    mapping=mapping,
+        if event.deleted_at is not None:
+            if mapping is None or mapping.sync_status == "deleted":
+                return EventSynchronizationResult(
+                    status=EventSynchronizationStatus.DELETED,
+                    event_id=event.id,
                     calendar_id=calendar_id,
+                    outlook_event_id=(
+                        None if mapping is None else mapping.outlook_event_id
+                    ),
+                    content_hash=None if mapping is None else mapping.content_hash,
                 )
+            if mapping.outlook_event_id is None:
+                deleted_mapping = self._mappings_repository.mark_deleted(mapping.id)
+                if deleted_mapping is None:
+                    raise EventSynchronizationError(
+                        "Calendar mapping without an Outlook event could not be "
+                        f"finalized as deleted: {mapping.id}"
+                    )
+                return EventSynchronizationResult(
+                    status=EventSynchronizationStatus.DELETED,
+                    event_id=event.id,
+                    calendar_id=calendar_id,
+                    outlook_event_id=None,
+                    content_hash=mapping.content_hash,
+                )
+            if mapping.sync_status != "delete_pending":
+                delete_pending = self._mappings_repository.mark_delete_pending(
+                    mapping.id
+                )
+                if delete_pending is None:
+                    raise EventSynchronizationError(
+                        "Calendar mapping could not be marked for deletion: "
+                        f"{mapping.id}"
+                    )
+                mapping = delete_pending
+            return self._delete_event(
+                mapping=mapping,
+                calendar_id=calendar_id,
+            )
+
+        if mapping is not None and mapping.sync_status == "deleted":
+            revived_mapping = self._mappings_repository.revive_deleted(mapping.id)
+            if revived_mapping is None:
+                raise EventSynchronizationError(
+                    f"Deleted calendar mapping could not be revived: {mapping.id}"
+                )
+            mapping = revived_mapping
+            mapping_was_revived = True
+
+        if mapping is not None and mapping.sync_status == "delete_pending":
+            return self._delete_event(
+                mapping=mapping,
+                calendar_id=calendar_id,
+            )
 
         is_cancelled = event.status.casefold() == "cancelled"
 
@@ -86,6 +136,15 @@ class EventSynchronizer:
             raise EventSynchronizationError(
                 f"Outlook payload preparation failed for event {event.id}."
             ) from error
+
+        if mapping_was_revived:
+            return self._create_event(
+                event_id=event.id,
+                calendar_id=calendar_id,
+                payload=payload,
+                content_hash=content_hash,
+                mapping=mapping,
+            )
 
         if mapping is None:
             return self._create_event(

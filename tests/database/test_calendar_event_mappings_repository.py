@@ -270,6 +270,35 @@ def test_mark_deleted_preserves_mapping_as_history(
     assert repository.get_by_id(synced_mapping.id) == deleted_mapping
 
 
+def test_revive_deleted_preserves_mapping_and_transaction_identity(
+    tmp_path: Path,
+) -> None:
+    event_id, repository = create_repository(tmp_path)
+    pending = repository.create_pending(event_id, "calendar-1")
+    synced = repository.mark_synced(
+        mapping_id=pending.id,
+        outlook_event_id="outlook-event-1",
+        outlook_change_key="change-key-1",
+        content_hash="hash-1",
+    )
+    assert synced is not None
+    deleted = repository.mark_deleted(synced.id)
+    assert deleted is not None
+
+    revived = repository.revive_deleted(deleted.id)
+
+    assert revived is not None
+    assert revived.id == deleted.id
+    assert revived.event_id == deleted.event_id
+    assert revived.calendar_id == deleted.calendar_id
+    assert revived.transaction_id == deleted.transaction_id
+    assert revived.sync_status == "pending"
+    assert revived.outlook_event_id is None
+    assert revived.outlook_change_key is None
+    assert revived.content_hash is None
+    assert revived.last_sync_error is None
+
+
 def test_get_by_status_returns_only_matching_mappings(
     tmp_path: Path,
 ) -> None:
@@ -383,6 +412,7 @@ def test_status_updates_return_none_for_unknown_mapping(
     assert repository.mark_delete_pending(999999) is None
     assert repository.mark_delete_failed(999999, "error") is None
     assert repository.mark_deleted(999999) is None
+    assert repository.revive_deleted(999999) is None
 
 
 def test_delete_removes_existing_mapping(
