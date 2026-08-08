@@ -23,6 +23,10 @@ def configure_required_environment(
         "HEARTBEAT_INTERVAL",
         raising=False,
     )
+    monkeypatch.delenv(
+        "INSTANCE_NAME",
+        raising=False,
+    )
     for name in (
         "API_FOOTBALL_ENABLED",
         "API_FOOTBALL_API_KEY",
@@ -137,6 +141,43 @@ def test_load_settings_loads_default_database_path() -> None:
     settings = load_settings()
 
     assert settings.database_path == Path("/data/sports.db")
+
+
+def test_load_settings_uses_default_instance_name() -> None:
+    settings = load_settings()
+
+    assert settings.instance_name == "default"
+
+
+def test_load_settings_loads_instance_name(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("INSTANCE_NAME", "calendar-staging_1")
+
+    settings = load_settings()
+
+    assert settings.instance_name == "calendar-staging_1"
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "",
+        "Staging",
+        "staging calendar",
+        "staging.calendar",
+        "-staging",
+        "a" * 64,
+    ],
+)
+def test_load_settings_rejects_invalid_instance_name(
+    monkeypatch: pytest.MonkeyPatch,
+    value: str,
+) -> None:
+    monkeypatch.setenv("INSTANCE_NAME", value)
+
+    with pytest.raises(ValueError, match="INSTANCE_NAME must start"):
+        load_settings()
 
 
 def test_load_settings_disables_api_football_by_default() -> None:

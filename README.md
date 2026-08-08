@@ -13,7 +13,7 @@
 **Active delivery track:** v0.4 deployment stabilization for
 `v0.4.0-beta.1` ([tracker #61](https://github.com/theMompfdie/smart-sports-calendar/issues/61))
 
-**Automated tests:** 477 passing tests
+**Automated tests:** 486 passing tests
 
 The application foundation, persistent domain model, repository layer, Microsoft Graph integration, Outlook synchronization engine, and the scheduled, reported API-Football Premier League import runtime are implemented.
 
@@ -50,6 +50,9 @@ The application focuses on:
 - persistent SQLite volume
 - container health check
 - Portainer-compatible deployment
+- project-scoped images, containers, networks, and SQLite volumes
+- validated per-instance identifiers in logs and Docker labels
+- credential-free three-instance Compose isolation validation
 - GitHub Actions CI pipeline
 
 ### Microsoft 365 Integration
@@ -319,7 +322,9 @@ Stop the application without deleting its persistent data:
 docker compose down
 ```
 
-SQLite data is stored in the `smart_sports_data` volume. Removing the container does not remove the database; deleting the volume permanently deletes it.
+SQLite data is stored in the project-scoped `smart_sports_data` logical volume.
+Removing a container does not remove the database; deleting the corresponding
+project volume permanently deletes it.
 
 For deployment, upgrade, backup, rollback, and troubleshooting information,
 see [`docs/deployment.md`](docs/deployment.md).
@@ -347,10 +352,10 @@ python -m ruff format --check .
 docker compose config
 ```
 
-Expected automated test result for the Phase 4 release candidate:
+Expected automated test result for the current development state:
 
 ```text
-477 passed
+486 passed
 ```
 
 ## Development Workflow

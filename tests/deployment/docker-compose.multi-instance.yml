@@ -1,0 +1,25 @@
+services:
+  calendar-sync:
+    command:
+      - python
+      - -c
+      - |
+        import os
+        import sqlite3
+        import time
+
+        database_path = os.environ["DATABASE_PATH"]
+        instance_name = os.environ["INSTANCE_NAME"]
+        connection = sqlite3.connect(database_path)
+        connection.execute(
+            "CREATE TABLE IF NOT EXISTS instance_probe ("
+            "instance_name TEXT PRIMARY KEY)"
+        )
+        connection.execute(
+            "INSERT OR REPLACE INTO instance_probe (instance_name) VALUES (?)",
+            (instance_name,),
+        )
+        connection.commit()
+        connection.close()
+        print(f"instance_probe_ready={instance_name}", flush=True)
+        time.sleep(600)
