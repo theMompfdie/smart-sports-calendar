@@ -11,6 +11,17 @@ repository, logs, screenshots, issues, or test fixtures.
 The deterministic automated suite remains the reproducible release gate. Live
 validation adds environment confidence but does not replace those tests.
 
+The application image includes a read-only evidence command that intentionally
+excludes error messages, metadata, event details, calendar identifiers,
+Outlook identifiers, and provider identifiers:
+
+```bash
+python -m app.operations.staging_evidence --database /data/sports.db
+```
+
+Use this command for database evidence instead of ad-hoc `SELECT *` queries.
+Review its output before copying it outside the staging environment.
+
 For `v0.4.0-beta.1`, this checklist is executed only in the isolated staging
 environment tracked by
 [issue #63](https://github.com/theMompfdie/smart-sports-calendar/issues/63).
@@ -77,6 +88,9 @@ loaded.
    container restart.
 6. Confirm the configured calendar ID and startup-validated calendar name refer
    to the same dedicated calendar before enabling provider imports.
+7. Run the secret-safe evidence command before and after the restart. Confirm
+   that `startup_records` increases while existing run and fixture counters
+   remain available and `database_quick_check` remains `ok`.
 
 Stop if authentication, calendar targeting, storage ownership, migrations, or
 secret hygiene is incorrect.
@@ -96,6 +110,9 @@ secret hygiene is incorrect.
    calendar and contain the expected Premier League fixture data.
 7. Confirm logs and persisted metadata contain no API key, Graph token, client
    secret, authorization header, or secret-bearing URL.
+8. Capture the evidence command output. Do not supplement it with raw
+   `metadata_json`, `error_message`, calendar mapping, or provider response
+   fields.
 
 Stop the provider by setting `API_FOOTBALL_ENABLED=false` if the collection is
 partial, malformed, outside the intended competition/season, or unexpectedly
@@ -148,3 +165,34 @@ secrets, tenant IDs, mailbox addresses, calendar IDs, or full request URLs.
 
 Live validation is complete when all applicable stages pass or every skipped
 observation is explicitly justified by deterministic automated coverage.
+
+## Portainer execution record
+
+Record the following checklist in issue #63. Use `pass`, `fail`, or `skipped`
+with a justification; never paste Portainer environment values.
+
+```markdown
+### Staging live-validation record
+
+- Candidate commit/tag: `<public Git reference>`
+- Validation window (UTC): `<start>` to `<end>`
+- Stack isolation: `<result>`
+- Graph startup and calendar target: `<result>`
+- SQLite restart persistence: `<result>`
+- Provider import and separate Outlook handoff: `<result>`
+- Second-cycle idempotency: `<result>`
+- Controlled transient-failure recovery: `<result>`
+- Interrupted-run recovery: `<result>`
+- Backup and restore: `<result>`
+- Provider quota before/after: `<non-identifying counts>`
+- Secret review: `<result>`
+- Follow-up issues: `<numbers or none>`
+
+#### Secret-safe database evidence
+
+`<paste reviewed output from app.operations.staging_evidence>`
+```
+
+The record documents observations, not configuration. Keep mailbox, tenant,
+calendar, application-registration, and Portainer endpoint identifiers out of
+the record even if they do not currently look sensitive.
