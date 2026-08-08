@@ -53,6 +53,19 @@ The application focuses on:
 - idempotent Graph event creation using a persistent transaction ID
 - configurable target mailbox and Graph API base URL
 
+### API-Football Client Foundation
+
+- API-Football v3 selected through a documented provider evaluation and ADR
+- external provider configuration with opt-in enablement
+- secret-safe `x-apisports-key` authentication
+- explicit connect and read timeouts
+- typed response-envelope, pagination, diagnostic, and rate-limit metadata
+- bounded retry handling for retryable transport failures
+- deterministic mocked tests without live provider calls
+
+Competition, season, team, and fixture imports are not implemented yet. They
+remain planned for the following Phase 4 blocks.
+
 ### Database and Persistence
 
 - versioned SQLite schema migrations
@@ -168,6 +181,7 @@ smart-sports-calendar/
 │   │   └── migrations/
 │   ├── graph/
 │   ├── logging/
+│   ├── providers/
 │   ├── scheduler/
 │   ├── synchronization/
 │   └── main.py
@@ -217,11 +231,24 @@ OUTLOOK_CALENDAR_ID=
 SYNCHRONIZATION_BATCH_LIMIT=100
 GRAPH_BASE_URL=https://graph.microsoft.com/v1.0
 GRAPH_STARTUP_VALIDATION_ENABLED=true
+API_FOOTBALL_ENABLED=false
+API_FOOTBALL_API_KEY=your-api-football-key
+API_FOOTBALL_BASE_URL=https://v3.football.api-sports.io
+API_FOOTBALL_CONNECT_TIMEOUT_SECONDS=5
+API_FOOTBALL_READ_TIMEOUT_SECONDS=30
+API_FOOTBALL_MAX_ATTEMPTS=3
+API_FOOTBALL_RETRY_BASE_DELAY_SECONDS=1
+API_FOOTBALL_RETRY_MAX_DELAY_SECONDS=30
 ```
 
 `OUTLOOK_CALENDAR_ID` may be supplied directly. Otherwise, the configured calendar name is resolved through Microsoft Graph. `SYNCHRONIZATION_BATCH_LIMIT` limits the number of events processed in one run.
 
 Keep `GRAPH_STARTUP_VALIDATION_ENABLED` enabled for normal deployments. Disable it only for isolated tests or environments without Graph connectivity. Never commit secrets.
+
+API-Football is disabled by default. When `API_FOOTBALL_ENABLED=true`,
+`API_FOOTBALL_API_KEY` is required. The client is constructed at startup but
+performs no live request until a later import block invokes it. The API key is
+sent only in the `x-apisports-key` header and must never be logged.
 
 ## Deployment
 
