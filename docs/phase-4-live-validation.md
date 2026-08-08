@@ -11,6 +11,15 @@ repository, logs, screenshots, issues, or test fixtures.
 The deterministic automated suite remains the reproducible release gate. Live
 validation adds environment confidence but does not replace those tests.
 
+For `v0.4.0-beta.1`, this checklist is executed only in the isolated staging
+environment tracked by
+[issue #63](https://github.com/theMompfdie/smart-sports-calendar/issues/63).
+The multi-instance implementation in
+[issue #2](https://github.com/theMompfdie/smart-sports-calendar/issues/2) must
+be complete before staging and production run concurrently on one Docker host.
+Production promotion is a separate manual decision tracked by issue #64; a
+successful staging run does not authorize an automatic production update.
+
 ## Prerequisites
 
 - Use a controlled non-critical Microsoft 365 mailbox and a dedicated SMART
@@ -25,6 +34,9 @@ validation adds environment confidence but does not replace those tests.
   calendar.
 - Start from the reviewed Phase 4 release candidate and a clean deployment
   configuration.
+- Confirm the staging stack, SQLite volume, calendar, credentials, and logs are
+  distinct from production.
+- Confirm production GitOps updates are disabled.
 
 ## Secret-safe configuration
 
