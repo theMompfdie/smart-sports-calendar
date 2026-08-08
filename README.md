@@ -4,13 +4,11 @@
 
 ## Current Status
 
-**Current release:** `v0.3.0-alpha.1`
-
-**Next pre-release:** `v0.4.0-alpha.1` (Phase 4 release candidate in preparation)
+**Current release:** `v0.4.0-alpha.1`
 
 **Development stage:** Alpha
 
-**Completed phases:** Phase 1, Phase 2, and Phase 3
+**Completed phases:** Phase 1, Phase 2, Phase 3, and Phase 4
 
 **Automated tests:** 477 passing tests
 
@@ -398,9 +396,9 @@ feature/* -> develop -> release/* -> main -> Release
 
 ### Phase 4 – Initial Football Provider
 
-**Status:** _Release preparation (Phase 4.8)_
+**Status:** _Completed_
 
-**Target release:** `v0.4.0-alpha.1`
+**Release:** `v0.4.0-alpha.1`
 
 - API-Football v3 selected and documented
 - provider request, error, pagination, retry, and rate-limit handling implemented
@@ -410,7 +408,7 @@ feature/* -> develop -> release/* -> main -> Release
 - idempotent incremental updates and lifecycle reconciliation implemented
 - import reporting, recovery, scheduling, and Outlook handoff implemented
 - deterministic provider-to-Outlook end-to-end integration coverage implemented
-- deployment, upgrade, live-validation, and release documentation in preparation
+- deployment, upgrade, live-validation, and release documentation completed
 
 ### Phase 5 – Additional Domestic Competitions
 
@@ -440,9 +438,19 @@ feature/* -> develop -> release/* -> main -> Release
 
 ## Release History
 
-Release notes for the next pre-release are prepared in
-[`RELEASE_NOTES_v0.4.0-alpha.1.md`](RELEASE_NOTES_v0.4.0-alpha.1.md). The
-release remains unpublished until the Phase 4 completion checklist is green.
+Detailed Phase 4 release notes are available in
+[`RELEASE_NOTES_v0.4.0-alpha.1.md`](RELEASE_NOTES_v0.4.0-alpha.1.md).
+
+### `v0.4.0-alpha.1`
+
+- first API-Football v3 provider integration
+- deterministic Premier League catalog and team mappings
+- validated, timezone-safe fixture normalization
+- atomic idempotent imports and lifecycle reconciliation
+- scheduled import reporting, retry handling, and Outlook handoff
+- provider-to-SQLite-to-mocked-Graph end-to-end coverage
+- deployment, upgrade, rollback, live-validation, and release documentation
+- 477 passing automated tests
 
 ### `v0.3.0-alpha.1`
 

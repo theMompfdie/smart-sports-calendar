@@ -146,6 +146,7 @@ Existing milestones:
 * Phase 1 — `v0.1.0-alpha.1`
 * Phase 2 — `v0.2.0-alpha.1`
 * Phase 3 — `v0.3.0-alpha.1`
+* Phase 4 — `v0.4.0-alpha.1`
 
 Production target: `v1.0.0`
 
@@ -304,45 +305,13 @@ Existing phase releases:
 Phase 1: v0.1.0-alpha.1
 Phase 2: v0.2.0-alpha.1
 Phase 3: v0.3.0-alpha.1
+Phase 4: v0.4.0-alpha.1
 
 Production target:
 
 v1.0.0
 
 Do not recommend or create a release from unverified code.
-
-Current Phase 4.8 Boundary
-
-The active Phase 4.8 work is tracked by GitHub Issue #57:
-
-Phase 4.8: Documentation and Release Preparation
-
-In scope:
-
-README, environment example, architecture, and Phase 4 documentation audit
-accurate implemented-versus-planned and automated-versus-live distinctions
-provider, Graph, scheduling, persistence, and observability configuration reference
-Docker Compose and Portainer deployment guidance
-SQLite backup, upgrade, rollback, and data-preservation guidance
-credential-safe opt-in live-validation checklist
-v0.4.0-alpha.1 package version and release-notes preparation
-Phase 4 develop-to-main completion and post-merge release checklist
-full local, Docker Compose, documentation, and GitHub Actions verification
-
-Out of scope unless Issue #57 explicitly states otherwise:
-
-new provider or synchronization features
-live API-Football or Microsoft Graph calls without separate authorization
-credentials, tokens, tenant identifiers, or secret-bearing recordings
-broad production-code refactoring or unrelated schema changes
-production deployment or migration execution
-merging develop into main
-creating the v0.4.0-alpha.1 tag or GitHub release before verification
-Phase 5 implementation
-
-If Issue #57 conflicts with this summary, the current GitHub issue is authoritative. Report the conflict before proceeding.
-
-This phase-specific section must be updated or removed when Phase 4.8 is completed.
 
 Definition of Done
 
