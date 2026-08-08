@@ -91,11 +91,12 @@ class ApiFootballClient:
             doseq=False,
         )
         url = f"{self._settings.base_url}{endpoint}?{encoded_query}"
-        response = self._request_with_retries(url)
+        response, attempt_count = self._request_with_retries(url)
 
         return self._parse_page(
             response=response,
             requested_page=page,
+            attempt_count=attempt_count,
         )
 
     def get_all(
@@ -107,6 +108,7 @@ class ApiFootballClient:
         items = list(first_page.items)
         expected_total = first_page.pagination.total
         last_page = first_page
+        request_attempts = first_page.metadata.attempt_count
 
         for page_number in range(2, expected_total + 1):
             try:
@@ -130,15 +132,17 @@ class ApiFootballClient:
 
             items.extend(page.items)
             last_page = page
+            request_attempts += page.metadata.attempt_count
 
         return ApiFootballCollection(
             items=tuple(items),
             page_count=expected_total,
             fetched_at_utc=first_page.metadata.fetched_at_utc,
             rate_limits=last_page.metadata.rate_limits,
+            request_attempts=request_attempts,
         )
 
-    def _request_with_retries(self, url: str) -> HttpResponse:
+    def _request_with_retries(self, url: str) -> tuple[HttpResponse, int]:
         for attempt in range(1, self._settings.max_attempts + 1):
             try:
                 response = self._transport.get(
@@ -152,7 +156,7 @@ class ApiFootballClient:
                 )
                 error = self._classify_http_error(response)
                 if error is None:
-                    return response
+                    return response, attempt
             except TimeoutError:
                 error = ProviderTimeoutError("API-Football request timed out.")
             except OSError:
@@ -197,11 +201,13 @@ class ApiFootballClient:
         self,
         response: HttpResponse,
         requested_page: int,
+        attempt_count: int,
     ) -> ApiFootballPage:
         metadata = FetchMetadata(
             fetched_at_utc=self._utc_now(),
             request_id=self._header(response.headers, "x-request-id"),
             rate_limits=self._parse_rate_limits(response.headers),
+            attempt_count=attempt_count,
         )
 
         if response.status == 204:

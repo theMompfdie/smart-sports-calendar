@@ -311,39 +311,41 @@ v1.0.0
 
 Do not recommend or create a release from unverified code.
 
-Current Phase 4.5 Boundary
+Current Phase 4.6 Boundary
 
-The active Phase 4.5 work is tracked by GitHub Issue #51:
+The active Phase 4.6 work is tracked by GitHub Issue #53:
 
-Phase 4.5: Idempotent Incremental Fixture Import and Lifecycle Reconciliation
+Phase 4.6: Rate Limits, Retry, Import Reporting, and Scheduler Integration
 
 In scope:
 
-persist Phase 4.4 normalized fixtures into canonical sports events
-stable provider event mappings and project-owned event keys
-deterministic home and away participant persistence
-explicit competition, season, time-window, and authority scope
-CREATE, UPDATE, SKIP, CANCEL, DELETE, and TBD-defer decisions
-confirmed kickoff updates and last-known kickoff retention for existing TBD events
-cancellation timestamps, correction, and lifecycle-state persistence
-two-distinct-authoritative-observation removal confirmation
-non-destructive removal and identity-preserving reappearance
-atomic event, participant, mapping, and reconciliation-state transactions
-optional provider-field preservation
-deterministic migrated-SQLite integration tests and documentation
+provider fetch, normalization, and Phase 4.5 import orchestration
+explicit complete authoritative current-season import scopes
+persistent provider-import run status and decision counters
+sanitized request-attempt and rate-limit diagnostics
+reuse of the bounded Phase 4.2 retry policy without another retry loop
+interrupted provider-import recovery
+process-local non-overlapping provider runtime execution
+external provider-import scheduling configuration
+disabled-provider behavior without provider calls or misleading runs
+successful-import handoff to existing Outlook synchronization
+separate provider-import and calendar-sync outcomes
+deterministic mocked-boundary and migrated-SQLite tests
+README, environment, architecture, and operational documentation
 
-Out of scope unless Issue #51 explicitly states otherwise:
+Out of scope unless Issue #53 explicitly states otherwise:
 
-scheduler integration or automatic provider execution
-persistent import-run reporting
-provider-specific HTTP transport changes
-Graph or Outlook behavior changes
+changes to the Phase 4.2 retry algorithm without a correctness defect
+redesign of Phase 4.5 canonical persistence or reconciliation
+complete provider-to-SQLite-to-mocked-Graph end-to-end coverage
+distributed locking or multi-instance scheduling
+additional competitions, providers, results, standings, or live scores
 live provider credentials or CI calls
 deployment or release work
 
-If Issue #51 conflicts with this summary, the current GitHub issue is authoritative. Report the conflict before proceeding.
+If Issue #53 conflicts with this summary, the current GitHub issue is authoritative. Report the conflict before proceeding.
 
-This phase-specific section must be updated or removed when Phase 4.5 is completed.
+This phase-specific section must be updated or removed when Phase 4.6 is completed.
 
 Definition of Done
 

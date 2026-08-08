@@ -53,6 +53,7 @@ def test_start_creates_running_sync_run(
     assert sync_run.items_unchanged == 0
     assert sync_run.items_cancelled == 0
     assert sync_run.items_deleted == 0
+    assert sync_run.items_deferred == 0
     assert sync_run.items_failed == 0
     assert sync_run.error_message is None
     assert sync_run.metadata is None
@@ -64,7 +65,7 @@ def test_start_creates_provider_import_with_metadata(
     source_id, repository = create_repository(tmp_path)
 
     sync_run = repository.start(
-        run_type="import",
+        run_type="provider_import",
         source_id=source_id,
         metadata={
             "competition": "PL",
@@ -72,7 +73,7 @@ def test_start_creates_provider_import_with_metadata(
         },
     )
 
-    assert sync_run.run_type == "import"
+    assert sync_run.run_type == "provider_import"
     assert sync_run.source_id == source_id
     assert sync_run.metadata == {
         "competition": "PL",
@@ -518,7 +519,7 @@ def test_recover_running_does_not_modify_other_or_terminal_runs(
     _, repository = create_repository(tmp_path)
 
     other_run = repository.start(
-        run_type="import",
+        run_type="provider_import",
     )
     completed_run = repository.start(
         run_type="calendar_sync",

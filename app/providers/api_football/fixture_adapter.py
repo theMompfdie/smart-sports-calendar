@@ -1,9 +1,20 @@
+from dataclasses import dataclass
+from datetime import datetime
 from typing import Protocol
 
 from app.providers.api_football.catalog_adapter import PREMIER_LEAGUE_ID
 from app.providers.api_football.exceptions import ProviderIntegrityError
 from app.providers.api_football.fixture_models import ApiFootballFixture, parse_fixture
-from app.providers.api_football.models import ApiFootballCollection
+from app.providers.api_football.models import ApiFootballCollection, RateLimitSnapshot
+
+
+@dataclass(frozen=True)
+class ApiFootballFixtureBatch:
+    fixtures: tuple[ApiFootballFixture, ...]
+    page_count: int
+    fetched_at_utc: datetime
+    rate_limits: RateLimitSnapshot
+    request_attempts: int
 
 
 class ApiFootballFixtureCollectionClient(Protocol):
@@ -22,6 +33,12 @@ class ApiFootballFixtureAdapter:
         self,
         season_year: int,
     ) -> tuple[ApiFootballFixture, ...]:
+        return self.fetch_premier_league_fixture_batch(season_year).fixtures
+
+    def fetch_premier_league_fixture_batch(
+        self,
+        season_year: int,
+    ) -> ApiFootballFixtureBatch:
         collection = self._client.get_all(
             "/fixtures",
             query={
@@ -47,4 +64,10 @@ class ApiFootballFixtureAdapter:
                 "API-Football fixture collection contains duplicate fixture IDs."
             )
 
-        return tuple(sorted(fixtures, key=lambda fixture: fixture.id))
+        return ApiFootballFixtureBatch(
+            fixtures=tuple(sorted(fixtures, key=lambda fixture: fixture.id)),
+            page_count=collection.page_count,
+            fetched_at_utc=collection.fetched_at_utc,
+            rate_limits=collection.rate_limits,
+            request_attempts=collection.request_attempts,
+        )

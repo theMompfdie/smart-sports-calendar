@@ -96,6 +96,7 @@ def test_migrations_are_registered_once(
         ("003_extend_sync_run_counters",),
         ("004_add_mapping_transaction_id",),
         ("005_create_fixture_reconciliation_state",),
+        ("006_extend_provider_import_runs",),
     ]
 
 
@@ -138,6 +139,26 @@ def test_sync_runs_contains_extended_counters(
     assert columns["items_cancelled"][2] == "INTEGER"
     assert columns["items_cancelled"][3] == 1
     assert columns["items_cancelled"][4] == "0"
+
+    assert "items_deferred" in columns
+    assert columns["items_deferred"][2] == "INTEGER"
+    assert columns["items_deferred"][3] == 1
+    assert columns["items_deferred"][4] == "0"
+
+
+def test_sync_runs_accepts_dedicated_provider_import_type(
+    initialized_database: Database,
+    database_path: Path,
+) -> None:
+    timestamp = "2026-08-08T12:00:00+00:00"
+    with connect(database_path) as connection:
+        connection.execute(
+            """
+            INSERT INTO sync_runs (run_type, started_at)
+            VALUES ('provider_import', ?)
+            """,
+            (timestamp,),
+        )
 
 
 def test_repeated_initialize_preserves_existing_data(

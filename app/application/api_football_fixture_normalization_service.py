@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 
 from app.database.competitions_repository import CompetitionsRepository
 from app.database.data_sources_repository import DataSourcesRepository
@@ -14,6 +14,7 @@ from app.providers.api_football.fixture_models import (
     ApiFootballFixture,
     ProviderFixtureStatus,
 )
+from app.providers.api_football.models import RateLimitSnapshot
 
 
 @dataclass(frozen=True)
@@ -45,6 +46,19 @@ class NormalizedFixture:
     metadata: dict[str, str] | None
 
 
+@dataclass(frozen=True)
+class NormalizedFixtureBatch:
+    fixtures: tuple[NormalizedFixture, ...]
+    competition_id: int
+    season_id: int
+    season_start_date: date
+    season_end_date: date
+    fetched_at_utc: datetime
+    page_count: int
+    request_attempts: int
+    rate_limits: RateLimitSnapshot
+
+
 class ApiFootballFixtureNormalizationService:
     def __init__(
         self,
@@ -65,11 +79,26 @@ class ApiFootballFixtureNormalizationService:
         self._source_mappings_repository = source_mappings_repository
 
     def normalize_current_premier_league(self) -> tuple[NormalizedFixture, ...]:
+        return self.normalize_current_premier_league_batch().fixtures
+
+    def normalize_current_premier_league_batch(self) -> NormalizedFixtureBatch:
         context = self._resolve_context()
-        fixtures = self._adapter.fetch_premier_league_fixtures(
+        batch = self._adapter.fetch_premier_league_fixture_batch(
             season_year=context.season_year
         )
-        return tuple(self._normalize(fixture, context) for fixture in fixtures)
+        return NormalizedFixtureBatch(
+            fixtures=tuple(
+                self._normalize(fixture, context) for fixture in batch.fixtures
+            ),
+            competition_id=context.competition_id,
+            season_id=context.season_id,
+            season_start_date=context.season_start_date,
+            season_end_date=context.season_end_date,
+            fetched_at_utc=batch.fetched_at_utc,
+            page_count=batch.page_count,
+            request_attempts=batch.request_attempts,
+            rate_limits=batch.rate_limits,
+        )
 
     def _resolve_context(self) -> "_NormalizationContext":
         source = self._data_sources_repository.get_by_key("api_football")
@@ -91,16 +120,31 @@ class ApiFootballFixtureNormalizationService:
                 "Canonical Premier League must exist before fixture normalization."
             )
         seasons = self._seasons_repository.get_current_for_competition(competition.id)
-        if len(seasons) != 1 or seasons[0].start_date is None:
+        if len(seasons) != 1:
             raise ProviderResolutionError(
-                "Canonical Premier League must have exactly one dated current season."
+                "Canonical Premier League must have exactly one fully dated current "
+                "season."
+            )
+        season = seasons[0]
+        start_date = season.start_date
+        end_date = season.end_date
+        if start_date is None or end_date is None:
+            raise ProviderResolutionError(
+                "Canonical Premier League must have exactly one fully dated current "
+                "season."
             )
         try:
-            season_year = datetime.fromisoformat(seasons[0].start_date).year
+            season_start_date = date.fromisoformat(start_date)
+            season_end_date = date.fromisoformat(end_date)
         except ValueError as error:
             raise ProviderResolutionError(
                 "Canonical current Premier League season has an invalid start date."
             ) from error
+        if season_end_date < season_start_date:
+            raise ProviderResolutionError(
+                "Canonical current Premier League season has an invalid date range."
+            )
+        season_year = season_start_date.year
 
         self._require_mapping(
             source_id=source.id,
@@ -112,14 +156,16 @@ class ApiFootballFixtureNormalizationService:
             source_id=source.id,
             object_type="season",
             external_id=str(season_year),
-            internal_id=seasons[0].id,
+            internal_id=season.id,
         )
         return _NormalizationContext(
             source_id=source.id,
             sport_id=football.id,
             competition_id=competition.id,
-            season_id=seasons[0].id,
+            season_id=season.id,
             season_year=season_year,
+            season_start_date=season_start_date,
+            season_end_date=season_end_date,
         )
 
     def _normalize(
@@ -221,3 +267,5 @@ class _NormalizationContext:
     competition_id: int
     season_id: int
     season_year: int
+    season_start_date: date
+    season_end_date: date
