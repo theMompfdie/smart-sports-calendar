@@ -9,6 +9,7 @@ def test_catalog_fixture_metadata_documents_provenance_and_sanitization() -> Non
     assert set(metadata["fixtures"]) == {
         "premier_league.json",
         "premier_league_teams.json",
+        "premier_league_fixtures.json",
     }
     assert metadata["source_documentation"]
     assert metadata["sanitization"]

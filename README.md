@@ -7,9 +7,9 @@
 **Current release:** `v0.3.0-alpha.1`  
 **Development stage:** Alpha  
 **Completed phases:** Phase 1, Phase 2, and Phase 3  
-**Automated tests:** 303 passing tests
+**Automated tests:** 441 passing tests
 
-The application foundation, persistent domain model, repository layer, Microsoft Graph integration, Outlook synchronization engine, API-Football client, and Premier League catalog-mapping boundary are implemented. Fixture normalization and automated provider imports remain planned.
+The application foundation, persistent domain model, repository layer, Microsoft Graph integration, Outlook synchronization engine, API-Football client, Premier League catalog mapping, and side-effect-free fixture normalization are implemented. Fixture persistence and automated provider imports remain planned.
 
 ## Project Vision
 
@@ -66,13 +66,19 @@ The application focuses on:
 - reviewed provider-team-ID mappings to existing canonical participants
 - conflict-safe competition, season, and participant source mappings
 - idempotent provider source registration and season memberships
+- validated Premier League fixture DTOs and complete paginated retrieval
+- timezone-safe UTC kickoff normalization with explicit TBD semantics
+- deterministic home/away roles and exhaustive fixture-status mapping
+- mapping-backed, side-effect-free canonical fixture normalization
 - deterministic mocked tests without live provider calls
 
-The mapping service is dependency-injected but is not scheduled automatically.
-Fixture DTO normalization, fixture persistence, lifecycle reconciliation, and
-provider-to-Outlook orchestration remain planned for later Phase 4 blocks. See
-[`docs/api-football-catalog-mapping.md`](docs/api-football-catalog-mapping.md)
-for the implemented boundary and reviewed identifiers.
+The catalog and fixture-normalization services are dependency-injected but are
+not scheduled automatically. Fixture persistence, lifecycle reconciliation,
+and provider-to-Outlook orchestration remain planned for later Phase 4 blocks.
+See [`docs/api-football-catalog-mapping.md`](docs/api-football-catalog-mapping.md)
+and
+[`docs/api-football-fixture-normalization.md`](docs/api-football-fixture-normalization.md)
+for the implemented boundaries.
 
 ### Database and Persistence
 
@@ -354,7 +360,7 @@ feature/* -> develop -> release/* -> main -> Release
 - scheduler integration and run reporting
 - persistent Graph transaction IDs for duplicate-safe creation retries
 - integration coverage using a migrated SQLite database and mocked Graph client
-- 303 passing automated tests
+- comprehensive deterministic automated tests
 
 ### Phase 4 – Initial Football Provider
 
@@ -363,8 +369,8 @@ feature/* -> develop -> release/* -> main -> Release
 - API-Football v3 selected and documented
 - provider request, error, pagination, retry, and rate-limit handling implemented
 - Premier League source, competition, season, and team mapping implemented
-- Premier League fixture import planned
-- normalization into the canonical domain model
+- Premier League fixture validation and canonical-ready normalization implemented
+- Premier League fixture persistence and import planned
 - incremental fixture imports and updates
 
 ### Phase 5 – Additional Domestic Competitions
@@ -429,14 +435,14 @@ feature/* -> develop -> release/* -> main -> Release
 
 This remains an alpha release.
 
-- API-Football fixture ingestion is not implemented or scheduled yet
+- API-Football fixture persistence and ingestion are not implemented or scheduled yet
 - no administrative user interface
 - synchronization locking is process-local only
 - multiple application instances must not synchronize the same calendar/database concurrently
 - distributed locking and supported multi-instance coordination are not implemented
 - production behavior still requires validation against a real provider and target calendar
 
-The synchronization engine and API-Football catalog mapping are implemented and tested with external boundaries mocked. Later Phase 4 blocks add fixture normalization, persistence, lifecycle reconciliation, scheduling, and the final provider-to-Outlook path.
+The synchronization engine, API-Football catalog mapping, and side-effect-free fixture normalization are implemented and tested with external boundaries mocked. Later Phase 4 blocks add fixture persistence, lifecycle reconciliation, scheduling, and the final provider-to-Outlook path.
 
 ## Project Goals
 

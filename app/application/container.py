@@ -7,6 +7,9 @@ from app.application.api_football_catalog_service import (
     ApiFootballCatalogService,
     register_api_football_source,
 )
+from app.application.api_football_fixture_normalization_service import (
+    ApiFootballFixtureNormalizationService,
+)
 from app.config.settings import Settings, load_settings
 from app.database.calendar_event_mappings_repository import (
     CalendarEventMappingsRepository,
@@ -36,6 +39,7 @@ from app.graph.client import GraphClient
 from app.logging.logger import configure_logging
 from app.providers.api_football.catalog_adapter import ApiFootballCatalogAdapter
 from app.providers.api_football.client import ApiFootballClient
+from app.providers.api_football.fixture_adapter import ApiFootballFixtureAdapter
 from app.providers.api_football.team_mappings import PREMIER_LEAGUE_TEAM_MAPPING
 from app.scheduler.scheduler import Scheduler
 from app.synchronization.event_synchronizer import EventSynchronizer
@@ -126,6 +130,24 @@ class ApplicationContainer:
                 team_mapping=PREMIER_LEAGUE_TEAM_MAPPING,
             )
             if self.api_football_catalog_adapter is not None
+            else None
+        )
+        self.api_football_fixture_adapter = (
+            ApiFootballFixtureAdapter(client=self.api_football_client)
+            if self.api_football_client is not None
+            else None
+        )
+        self.api_football_fixture_normalization_service = (
+            ApiFootballFixtureNormalizationService(
+                adapter=self.api_football_fixture_adapter,
+                sports_repository=self.sports_repository,
+                competitions_repository=self.competitions_repository,
+                seasons_repository=self.seasons_repository,
+                participants_repository=self.participants_repository,
+                data_sources_repository=self.data_sources_repository,
+                source_mappings_repository=self.source_mappings_repository,
+            )
+            if self.api_football_fixture_adapter is not None
             else None
         )
         self.outlook_event_payload_builder = OutlookEventPayloadBuilder()
