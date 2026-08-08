@@ -54,6 +54,12 @@ def test_payload_to_sqlite_to_graph_is_idempotent_and_updates_in_place(
         "/teams",
         "/fixtures",
     ]
+    assert harness.transport.requests[0].query == (("id", "39"),)
+    assert harness.transport.requests[1].query == (
+        ("league", "39"),
+        ("season", "2026"),
+    )
+    assert ("page", "1") in harness.transport.requests[2].query
 
     harness.set_clock(datetime(2026, 8, 8, 13, tzinfo=UTC))
     repeated_provider, repeated_calendar = harness.run_cycle()

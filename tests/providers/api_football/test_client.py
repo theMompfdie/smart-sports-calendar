@@ -145,6 +145,26 @@ def test_get_page_sends_secret_header_and_deterministic_query() -> None:
     assert page.items == ({"fixture": {"id": 1}},)
 
 
+def test_get_unpaginated_omits_page_parameter() -> None:
+    transport = StubTransport(create_response(items=[{"league": {"id": 39}}]))
+
+    collection = create_client(transport).get_unpaginated(
+        "/leagues",
+        query={"id": 39},
+    )
+
+    assert parse_qs(urlsplit(transport.requests[0].url).query) == {"id": ["39"]}
+    assert collection.items == ({"league": {"id": 39}},)
+    assert collection.page_count == 1
+
+
+def test_get_unpaginated_rejects_multiple_response_pages() -> None:
+    transport = StubTransport(create_response(current=1, total=2))
+
+    with pytest.raises(ProviderPaginationError, match="returned multiple pages"):
+        create_client(transport).get_unpaginated("/leagues", query={"id": 39})
+
+
 def test_get_page_parses_diagnostics_and_rate_limits_case_insensitively() -> None:
     now = datetime(2026, 8, 8, 14, 0, tzinfo=UTC)
     transport = StubTransport(
@@ -177,7 +197,7 @@ def test_get_all_traverses_every_page_and_combines_items() -> None:
         create_response(items=[{"id": 2}], current=2, total=2),
     )
 
-    result = create_client(transport).get_all("/teams", query={"league": 39})
+    result = create_client(transport).get_all("/fixtures", query={"league": 39})
 
     assert result.items == ({"id": 1}, {"id": 2})
     assert result.page_count == 2
@@ -199,7 +219,7 @@ def test_get_all_rejects_changed_pagination_total() -> None:
         ProviderPaginationError,
         match="pagination total changed",
     ):
-        create_client(transport).get_all("/teams")
+        create_client(transport).get_all("/fixtures")
 
 
 def test_get_all_classifies_failure_after_first_page_as_partial() -> None:
@@ -212,7 +232,7 @@ def test_get_all_classifies_failure_after_first_page_as_partial() -> None:
         ProviderPartialFetchError,
         match="after 1 completed page",
     ) as captured:
-        create_client(transport, max_attempts=1).get_all("/teams")
+        create_client(transport, max_attempts=1).get_all("/fixtures")
 
     assert isinstance(captured.value.__cause__, ProviderNetworkError)
     assert "provider-secret" not in str(captured.value)
