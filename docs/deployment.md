@@ -453,6 +453,24 @@ Stacks
 
 No dedicated log volume is used.
 
+### Secret-safe staging evidence
+
+For issue #63, open the `calendar-sync` container console for
+`smart-calendar-staging` and run:
+
+```bash
+python -m app.operations.staging_evidence --database /data/sports.db
+```
+
+The command opens SQLite in read-only mode and reports only database integrity,
+schema version, startup count, fixture count, calendar-mapping status counts,
+and recent synchronization counters. It deliberately omits configuration,
+event details, error messages, metadata, calendar IDs, Outlook IDs, and source
+URLs. Review the output before adding it to sanitized GitHub evidence.
+
+Do not replace this with `env`, `docker inspect`, a raw database dump, or
+`SELECT *` output. Those sources may disclose deployment or tenant data.
+
 ---
 
 ## Updating the Application
