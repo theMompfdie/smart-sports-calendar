@@ -4,9 +4,14 @@
 
 ## Current Status
 
-**Current release:** `v0.3.0-alpha.1`  
-**Development stage:** Alpha  
-**Completed phases:** Phase 1, Phase 2, and Phase 3  
+**Current release:** `v0.3.0-alpha.1`
+
+**Next pre-release:** `v0.4.0-alpha.1` (Phase 4 release candidate in preparation)
+
+**Development stage:** Alpha
+
+**Completed phases:** Phase 1, Phase 2, and Phase 3
+
 **Automated tests:** 477 passing tests
 
 The application foundation, persistent domain model, repository layer, Microsoft Graph integration, Outlook synchronization engine, and the scheduled, reported API-Football Premier League import runtime are implemented.
@@ -47,7 +52,8 @@ The application focuses on:
 - application authentication through Microsoft Entra ID
 - Microsoft Graph access token acquisition
 - reusable Microsoft Graph client
-- Outlook calendar lookup by configured name or ID
+- required Outlook calendar targeting by immutable Graph calendar ID
+- optional startup reachability validation by configured calendar name
 - optional Graph authentication and calendar validation during startup
 - Outlook event creation, update, cancellation, and deletion
 - idempotent Graph event creation using a persistent transaction ID
@@ -83,16 +89,20 @@ The application focuses on:
 The catalog, normalization, fixture-import, reporting, and runtime services are
 dependency-injected. API-Football remains opt-in and performs no provider call
 unless explicitly enabled.
-See [`docs/api-football-catalog-mapping.md`](docs/api-football-catalog-mapping.md)
-and
-[`docs/api-football-fixture-normalization.md`](docs/api-football-fixture-normalization.md)
-and
-[`docs/api-football-fixture-import.md`](docs/api-football-fixture-import.md)
-and
-[`docs/api-football-import-runtime.md`](docs/api-football-import-runtime.md)
-and
-[`docs/provider-outlook-end-to-end-testing.md`](docs/provider-outlook-end-to-end-testing.md)
-for the implemented boundaries.
+
+Phase 4 documentation:
+
+- [provider requirements and evaluation](docs/provider-evaluation.md)
+- [API-Football selection ADR](docs/adr/0001-select-api-football.md)
+- [provider-independent integration contract](docs/provider-integration-contract.md)
+- [Premier League catalog mapping](docs/api-football-catalog-mapping.md)
+- [fixture normalization](docs/api-football-fixture-normalization.md)
+- [idempotent fixture import](docs/api-football-fixture-import.md)
+- [scheduled import runtime](docs/api-football-import-runtime.md)
+- [provider-to-Outlook end-to-end testing](docs/provider-outlook-end-to-end-testing.md)
+- [deployment and operations](docs/deployment.md)
+- [manual live validation](docs/phase-4-live-validation.md)
+- [Phase 4 release checklist](docs/phase-4-release-checklist.md)
 
 ### Database and Persistence
 
@@ -257,7 +267,7 @@ DATABASE_PATH=/data/sports.db
 LOG_LEVEL=INFO
 HEARTBEAT_INTERVAL=300
 OUTLOOK_CALENDAR_NAME=SMART Sports Calendar
-OUTLOOK_CALENDAR_ID=
+OUTLOOK_CALENDAR_ID=your-outlook-calendar-id
 SYNCHRONIZATION_BATCH_LIMIT=100
 GRAPH_BASE_URL=https://graph.microsoft.com/v1.0
 GRAPH_STARTUP_VALIDATION_ENABLED=true
@@ -272,7 +282,11 @@ API_FOOTBALL_RETRY_MAX_DELAY_SECONDS=30
 API_FOOTBALL_IMPORT_INTERVAL_SECONDS=3600
 ```
 
-`OUTLOOK_CALENDAR_ID` may be supplied directly. Otherwise, the configured calendar name is resolved through Microsoft Graph. `SYNCHRONIZATION_BATCH_LIMIT` limits the number of events processed in one run.
+`OUTLOOK_CALENDAR_ID` is required and is the immutable Graph calendar identifier
+used for all synchronization writes. `OUTLOOK_CALENDAR_NAME` is used only by
+the optional startup reachability check and must refer to the same dedicated
+SMART Sports Calendar. `SYNCHRONIZATION_BATCH_LIMIT` limits the number of
+events processed in one run.
 
 Keep `GRAPH_STARTUP_VALIDATION_ENABLED` enabled for normal deployments. Disable it only for isolated tests or environments without Graph connectivity. Never commit secrets.
 
@@ -301,7 +315,8 @@ docker compose down
 
 SQLite data is stored in the `smart_sports_data` volume. Removing the container does not remove the database; deleting the volume permanently deletes it.
 
-For additional deployment information, see [`docs/deployment.md`](docs/deployment.md).
+For deployment, upgrade, backup, rollback, and troubleshooting information,
+see [`docs/deployment.md`](docs/deployment.md).
 
 ## Local Development
 
@@ -326,10 +341,10 @@ python -m ruff format --check .
 docker compose config
 ```
 
-Expected automated test result for `v0.3.0-alpha.1`:
+Expected automated test result for the Phase 4 release candidate:
 
 ```text
-303 passed
+477 passed
 ```
 
 ## Development Workflow
@@ -383,7 +398,9 @@ feature/* -> develop -> release/* -> main -> Release
 
 ### Phase 4 – Initial Football Provider
 
-**Status:** _In progress_
+**Status:** _Release preparation (Phase 4.8)_
+
+**Target release:** `v0.4.0-alpha.1`
 
 - API-Football v3 selected and documented
 - provider request, error, pagination, retry, and rate-limit handling implemented
@@ -393,6 +410,7 @@ feature/* -> develop -> release/* -> main -> Release
 - idempotent incremental updates and lifecycle reconciliation implemented
 - import reporting, recovery, scheduling, and Outlook handoff implemented
 - deterministic provider-to-Outlook end-to-end integration coverage implemented
+- deployment, upgrade, live-validation, and release documentation in preparation
 
 ### Phase 5 – Additional Domestic Competitions
 
@@ -421,6 +439,10 @@ feature/* -> develop -> release/* -> main -> Release
 - schedule updates
 
 ## Release History
+
+Release notes for the next pre-release are prepared in
+[`RELEASE_NOTES_v0.4.0-alpha.1.md`](RELEASE_NOTES_v0.4.0-alpha.1.md). The
+release remains unpublished until the Phase 4 completion checklist is green.
 
 ### `v0.3.0-alpha.1`
 
@@ -463,7 +485,7 @@ This remains an alpha release.
 - distributed locking and supported multi-instance coordination are not implemented
 - production behavior still requires validation against a real provider and target calendar
 
-The synchronization engine and scheduled API-Football catalog-to-canonical-to-Outlook runtime are covered by deterministic provider-payload-to-SQLite-to-mocked-Graph tests. Live provider and tenant validation remains release-preparation work.
+The synchronization engine and scheduled API-Football catalog-to-canonical-to-Outlook runtime are covered by deterministic provider-payload-to-SQLite-to-mocked-Graph tests. Live provider and tenant validation is an explicit, credential-safe manual activity and is never part of normal CI. See [`docs/phase-4-live-validation.md`](docs/phase-4-live-validation.md) and [`docs/phase-4-release-checklist.md`](docs/phase-4-release-checklist.md).
 
 ## Project Goals
 
