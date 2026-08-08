@@ -311,37 +311,37 @@ v1.0.0
 
 Do not recommend or create a release from unverified code.
 
-Current Phase 4.2 Boundary
+Current Phase 4.3 Boundary
 
-The active Phase 4.2 work is tracked by GitHub Issue #45:
+The active Phase 4.3 work is tracked by GitHub Issue #47:
 
-Phase 4.2: API-Football Configuration and Resilient HTTP Client
+Phase 4.3: Premier League Source, Competition, Season, and Team Mapping
 
 In scope:
 
-validated API-Football configuration
-secret-safe authentication
-explicit connect and read timeouts
-typed response-envelope and pagination metadata
-contract-aligned provider errors
-rate-limit metadata
-bounded transport retries
-application-container wiring
-deterministic mocked tests
+API-Football league, season, and team DTO validation
+exact Premier League and current-season resolution
+idempotent API-Football data-source registration
+reviewed provider-team-ID to canonical participant correlation
+competition, season, and participant source mappings
+conflict-safe mapping behavior
+deterministic season memberships
+application-container integration
+sanitized fixtures and deterministic tests
 
-Out of scope unless Issue #45 explicitly states otherwise:
+Out of scope unless Issue #47 explicitly states otherwise:
 
-live provider credentials or CI calls
-provider source registration
-competition, season, or team imports
 fixture normalization or persistence
-database schema changes
-scheduler or Outlook synchronization changes
+incremental fixture import or lifecycle reconciliation
+scheduler integration
+Graph or Outlook behavior changes
+live provider credentials or CI calls
+database schema changes unless required by a separately documented blocker
 deployment or release work
 
-If Issue #45 conflicts with this summary, the current GitHub issue is authoritative. Report the conflict before proceeding.
+If Issue #47 conflicts with this summary, the current GitHub issue is authoritative. Report the conflict before proceeding.
 
-This phase-specific section must be updated or removed when Phase 4.2 is completed.
+This phase-specific section must be updated or removed when Phase 4.3 is completed.
 
 Definition of Done
 

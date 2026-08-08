@@ -9,7 +9,7 @@
 **Completed phases:** Phase 1, Phase 2, and Phase 3  
 **Automated tests:** 303 passing tests
 
-The application foundation, persistent domain model, repository layer, Microsoft Graph integration, and Outlook synchronization engine are implemented. The next development phase adds the first external football data provider.
+The application foundation, persistent domain model, repository layer, Microsoft Graph integration, Outlook synchronization engine, API-Football client, and Premier League catalog-mapping boundary are implemented. Fixture normalization and automated provider imports remain planned.
 
 ## Project Vision
 
@@ -53,7 +53,7 @@ The application focuses on:
 - idempotent Graph event creation using a persistent transaction ID
 - configurable target mailbox and Graph API base URL
 
-### API-Football Client Foundation
+### API-Football Integration Foundation
 
 - API-Football v3 selected through a documented provider evaluation and ADR
 - external provider configuration with opt-in enablement
@@ -61,10 +61,18 @@ The application focuses on:
 - explicit connect and read timeouts
 - typed response-envelope, pagination, diagnostic, and rate-limit metadata
 - bounded retry handling for retryable transport failures
+- typed Premier League league, season, and team DTO validation
+- exact provider competition and current-season resolution
+- reviewed provider-team-ID mappings to existing canonical participants
+- conflict-safe competition, season, and participant source mappings
+- idempotent provider source registration and season memberships
 - deterministic mocked tests without live provider calls
 
-Competition, season, team, and fixture imports are not implemented yet. They
-remain planned for the following Phase 4 blocks.
+The mapping service is dependency-injected but is not scheduled automatically.
+Fixture DTO normalization, fixture persistence, lifecycle reconciliation, and
+provider-to-Outlook orchestration remain planned for later Phase 4 blocks. See
+[`docs/api-football-catalog-mapping.md`](docs/api-football-catalog-mapping.md)
+for the implemented boundary and reviewed identifiers.
 
 ### Database and Persistence
 
@@ -350,12 +358,12 @@ feature/* -> develop -> release/* -> main -> Release
 
 ### Phase 4 – Initial Football Provider
 
-**Status:** _Next_
+**Status:** _In progress_
 
-- first external football data provider
-- Premier League fixture import
-- team, competition, and season mapping
-- provider request, error, and rate-limit handling
+- API-Football v3 selected and documented
+- provider request, error, pagination, retry, and rate-limit handling implemented
+- Premier League source, competition, season, and team mapping implemented
+- Premier League fixture import planned
 - normalization into the canonical domain model
 - incremental fixture imports and updates
 
@@ -421,14 +429,14 @@ feature/* -> develop -> release/* -> main -> Release
 
 This remains an alpha release.
 
-- no external sports provider is integrated yet
+- API-Football fixture ingestion is not implemented or scheduled yet
 - no administrative user interface
 - synchronization locking is process-local only
 - multiple application instances must not synchronize the same calendar/database concurrently
 - distributed locking and supported multi-instance coordination are not implemented
 - production behavior still requires validation against a real provider and target calendar
 
-The synchronization engine is implemented and tested with Microsoft Graph mocked. Phase 4 connects the first real fixture provider to the existing domain and synchronization pipeline.
+The synchronization engine and API-Football catalog mapping are implemented and tested with external boundaries mocked. Later Phase 4 blocks add fixture normalization, persistence, lifecycle reconciliation, scheduling, and the final provider-to-Outlook path.
 
 ## Project Goals
 

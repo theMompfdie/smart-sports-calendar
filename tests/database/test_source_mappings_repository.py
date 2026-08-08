@@ -4,7 +4,10 @@ from pathlib import Path
 import pytest
 from app.database.data_sources_repository import DataSourcesRepository
 from app.database.database import Database
-from app.database.source_mappings_repository import SourceMappingsRepository
+from app.database.source_mappings_repository import (
+    SourceMappingConflictError,
+    SourceMappingsRepository,
+)
 
 
 def create_repository(
@@ -119,12 +122,12 @@ def test_get_by_internal_id_returns_existing_mapping(
     assert loaded_mapping == created_mapping
 
 
-def test_upsert_updates_existing_external_mapping(
+def test_upsert_rejects_reassigning_existing_external_mapping(
     tmp_path: Path,
 ) -> None:
     source_id, repository = create_repository(tmp_path)
 
-    created_mapping = repository.upsert(
+    repository.upsert(
         source_id=source_id,
         object_type="competition",
         internal_id=42,
@@ -133,26 +136,18 @@ def test_upsert_updates_existing_external_mapping(
         metadata={"version": 1},
     )
 
-    updated_mapping = repository.upsert(
-        source_id=source_id,
-        object_type="competition",
-        internal_id=84,
-        external_id="PL",
-        source_url="https://api.football-data.org/v4/competitions/PL",
-        metadata={"version": 2},
-    )
-
-    assert updated_mapping.id == created_mapping.id
-    assert updated_mapping.internal_id == 84
-    assert (
-        updated_mapping.source_url == "https://api.football-data.org/v4/competitions/PL"
-    )
-    assert updated_mapping.metadata == {"version": 2}
-    assert updated_mapping.created_at == created_mapping.created_at
-    assert updated_mapping.updated_at >= created_mapping.updated_at
+    with pytest.raises(SourceMappingConflictError, match="another canonical object"):
+        repository.upsert(
+            source_id=source_id,
+            object_type="competition",
+            internal_id=84,
+            external_id="PL",
+            source_url="https://api.football-data.org/v4/competitions/PL",
+            metadata={"version": 2},
+        )
 
 
-def test_upsert_does_not_create_duplicate_external_mapping(
+def test_upsert_returns_unchanged_existing_mapping_without_duplicate(
     tmp_path: Path,
 ) -> None:
     source_id, repository = create_repository(tmp_path)
@@ -166,7 +161,7 @@ def test_upsert_does_not_create_duplicate_external_mapping(
     second_mapping = repository.upsert(
         source_id=source_id,
         object_type="competition",
-        internal_id=84,
+        internal_id=42,
         external_id="PL",
     )
 
@@ -174,7 +169,8 @@ def test_upsert_does_not_create_duplicate_external_mapping(
 
     assert len(mappings) == 1
     assert second_mapping.id == first_mapping.id
-    assert second_mapping.internal_id == 84
+    assert second_mapping.internal_id == 42
+    assert second_mapping.updated_at == first_mapping.updated_at
 
 
 def test_upsert_serializes_and_loads_metadata(
@@ -337,7 +333,7 @@ def test_upsert_rejects_unknown_source(
         )
 
 
-def test_upsert_rejects_duplicate_internal_mapping(
+def test_upsert_rejects_conflicting_internal_mapping(
     tmp_path: Path,
 ) -> None:
     source_id, repository = create_repository(tmp_path)
@@ -349,7 +345,7 @@ def test_upsert_rejects_duplicate_internal_mapping(
         external_id="PL",
     )
 
-    with pytest.raises(sqlite3.IntegrityError):
+    with pytest.raises(SourceMappingConflictError, match="another external ID"):
         repository.upsert(
             source_id=source_id,
             object_type="competition",

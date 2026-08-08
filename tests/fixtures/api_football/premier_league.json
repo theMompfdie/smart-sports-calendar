@@ -1,0 +1,35 @@
+{
+  "errors": [],
+  "results": 1,
+  "paging": {
+    "current": 1,
+    "total": 1
+  },
+  "response": [
+    {
+      "league": {
+        "id": 39,
+        "name": "Premier League",
+        "type": "League"
+      },
+      "country": {
+        "name": "England",
+        "code": "GB"
+      },
+      "seasons": [
+        {
+          "year": 2025,
+          "start": "2025-08-15",
+          "end": "2026-05-24",
+          "current": false
+        },
+        {
+          "year": 2026,
+          "start": "2026-08-21",
+          "end": "2027-05-30",
+          "current": true
+        }
+      ]
+    }
+  ]
+}

@@ -49,6 +49,10 @@ class ProviderResponseSchemaError(ProviderError):
     """The response was malformed or violated the supported schema."""
 
 
+class ProviderResolutionError(ProviderError):
+    """A required provider entity could not be resolved unambiguously."""
+
+
 class UnsupportedProviderValueError(ProviderError):
     """The provider returned an unsupported enum or value."""
 
