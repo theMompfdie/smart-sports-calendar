@@ -92,6 +92,28 @@ def test_get_by_key_returns_existing_season(
     assert loaded_season == created_season
 
 
+def test_get_current_for_competition_returns_only_current_seasons(
+    tmp_path: Path,
+) -> None:
+    _, competition_id, repository = create_repository(tmp_path)
+    repository.upsert(
+        competition_id=competition_id,
+        season_key="2025_26",
+        name="2025/26",
+        is_current=False,
+    )
+    current_season = repository.upsert(
+        competition_id=competition_id,
+        season_key="2026_27",
+        name="2026/27",
+        is_current=True,
+    )
+
+    seasons = repository.get_current_for_competition(competition_id)
+
+    assert seasons == [current_season]
+
+
 def test_upsert_updates_existing_season_without_duplicate(
     tmp_path: Path,
 ) -> None:

@@ -388,6 +388,7 @@ keys, authorization headers, or complete raw payloads.
 | `ProviderServerError` | Yes | Retryable provider 5xx failure |
 | `ProviderRequestError` | No | Non-retryable malformed request or unsupported filter |
 | `ProviderResponseSchemaError` | No | Malformed JSON or response that violates the supported schema |
+| `ProviderResolutionError` | No | Provider catalog data cannot be resolved to exactly one compatible canonical object |
 | `UnsupportedProviderValueError` | No | Unknown status, role, type, or other enum value |
 | `ProviderPaginationError` | Conditional | Missing/repeated page, invalid continuation, or incomplete traversal |
 | `ProviderPartialFetchError` | Conditional | Some pages/items failed; fetch is non-authoritative |

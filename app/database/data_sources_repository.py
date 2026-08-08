@@ -90,6 +90,16 @@ class DataSourcesRepository:
         is_active: bool = True,
         metadata: dict[str, Any] | None = None,
     ) -> DataSource:
+        existing_source = self.get_by_key(source_key)
+        if (
+            existing_source is not None
+            and existing_source.name == name
+            and existing_source.base_url == base_url
+            and existing_source.is_active is is_active
+            and existing_source.metadata == metadata
+        ):
+            return existing_source
+
         timestamp = datetime.now(UTC).isoformat()
         metadata_json = self._serialize_metadata(metadata)
 

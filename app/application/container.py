@@ -3,6 +3,10 @@ import signal
 from threading import Event
 from types import FrameType
 
+from app.application.api_football_catalog_service import (
+    ApiFootballCatalogService,
+    register_api_football_source,
+)
 from app.config.settings import Settings, load_settings
 from app.database.calendar_event_mappings_repository import (
     CalendarEventMappingsRepository,
@@ -30,7 +34,9 @@ from app.database.synchronization_query_repository import (
 from app.graph.authentication import GraphTokenProvider
 from app.graph.client import GraphClient
 from app.logging.logger import configure_logging
+from app.providers.api_football.catalog_adapter import ApiFootballCatalogAdapter
 from app.providers.api_football.client import ApiFootballClient
+from app.providers.api_football.team_mappings import PREMIER_LEAGUE_TEAM_MAPPING
 from app.scheduler.scheduler import Scheduler
 from app.synchronization.event_synchronizer import EventSynchronizer
 from app.synchronization.outlook_event_payload_builder import (
@@ -101,6 +107,27 @@ class ApplicationContainer:
             if self.settings.api_football.enabled
             else None
         )
+        self.api_football_catalog_adapter = (
+            ApiFootballCatalogAdapter(client=self.api_football_client)
+            if self.api_football_client is not None
+            else None
+        )
+        self.api_football_catalog_service = (
+            ApiFootballCatalogService(
+                settings=self.settings.api_football,
+                adapter=self.api_football_catalog_adapter,
+                sports_repository=self.sports_repository,
+                competitions_repository=self.competitions_repository,
+                seasons_repository=self.seasons_repository,
+                participants_repository=self.participants_repository,
+                season_participants_repository=self.season_participants_repository,
+                data_sources_repository=self.data_sources_repository,
+                source_mappings_repository=self.source_mappings_repository,
+                team_mapping=PREMIER_LEAGUE_TEAM_MAPPING,
+            )
+            if self.api_football_catalog_adapter is not None
+            else None
+        )
         self.outlook_event_payload_builder = OutlookEventPayloadBuilder()
         self.event_synchronizer = EventSynchronizer(
             payload_builder=self.outlook_event_payload_builder,
@@ -143,6 +170,10 @@ class ApplicationContainer:
             sports_repository=self.sports_repository,
             competitions_repository=self.competitions_repository,
             seasons_repository=self.seasons_repository,
+        )
+        register_api_football_source(
+            settings=self.settings.api_football,
+            repository=self.data_sources_repository,
         )
         self.database.record_startup()
 

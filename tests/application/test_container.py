@@ -61,6 +61,14 @@ def test_run_initializes_sports_catalog(
     assert football.metadata == {
         "category": "team_sport",
     }
+    api_football_source = container.data_sources_repository.get_by_key("api_football")
+    assert api_football_source is not None
+    assert api_football_source.is_active is False
+    assert api_football_source.metadata == {
+        "api_version_family": "v3",
+        "authentication": "x-apisports-key",
+        "provider": "API-Football",
+    }
 
     scheduler_run.assert_called_once_with(
         task=container._run_synchronization,
@@ -117,6 +125,8 @@ def test_container_disables_api_football_client_by_default(
     )
 
     assert container.api_football_client is None
+    assert container.api_football_catalog_adapter is None
+    assert container.api_football_catalog_service is None
 
 
 def test_container_provides_enabled_api_football_client(
@@ -135,6 +145,8 @@ def test_container_provides_enabled_api_football_client(
 
     assert container.api_football_client is not None
     assert container.api_football_client._settings is enabled_settings.api_football
+    assert container.api_football_catalog_adapter is not None
+    assert container.api_football_catalog_service is not None
 
 
 def test_container_never_logs_api_football_key(
@@ -157,6 +169,31 @@ def test_container_never_logs_api_football_key(
         container.run()
 
     assert "provider-secret" not in str(container.logger.method_calls)
+
+
+def test_run_registers_enabled_api_football_source_without_live_call(
+    tmp_path: Path,
+) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        api_football=ApiFootballSettings(
+            enabled=True,
+            api_key="provider-secret",
+        ),
+    )
+    container = ApplicationContainer(settings=settings)
+
+    with (
+        patch.object(container, "_register_signal_handlers"),
+        patch.object(container.scheduler, "run"),
+        patch.object(container.api_football_client, "get_all") as provider_get_all,
+    ):
+        container.run()
+
+    source = container.data_sources_repository.get_by_key("api_football")
+    assert source is not None
+    assert source.is_active is True
+    provider_get_all.assert_not_called()
 
 
 def test_container_provides_event_synchronizer(
