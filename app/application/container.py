@@ -69,7 +69,7 @@ from app.providers.api_football.team_mappings import PREMIER_LEAGUE_TEAM_MAPPING
 from app.providers.contracts import SourceConfigurationError, SourceRole
 from app.providers.football_data.adapter import FootballDataPremierLeagueAdapter
 from app.providers.football_data.client import FootballDataClient
-from app.scheduler.scheduler import Scheduler
+from app.scheduler.scheduler import ScheduledJob, Scheduler
 from app.synchronization.event_synchronizer import EventSynchronizer
 from app.synchronization.outlook_event_payload_builder import (
     OutlookEventPayloadBuilder,
@@ -357,6 +357,14 @@ class ApplicationContainer:
         self.source_scheduled_jobs = self.source_registry.build_scheduled_jobs(
             self.settings.source_jobs
         )
+        self.scheduled_jobs = (
+            *self.source_scheduled_jobs,
+            ScheduledJob(
+                job_key="system:calendar-synchronization",
+                interval_seconds=self.settings.heartbeat_interval,
+                task=self._run_synchronization,
+            ),
+        )
         self.stop_event = Event()
 
     def run(self) -> None:
@@ -431,7 +439,7 @@ class ApplicationContainer:
 
         if self.settings.source_jobs:
             self.scheduler.run_jobs(
-                jobs=self.source_scheduled_jobs,
+                jobs=self.scheduled_jobs,
                 stop_event=self.stop_event,
             )
         else:
@@ -479,10 +487,7 @@ class ApplicationContainer:
             raise SourceConfigurationError(
                 "API-Football source job has no configured runtime."
             )
-        result = runtime.run()
-        if result is not None:
-            self._run_synchronization()
-        return result
+        return runtime.run()
 
     def _run_football_data_source_job(self) -> object | None:
         runtime = self.football_data_import_runtime_service
@@ -490,10 +495,7 @@ class ApplicationContainer:
             raise SourceConfigurationError(
                 "football-data.org source job has no configured runtime."
             )
-        result = runtime.run()
-        if result is not None:
-            self._run_synchronization()
-        return result
+        return runtime.run()
 
     def _persist_source_assignments(self) -> None:
         assignments: list[SourceAssignmentWrite] = []

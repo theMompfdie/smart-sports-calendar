@@ -144,7 +144,7 @@ same calendar. Do not target a general-purpose personal calendar.
 | `TZ` | `Europe/Vienna` in Compose | Operational container timezone; canonical fixture timestamps remain UTC |
 | `DATABASE_PATH` | `/data/sports.db` | SQLite file inside the persistent volume |
 | `LOG_LEVEL` | `INFO` | Python logging level; never use logs to expose configuration secrets |
-| `HEARTBEAT_INTERVAL` | `300` | Positive integer calendar-only interval while API-Football is disabled |
+| `HEARTBEAT_INTERVAL` | `300` | Positive interval for the independent Outlook calendar synchronization job |
 | `M365_TENANT_ID` | none | Required deployment secret/reference for Graph authentication |
 | `M365_CLIENT_ID` | none | Required deployment secret/reference for Graph authentication |
 | `M365_CLIENT_SECRET` | none | Required secret; never commit or print it |
@@ -159,9 +159,12 @@ All settings are external. `.env.example` contains placeholders only. Use a
 local ignored `.env` file or Portainer secret/environment configuration for
 real values. The image must never contain credentials.
 
-When enabled, every interval performs a complete current Premier League import
-and invokes Outlook synchronization only after the canonical import succeeds.
-When disabled, the existing calendar-only cycle uses `HEARTBEAT_INTERVAL`.
+Each enabled source job imports its configured scope at its own
+`SOURCE_JOBS_JSON.interval_seconds`. Outlook synchronization is a separate job
+that runs every `HEARTBEAT_INTERVAL`, including while providers are enabled.
+At startup, configured source jobs are ordered before the first calendar job;
+later calendar batches continue independently without unnecessary provider
+requests.
 
 Provider-import and calendar-sync outcomes are stored separately in
 `sync_runs`. The runtime lock is process-local, so deploy only one application
