@@ -10,7 +10,7 @@
 
 **Completed phases:** Phase 1, Phase 2, Phase 3, and Phase 4
 
-**Active delivery track:** official calendar-feed orchestration and isolated
+**Active delivery track:** authoritative-source orchestration and isolated
 live validation for `v0.4.5-beta.1`
 ([tracker #72](https://github.com/theMompfdie/smart-sports-calendar/issues/72))
 
@@ -19,9 +19,10 @@ live validation for `v0.4.5-beta.1`
 The application foundation, persistent domain model, repository layer, Microsoft Graph integration, Outlook synchronization engine, and the scheduled, reported API-Football Premier League import runtime are implemented.
 
 The current release is not yet approved for production use. Provider-neutral
-source selection, an official Premier League calendar-feed integration,
-credential-safe staging validation, and controlled production promotion are
-the blocking steps before Phase 5.
+source selection, a permitted Premier League authority, credential-safe staging
+validation, and controlled production promotion are the blocking steps before
+Phase 5. The official ECAL calendar is not approved for automated ingestion;
+`football-data.org` is the next candidate to qualify.
 
 ## Project Vision
 
@@ -104,6 +105,8 @@ Phase 4 documentation:
 
 - [provider requirements and evaluation](docs/provider-evaluation.md)
 - [API-Football selection ADR](docs/adr/0001-select-api-football.md)
+- [Premier League official-feed qualification](docs/premier-league-official-feed-qualification.md)
+- [ECAL automated-source rejection ADR](docs/adr/0002-reject-ecal-as-automated-source.md)
 - [provider-independent integration contract](docs/provider-integration-contract.md)
 - [Premier League catalog mapping](docs/api-football-catalog-mapping.md)
 - [fixture normalization](docs/api-football-fixture-normalization.md)
@@ -425,7 +428,7 @@ feature/* -> develop -> release/* -> main -> Release
 - deterministic provider-to-Outlook end-to-end integration coverage implemented
 - deployment, upgrade, live-validation, and release documentation completed
 
-### v0.4.5 Official Calendar-Feed Beta
+### v0.4.5 Authoritative-Source Beta
 
 **Status:** _In progress_
 
@@ -436,8 +439,8 @@ feature/* -> develop -> release/* -> main -> Release
 - verify at least three independent local containers
 - deploy an isolated staging stack with automatic `develop` updates
 - add provider-neutral per-competition source orchestration
-- integrate an approved official Premier League calendar feed
-- complete credential-safe official-feed and Microsoft Graph live validation
+- qualify and integrate a permitted Premier League authority
+- complete credential-safe provider and Microsoft Graph live validation
 - qualify an immutable candidate and promote it to production manually
 
 This track is managed by

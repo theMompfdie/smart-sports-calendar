@@ -166,7 +166,7 @@ Phase completion normally requires:
 
 Do not release unverified code.
 
-## Current v0.4.5 Official-Feed Beta Boundary
+## Current v0.4.5 Authoritative-Source Beta Boundary
 
 The active delivery track is GitHub master issue #72.
 
@@ -175,19 +175,20 @@ Target release: `v0.4.5-beta.1`. The previously planned
 
 The beta extends the completed deployment-isolation foundation from #61 with a
 provider-neutral source orchestrator and one production-like Premier League
-integration backed by an officially offered calendar feed.
+integration backed by a permitted, qualified authoritative source. The
+official ECAL calendar was rejected for automated retrieval in #73.
 
 Required delivery order:
 
-1. approve the official-feed source policy, provider contract, identity rules,
-   and licensing/operational evidence in #72;
+1. approve the source policy, provider contract, identity rules, and
+   licensing/operational evidence in #72 and #73;
 2. implement provider-neutral registration, configuration, scheduling, and
    per-competition source selection;
-3. implement a validated iCalendar feed adapter and the Premier League mapping;
+3. qualify and implement the permitted Premier League authority and mapping;
 4. prove deterministic lifecycle handling and regression coverage without live
    credentials in CI;
 5. complete #63 against the dedicated staging Outlook calendar with real
-   Premier League data from the approved official feed;
+   Premier League data from the approved authority;
 6. complete #64, publish `v0.4.5-beta.1` from verified `main`, and manually
    promote that immutable tag to production.
 
@@ -217,9 +218,8 @@ Required delivery order:
 In scope:
 
 * provider-neutral orchestration needed to select sources per competition;
-* official iCalendar feed retrieval, conditional requests, validation,
-  normalization, stable identity, and safe lifecycle handling;
-* current Premier League catalog and fixtures from the approved official feed;
+* the transport and validation adapter for the approved permitted authority;
+* current Premier League catalog and fixtures from that authority;
 * non-destructive coexistence with existing API-Football source mappings;
 * isolated live staging validation through SQLite and Microsoft Graph;
 * unchanged-cycle idempotency, restart/recovery, backup/restore, release notes,
@@ -231,6 +231,7 @@ Out of scope:
 * automatic provider failover or multi-source field aggregation;
 * live scores, standings, statistics, lineups, odds, or historical enrichment;
 * Transfermarkt scraping or undocumented private website APIs;
+* automated ECAL retrieval without explicit written permission;
 * redesigning the Outlook synchronization engine;
 * the full broad configuration scope of #3;
 * automatic production deployment.
