@@ -32,8 +32,10 @@ A batch is authoritative only when all of these conditions pass:
 
 Empty, short, over-count, duplicate, malformed, stale, wrong-scope, unknown
 status, failed, or partial collections produce no canonical fixture writes and
-no Outlook handoff. Raw live responses are not retained or committed; normal
-CI constructs synthetic dictionaries with the same structural invariants.
+no removal evidence. An independently scheduled calendar job may revalidate
+the last-known-good canonical state, but it must issue no unnecessary Graph
+write. Raw live responses are not retained or committed; normal CI constructs
+synthetic dictionaries with the same structural invariants.
 
 ## Identity and lifecycle
 

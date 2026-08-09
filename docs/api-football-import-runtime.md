@@ -84,5 +84,6 @@ tokens, authorization headers, or raw secret-bearing URLs.
 Automated tests use mocked provider and Graph boundaries plus migrated SQLite.
 They cover scope construction, counters, diagnostics, failures, recovery,
 overlap, disabled mode, scheduler ordering, graceful shutdown, and the
-post-import Outlook handoff. Phase 4.7 still owns the complete representative
-provider-payload-to-SQLite-to-mocked-Graph end-to-end suite.
+independent provider-import and Outlook synchronization boundaries. Phase 4.7
+still owns the complete representative provider-payload-to-SQLite-to-mocked-
+Graph end-to-end suite.
