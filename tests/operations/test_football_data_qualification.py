@@ -75,6 +75,10 @@ def test_qualification_returns_only_safe_aggregate_evidence() -> None:
     assert evidence.team_count == 20
     assert evidence.match_count == 380
     assert evidence.unique_match_ids == 380
+    assert evidence.match_ids_sha256 == (
+        "1c713d8b46058c74ae88d10e34b4c409d2b428832242a7d9f71eba25cec76450"
+    )
+    assert evidence.latest_source_update_utc == "2026-08-09T10:00:00+00:00"
     assert evidence.status_counts == {"TIMED": 380}
     assert evidence.requests_available_minimum == 7
     assert "provider-secret" not in rendered
@@ -136,8 +140,12 @@ def test_render_qualification_evidence_is_stable() -> None:
         team_count=20,
         match_count=380,
         unique_match_ids=380,
+        match_ids_sha256=(
+            "1c713d8b46058c74ae88d10e34b4c409d2b428832242a7d9f71eba25cec76450"
+        ),
         earliest_kickoff_utc="2026-08-15T14:00:00+00:00",
         latest_kickoff_utc="2027-05-23T15:00:00+00:00",
+        latest_source_update_utc="2026-08-09T10:00:00+00:00",
         status_counts={"TIMED": 380},
         requests_available_minimum=7,
     )

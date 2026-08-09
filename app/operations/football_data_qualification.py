@@ -1,4 +1,5 @@
 import argparse
+import hashlib
 import json
 import os
 from collections import Counter
@@ -77,8 +78,10 @@ class FootballDataQualificationEvidence:
     team_count: int
     match_count: int
     unique_match_ids: int
+    match_ids_sha256: str
     earliest_kickoff_utc: str
     latest_kickoff_utc: str
+    latest_source_update_utc: str
     status_counts: dict[str, int]
     requests_available_minimum: int | None
 
@@ -128,6 +131,7 @@ def qualify_football_data(
 
     match_ids: set[int] = set()
     kickoffs: list[datetime] = []
+    source_updates: list[datetime] = []
     statuses: Counter[str] = Counter()
     for raw_match in matches:
         match = _mapping_value(raw_match)
@@ -151,7 +155,7 @@ def qualify_football_data(
             raise QualificationError("Provider returned an unsupported match status.")
         statuses[status] += 1
         kickoffs.append(_utc_datetime(_string(match, "utcDate")))
-        _utc_datetime(_string(match, "lastUpdated"))
+        source_updates.append(_utc_datetime(_string(match, "lastUpdated")))
 
     api_versions = {_header_value(item, "X-API-Version") for item in headers}
     if api_versions != {"v4"}:
@@ -172,8 +176,10 @@ def qualify_football_data(
         team_count=len(team_ids),
         match_count=len(matches),
         unique_match_ids=len(match_ids),
+        match_ids_sha256=_identity_fingerprint(match_ids),
         earliest_kickoff_utc=min(kickoffs).isoformat(),
         latest_kickoff_utc=max(kickoffs).isoformat(),
+        latest_source_update_utc=max(source_updates).isoformat(),
         status_counts=dict(sorted(statuses.items())),
         requests_available_minimum=min(remaining) if remaining else None,
     )
@@ -269,6 +275,11 @@ def _optional_int_header(headers: Mapping[str, str], name: str) -> int | None:
     if parsed < 0:
         raise QualificationError("Provider returned an invalid quota header.")
     return parsed
+
+
+def _identity_fingerprint(identifiers: set[int]) -> str:
+    canonical = "\n".join(str(identifier) for identifier in sorted(identifiers))
+    return hashlib.sha256(canonical.encode()).hexdigest()
 
 
 def main(argv: Sequence[str] | None = None) -> int:
