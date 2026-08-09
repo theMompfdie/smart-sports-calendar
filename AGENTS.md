@@ -123,6 +123,13 @@ Use small logical commits. Prefer:
 
 When helping with commits, provide a concrete commit message.
 
+Commits are expected to use the repository's configured GPG signing. If
+signing requires an interactive PIN, hardware token, or other operator action,
+stop before creating the commit and tell the user exactly which commit command
+to run. Resume with signature verification, push, PR maintenance, and CI only
+after the signed commit exists. Never fall back to `--no-gpg-sign` unless the
+user explicitly authorizes that specific unsigned commit.
+
 ## PRs and Issues
 
 PRs should state what changed, why, key decisions, tests, related issue, and limitations if applicable.
@@ -360,6 +367,11 @@ chore:
 ci:
 
 Do not commit, push, merge, delete branches, create releases, or mutate GitHub objects unless the user explicitly requests that action.
+
+When an authorized commit cannot be signed non-interactively, hand the commit
+step to the user instead of bypassing GPG signing. Continue only after verifying
+the resulting commit signature. An unsigned fallback requires explicit approval
+for that individual commit.
 
 Never use destructive Git commands to discard local work without explicit approval.
 
