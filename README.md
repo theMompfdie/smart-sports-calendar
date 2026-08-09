@@ -107,6 +107,7 @@ Phase 4 documentation:
 - [API-Football selection ADR](docs/adr/0001-select-api-football.md)
 - [Premier League official-feed qualification](docs/premier-league-official-feed-qualification.md)
 - [ECAL automated-source rejection ADR](docs/adr/0002-reject-ecal-as-automated-source.md)
+- [football-data.org Premier League selection ADR](docs/adr/0003-select-football-data-for-premier-league.md)
 - [football-data.org qualification](docs/football-data-qualification.md)
 - [provider-independent integration contract](docs/provider-integration-contract.md)
 - [Premier League catalog mapping](docs/api-football-catalog-mapping.md)

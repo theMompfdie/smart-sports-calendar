@@ -2,11 +2,10 @@
 
 ## Status
 
-**First live evidence passed; repeat identity observation pending.** Public
-technical and contractual evidence supports continued qualification. The
-secret-safe read-only check passed for the 2026/27 Premier League on 2026-08-09,
-but `football-data.org` is not approved as the authority until a second run
-confirms the same match-identity fingerprint.
+**Approved with mandatory operating conditions.** `football-data.org` API v4
+is the selected authoritative Premier League source for the 2026/27 season.
+Public technical and contractual evidence, one complete live qualification,
+and two repeat fingerprint-bearing observations passed on 2026-08-09.
 
 The reviewed first-run evidence was:
 
@@ -22,6 +21,19 @@ No token, request header, account identifier, team name, fixture detail, raw
 payload, or secret-bearing URL was recorded. The optional remaining-quota
 header was not present, so its aggregate value was `null`; the command still
 made exactly three read-only requests.
+
+Two later observations, separated by 60 seconds, both reported:
+
+- `match_ids_sha256` =
+  `ef4c69d02ca2cef983ed0ec8f2046d6833468c87ed4fd08fdfc54f89ae4fe878`;
+- `latest_source_update_utc` = `2026-07-09T01:25:00Z`;
+- the same competition, season, 20-team, 380-match, kickoff-boundary, and
+  all-`SCHEDULED` aggregates.
+
+This proves stable identity across repeated retrievals without publishing an
+individual match ID. The source-update time predates qualification by about one
+month, but the season had not started and both complete snapshots were
+identical; production freshness must still be monitored per run.
 
 ## Public evidence reviewed on 2026-08-09
 
@@ -48,9 +60,14 @@ The required visible attribution is:
 > Football data provided by the Football-Data.org API
 
 It must appear in a visible application or operator-facing location before the
-provider is enabled in staging or production. Subscription cancellation must
-disable retrieval and remove provider-derived data from the served calendar;
-the exact safe purge/migration procedure must be finalized before approval.
+provider is enabled in staging or production. The operator accepted this
+requirement and the cancellation workflow during qualification.
+
+Before a subscription ends, retrieval must be disabled and the operator must
+either re-source every served fixture from an approved replacement or remove
+football-data.org-derived events from the Outlook calendar. Provider mappings
+and any retained provider-derived data must then be removed through an
+explicit, scoped, backed-up operation. No automatic purge is authorized.
 
 ## Secret-safe live qualification command
 
@@ -86,18 +103,22 @@ The output may be attached to issue #79 only after manual review. The token,
 raw response, request headers, account dashboard, and `.env` contents must never
 be copied into GitHub.
 
-## Remaining approval gates
+## Approved operating conditions
 
-- Repeat after a safe interval and confirm `match_ids_sha256` is unchanged.
-- Record the second run's `latest_source_update_utc` and optional aggregate
-  quota value without fixture details.
-- Confirm with the operator that visible attribution and subscription-
-  cancellation cleanup are acceptable.
-- Define removal behavior: absence becomes evidence only after two complete,
-  successful 380-match snapshots; a filtered or short response is never
-  authoritative.
-- Confirm whether minimal sanitized response shapes may be committed as test
-  fixtures; until then tests must use synthetic payloads only.
+- Absence becomes removal evidence only after two complete, successful
+  380-match authoritative snapshots. A filtered, short, stale, empty,
+  malformed, failed, or wrong-scope response is never authoritative.
+- Visible attribution is mandatory while provider-derived data is served.
+- Credentials remain in the operator secret store and never enter GitHub,
+  logs, screenshots, run metadata, or test artifacts.
+- Normal CI uses synthetic payloads only. The public terms do not provide a
+  sufficiently explicit license for committing copied live response fixtures.
+- The free tier's delayed schedules are acceptable for the calendar use case;
+  every run must still retain last-known-good state on failure or staleness.
+- Missing optional quota headers are allowed. The scheduler must enforce the
+  documented plan limit independently and classify HTTP 429 as retryable.
+- Cancellation requires the scoped re-source-or-remove procedure above before
+  provider-derived data may continue to be served.
 
 ## Sources
 

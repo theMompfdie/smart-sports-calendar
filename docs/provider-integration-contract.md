@@ -81,6 +81,15 @@ The complete rejected-ECAL assessment and the future iCalendar transport rules
 are in
 [`premier-league-official-feed-qualification.md`](premier-league-official-feed-qualification.md).
 
+For the approved 2026/27 Premier League source, `football_data` is the sole
+authoritative writer for competition `PL` and season start year `2026`.
+Provider match IDs are the external fixture identity. A collection is complete
+only when it validates as one 20-team, 380-match snapshot for the expected
+competition and season. Absence may contribute removal evidence only after two
+consecutive complete authoritative snapshots. API-Football may coexist as
+disabled, bootstrap, or verification-only configuration but cannot overwrite
+fields, cancel events, or produce removal evidence for this scope.
+
 ## Typed concepts
 
 The following Python-like definitions describe the required semantics. They are
