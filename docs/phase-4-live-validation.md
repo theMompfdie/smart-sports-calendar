@@ -2,8 +2,28 @@
 
 > This runbook records the API-Football validation procedure designed for the
 > released `v0.4.0-alpha.1` implementation. It is not the release gate for
-> `v0.4.5-beta.1`. Master issue #72 requires a replacement official-feed
+> `v0.4.5-beta.1`. Master issue #72 requires a replacement authoritative-source
 > staging procedure before #63 can be completed.
+
+Issue #73 rejected the ECAL-delivered Premier League calendar for automated
+server retrieval under its current public end-user terms. This legacy runbook
+must not be adapted by substituting a personalized ECAL URL. Issue #63 remains
+blocked until a permitted authoritative source passes qualification and its
+source-specific, secret-safe staging procedure is reviewed.
+
+The replacement procedure must prove, at minimum:
+
+- the deployed source is the single configured Premier League authority;
+- a complete real current-season collection is committed before Outlook handoff;
+- stable external identity survives an unchanged second cycle and a naturally
+  observed correction or reschedule when available;
+- malformed, partial, empty, stale, or failed collection retains last-known-good
+  state and produces neither Outlook writes nor removal evidence;
+- provider credentials or secret-bearing URLs are absent from logs, database
+  evidence, screenshots, issues, and pull requests;
+- source attribution and retention obligations are satisfied in the deployed
+  application; and
+- disabling or losing the source cannot silently promote a fallback writer.
 
 ## Purpose and safety boundary
 

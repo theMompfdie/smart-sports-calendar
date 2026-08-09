@@ -48,6 +48,39 @@ This contract does not define an HTTP client or retry implementation.
 - Provider capabilities describe observable behavior; callers do not infer
   capabilities from provider names.
 
+## Source authority and calendar-feed snapshots
+
+Exactly one source may be the authoritative writer for a competition and
+season at a time. Official provenance is preferred, but it does not override
+usage terms or the technical contract. Verification, bootstrap, and fallback
+sources are read-only and cannot create removal evidence, cancel canonical
+events, or overwrite authoritative fields. Automatic failover is outside the
+`v0.4.5-beta.1` boundary.
+
+For iCalendar sources, `UID` is the only acceptable provider event identity.
+`SUMMARY`, participant names, kickoff, and venue are mutable fields. A feed is
+a complete authoritative snapshot only when the HTTP exchange, calendar
+container, every `VEVENT`, scope, expected season, identities, timezones, and
+integrity invariants all validate. HTTP success or parser success alone is not
+sufficient.
+
+Malformed, partial, truncated, over-limit, empty, stale, unexpectedly reduced,
+wrong-scope, or conditionally inconsistent feeds fail closed and retain the
+last-known-good state. They cannot trigger canonical or Outlook writes and
+cannot contribute absence/removal evidence. A `304 Not Modified` response may
+reuse the prior validated snapshot but is not a new removal observation.
+
+Calendar subscription URLs are credentials when they contain subscriber or
+unguessable identifiers. They are supplied only through the deployment secret
+store and must not appear in configuration examples, logs, exceptions, run
+metadata, evidence, tests, screenshots, issues, or pull requests. Redirect
+targets must preserve the same secrecy and be restricted by an explicit origin
+policy.
+
+The complete rejected-ECAL assessment and the future iCalendar transport rules
+are in
+[`premier-league-official-feed-qualification.md`](premier-league-official-feed-qualification.md).
+
 ## Typed concepts
 
 The following Python-like definitions describe the required semantics. They are
