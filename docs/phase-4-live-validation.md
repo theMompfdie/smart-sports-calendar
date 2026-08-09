@@ -1,4 +1,9 @@
-# Phase 4 Manual Live Validation
+# Legacy Phase 4 API-Football Manual Live Validation
+
+> This runbook records the API-Football validation procedure designed for the
+> released `v0.4.0-alpha.1` implementation. It is not the release gate for
+> `v0.4.5-beta.1`. Master issue #72 requires a replacement official-feed
+> staging procedure before #63 can be completed.
 
 ## Purpose and safety boundary
 
@@ -22,9 +27,10 @@ python -m app.operations.staging_evidence --database /data/sports.db
 Use this command for database evidence instead of ad-hoc `SELECT *` queries.
 Review its output before copying it outside the staging environment.
 
-For `v0.4.0-beta.1`, this checklist is executed only in the isolated staging
-environment tracked by
-[issue #63](https://github.com/theMompfdie/smart-sports-calendar/issues/63).
+If this legacy procedure is used for diagnostic comparison, it is executed only
+in the isolated staging environment tracked by
+[issue #63](https://github.com/theMompfdie/smart-sports-calendar/issues/63) and
+does not qualify `v0.4.5-beta.1`.
 The multi-instance implementation in
 [issue #2](https://github.com/theMompfdie/smart-sports-calendar/issues/2) must
 be complete before staging and production run concurrently on one Docker host.

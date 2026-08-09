@@ -147,6 +147,7 @@ Existing milestones:
 * Phase 2 — `v0.2.0-alpha.1`
 * Phase 3 — `v0.3.0-alpha.1`
 * Phase 4 — `v0.4.0-alpha.1`
+* Official-feed beta — `v0.4.5-beta.1`
 
 Production target: `v1.0.0`
 
@@ -165,47 +166,90 @@ Phase completion normally requires:
 
 Do not release unverified code.
 
-## Current v0.4 Stabilization Boundary
+## Current v0.4.5 Official-Feed Beta Boundary
 
-The active delivery track is GitHub master issue #61:
+The active delivery track is GitHub master issue #72.
 
-`v0.4 Stabilization – Isolated Staging and Production Readiness`
+Target release: `v0.4.5-beta.1`. The previously planned
+`v0.4.0-beta.1` is superseded and must not be tagged or released.
 
-Target release: `v0.4.0-beta.1`.
+The beta extends the completed deployment-isolation foundation from #61 with a
+provider-neutral source orchestrator and one production-like Premier League
+integration backed by an officially offered calendar feed.
 
 Required delivery order:
 
-1. #62 – roadmap and Portainer operating-model documentation
-2. #2 – multiple independent Docker/Portainer deployments
-3. #63 – isolated staging deployment and credential-safe live validation
-4. #64 – release-candidate qualification and manual production promotion
+1. approve the official-feed source policy, provider contract, identity rules,
+   and licensing/operational evidence in #72;
+2. implement provider-neutral registration, configuration, scheduling, and
+   per-competition source selection;
+3. implement a validated iCalendar feed adapter and the Premier League mapping;
+4. prove deterministic lifecycle handling and regression coverage without live
+   credentials in CI;
+5. complete #63 against the dedicated staging Outlook calendar with real
+   Premier League data from the approved official feed;
+6. complete #64, publish `v0.4.5-beta.1` from verified `main`, and manually
+   promote that immutable tag to production.
 
-Issue #2 is a focused implementation issue, not the stabilization master.
-Issue #3 remains broader `v1.0` configuration work; only configuration required
-for isolated staging and production belongs in the current track.
+### Source policy
 
-The intended operating model is:
+* Prefer documented official APIs or officially offered, automatically updated
+  calendar feeds as the authoritative source for a competition.
+* Each competition and season has exactly one enabled authoritative writer.
+* Additional sources may be configured only as `bootstrap`, `verification`, or
+  operator-selected alternatives. Automatic failover and simultaneous merging
+  are not part of `v0.4.5-beta.1`.
+* A transient source failure keeps the last known good canonical state and must
+  not cause another source to overwrite, cancel, or remove events.
+* Stable source identifiers are mandatory. For iCalendar feeds, the source UID
+  must remain stable across fixture changes before the feed can be authoritative.
+* Cross-source correlation may use mapped competition, season, participants,
+  round/leg, and kickoff tolerance to produce candidates, but ambiguous matches
+  require explicit review and must never be merged heuristically.
+* Only a complete successful authoritative snapshot may contribute removal
+  evidence. Verification and bootstrap sources never delete canonical events.
+* Undocumented website endpoints and HTML scraping are excluded unless the
+  operator has explicit written permission. Transfermarkt is not an automated
+  source under the current terms.
 
-* `smart-calendar-staging` may follow `develop` through automatic Portainer
-  GitOps updates during normal development.
-* During candidate qualification, staging is frozen to the immutable candidate
-  tag.
-* `smart-calendar-prod` never tracks `develop`; production updates are manual
-  and use an explicitly approved immutable release tag.
-* Staging and production have distinct stack names, volumes, SQLite databases,
-  Outlook calendars, credential configuration, and log streams.
-* No two active instances may share a writable database or target calendar.
-* Live credentials are supplied only by the operator through Portainer or an
-  ignored local secret store. They never enter source control, CI, issues, PRs,
-  logs, screenshots, or validation artifacts.
+### `v0.4.5-beta.1` scope boundary
 
-Before issue #2 is complete, documentation must label the two-stack model as
-planned and must not recommend concurrent deployment from the current Compose
-file. Automated validation remains credential-free and must prove at least
-three isolated instances without productive API calls.
+In scope:
 
-Phase 5 competition work must not begin until the blocking acceptance criteria
-in #61 are complete and `v0.4.0-beta.1` has been published from verified code.
+* provider-neutral orchestration needed to select sources per competition;
+* official iCalendar feed retrieval, conditional requests, validation,
+  normalization, stable identity, and safe lifecycle handling;
+* current Premier League catalog and fixtures from the approved official feed;
+* non-destructive coexistence with existing API-Football source mappings;
+* isolated live staging validation through SQLite and Microsoft Graph;
+* unchanged-cycle idempotency, restart/recovery, backup/restore, release notes,
+  and manual production promotion.
+
+Out of scope:
+
+* adding a second competition to the released beta;
+* automatic provider failover or multi-source field aggregation;
+* live scores, standings, statistics, lineups, odds, or historical enrichment;
+* Transfermarkt scraping or undocumented private website APIs;
+* redesigning the Outlook synchronization engine;
+* the full broad configuration scope of #3;
+* automatic production deployment.
+
+The deployment operating model remains unchanged:
+
+* `smart-calendar-staging` may follow `develop` during normal development and is
+  frozen to the immutable candidate tag for qualification;
+* `smart-calendar-prod` never tracks `develop` and is promoted manually from an
+  explicitly approved immutable tag;
+* staging and production have distinct stack names, volumes, SQLite databases,
+  Outlook calendars, credentials, configuration, and log streams;
+* no two active instances may share a writable database or target calendar;
+* live credentials and feed URLs containing secrets are supplied only by the
+  operator and never enter source control, CI, issues, PRs, logs, screenshots,
+  or validation artifacts.
+
+Phase 5 competition expansion must not begin until #72, #63, and #64 are
+complete and `v0.4.5-beta.1` has been published from verified code.
 
 ## Docker, Security, Dependencies
 
@@ -348,6 +392,7 @@ Phase 1: v0.1.0-alpha.1
 Phase 2: v0.2.0-alpha.1
 Phase 3: v0.3.0-alpha.1
 Phase 4: v0.4.0-alpha.1
+Official-feed beta target: v0.4.5-beta.1
 
 Production target:
 
