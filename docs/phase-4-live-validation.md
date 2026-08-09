@@ -7,9 +7,18 @@
 
 Issue #73 rejected the ECAL-delivered Premier League calendar for automated
 server retrieval under its current public end-user terms. This legacy runbook
-must not be adapted by substituting a personalized ECAL URL. Issue #63 remains
-blocked until a permitted authoritative source passes qualification and its
-source-specific, secret-safe staging procedure is reviewed.
+must not be adapted by substituting a personalized ECAL URL. Issue #79 and ADR
+0003 approve football-data.org API v4 for the 2026/27 Premier League. Issue #63
+must use the provider-specific controls below after #74 and #76 are complete.
+
+The replacement staging configuration must select `football_data` as the only
+authoritative writer for `PL`/`2026`, supply its token only through Portainer or
+another ignored operator secret store, and display the required attribution.
+Before Outlook handoff, the import must prove 20 teams, 380 unique matches,
+expected competition/season identity, UTC timestamps, known statuses, and a
+complete successful snapshot. Two complete snapshots are required before
+absence may become removal evidence. Optional quota headers may be absent; the
+scheduler must still enforce the configured request budget.
 
 The replacement procedure must prove, at minimum:
 

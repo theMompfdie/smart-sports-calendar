@@ -77,11 +77,12 @@ parser decision are in
 [`premier-league-official-feed-qualification.md`](premier-league-official-feed-qualification.md)
 and [ADR 0002](adr/0002-reject-ecal-as-automated-source.md).
 
-`football-data.org` is the next Premier League candidate because its public
-terms explicitly govern registered API use, require visible attribution, and
-require credential confidentiality. It is not yet approved as authoritative;
-current-season completeness, freshness, lifecycle/removal behavior, retention,
-and deployment attribution still require a focused qualification.
+`football-data.org` is approved as the 2026/27 Premier League authority by
+[ADR 0003](adr/0003-select-football-data-for-premier-league.md). Its public
+terms govern registered API use, require visible attribution and credential
+confidentiality, and impose a cancellation cleanup obligation. Secret-safe
+live qualification proved 20 teams, 380 unique matches, and stable match
+identity across two fingerprint-bearing observations.
 
 ## Comparison matrix
 
@@ -158,8 +159,9 @@ not contain a distinct abandoned status. The 2026-08-09 reassessment located
 the general terms: a registered API key is scoped to one application,
 credentials must remain confidential, visible attribution is required, and
 data may no longer be referenced after subscription cancellation. These terms
-remove the earlier discovery ambiguity but introduce retention and operational
-requirements that must be accepted and tested before approval.
+remove the earlier discovery ambiguity. The operator accepted the required
+attribution and scoped re-source-or-remove cancellation workflow. The source
+is approved under ADR 0003 with fail-closed complete-snapshot rules.
 
 ### Sportmonks Football API
 
