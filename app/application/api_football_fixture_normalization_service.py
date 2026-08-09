@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date
 
 from app.database.competitions_repository import CompetitionsRepository
 from app.database.data_sources_repository import DataSourcesRepository
@@ -14,49 +14,11 @@ from app.providers.api_football.fixture_models import (
     ApiFootballFixture,
     ProviderFixtureStatus,
 )
-from app.providers.api_football.models import RateLimitSnapshot
-
-
-@dataclass(frozen=True)
-class NormalizedFixtureParticipant:
-    participant_id: int
-    role: str
-    position_number: int
-
-
-@dataclass(frozen=True)
-class NormalizedFixture:
-    external_id: str
-    sport_id: int
-    competition_id: int
-    season_id: int
-    event_type: str
-    title: str
-    participants: tuple[NormalizedFixtureParticipant, ...]
-    kickoff_utc: datetime | None
-    kickoff_confirmed: bool
-    timezone: str
-    status: str
-    stage: str | None
-    round_name: str | None
-    sequence_number: int | None
-    venue_name: str | None
-    city: str | None
-    source_updated_at: datetime | None
-    metadata: dict[str, str] | None
-
-
-@dataclass(frozen=True)
-class NormalizedFixtureBatch:
-    fixtures: tuple[NormalizedFixture, ...]
-    competition_id: int
-    season_id: int
-    season_start_date: date
-    season_end_date: date
-    fetched_at_utc: datetime
-    page_count: int
-    request_attempts: int
-    rate_limits: RateLimitSnapshot
+from app.providers.contracts import (
+    NormalizedFixture,
+    NormalizedFixtureBatch,
+    NormalizedFixtureParticipant,
+)
 
 
 class ApiFootballFixtureNormalizationService:

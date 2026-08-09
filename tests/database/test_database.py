@@ -1,5 +1,6 @@
 import sqlite3
 from pathlib import Path
+from shutil import copy2
 from uuid import uuid4
 
 import pytest
@@ -22,6 +23,7 @@ EXPECTED_TABLES = {
     "season_participants",
     "seasons",
     "source_mappings",
+    "source_assignments",
     "sports",
     "sports_events",
     "sync_runs",
@@ -97,6 +99,7 @@ def test_migrations_are_registered_once(
         ("004_add_mapping_transaction_id",),
         ("005_create_fixture_reconciliation_state",),
         ("006_extend_provider_import_runs",),
+        ("007_create_source_assignments",),
     ]
 
 
@@ -723,3 +726,52 @@ def test_calendar_event_mappings_contains_transaction_id(
     assert columns["transaction_id"][2] == "TEXT"
     assert columns["transaction_id"][3] == 1
     assert any(index[2] == 1 for index in indexes)
+
+
+def test_source_assignment_migration_preserves_existing_source_mapping(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "sports.db"
+    legacy_migrations = tmp_path / "legacy-migrations"
+    legacy_migrations.mkdir()
+    migrations = Path(__file__).parents[2] / "app" / "database" / "migrations"
+    for migration in sorted(migrations.glob("00[1-6]_*.sql")):
+        copy2(migration, legacy_migrations / migration.name)
+    Database(database_path, migrations_directory=legacy_migrations).initialize()
+    timestamp = "2026-08-09T12:00:00+00:00"
+    with connect(database_path) as connection:
+        source_id = connection.execute(
+            """
+            INSERT INTO data_sources (
+                source_key, name, is_active, created_at, updated_at
+            ) VALUES ('legacy', 'Legacy', 1, ?, ?)
+            """,
+            (timestamp, timestamp),
+        ).lastrowid
+        sport_id = connection.execute(
+            """
+            INSERT INTO sports (sport_key, name, created_at, updated_at)
+            VALUES ('football', 'Football', ?, ?)
+            """,
+            (timestamp, timestamp),
+        ).lastrowid
+        connection.execute(
+            """
+            INSERT INTO source_mappings (
+                source_id, object_type, internal_id, external_id,
+                created_at, updated_at
+            ) VALUES (?, 'sport', ?, 'legacy-football', ?, ?)
+            """,
+            (source_id, sport_id, timestamp, timestamp),
+        )
+
+    Database(database_path).initialize()
+
+    with connect(database_path) as connection:
+        mapping = connection.execute(
+            """
+            SELECT source_id, object_type, internal_id, external_id
+            FROM source_mappings
+            """
+        ).fetchone()
+    assert mapping == (source_id, "sport", sport_id, "legacy-football")

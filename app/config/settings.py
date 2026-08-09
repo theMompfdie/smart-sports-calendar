@@ -1,3 +1,4 @@
+import json
 import os
 import re
 from dataclasses import dataclass, field
@@ -6,6 +7,12 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from app.providers.api_football.exceptions import ProviderConfigurationError
+from app.providers.contracts import (
+    SourceConfigurationError,
+    SourceJobDefinition,
+    SourceRole,
+    SourceScope,
+)
 
 INSTANCE_NAME_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]{0,62}$")
 
@@ -43,6 +50,7 @@ class Settings:
             api_key="",
         )
     )
+    source_jobs: tuple[SourceJobDefinition, ...] = ()
     instance_name: str = "default"
 
 
@@ -216,6 +224,125 @@ def load_api_football_settings() -> ApiFootballSettings:
     )
 
 
+def load_source_jobs() -> tuple[SourceJobDefinition, ...]:
+    raw_value = os.getenv("SOURCE_JOBS_JSON", "[]").strip()
+    try:
+        payload = json.loads(raw_value)
+    except json.JSONDecodeError as error:
+        raise SourceConfigurationError(
+            "SOURCE_JOBS_JSON must be valid JSON."
+        ) from error
+    if not isinstance(payload, list):
+        raise SourceConfigurationError("SOURCE_JOBS_JSON must be a JSON array.")
+
+    jobs: list[SourceJobDefinition] = []
+    for index, raw_job in enumerate(payload):
+        if not isinstance(raw_job, dict):
+            raise SourceConfigurationError(
+                f"SOURCE_JOBS_JSON item {index} must be an object."
+            )
+        required = {
+            "job_key",
+            "source_key",
+            "sport_key",
+            "competition_key",
+            "season_key",
+            "role",
+            "interval_seconds",
+        }
+        if set(raw_job) != required:
+            raise SourceConfigurationError(
+                f"SOURCE_JOBS_JSON item {index} must contain exactly: "
+                + ", ".join(sorted(required))
+                + "."
+            )
+        text_fields: dict[str, str] = {}
+        for name in required - {"interval_seconds"}:
+            value = raw_job[name]
+            if not isinstance(value, str) or not value.strip():
+                raise SourceConfigurationError(
+                    f"SOURCE_JOBS_JSON item {index} field {name} must be a "
+                    "non-empty string."
+                )
+            text_fields[name] = value.strip()
+        for name in (
+            "job_key",
+            "source_key",
+            "sport_key",
+            "competition_key",
+            "season_key",
+        ):
+            if not INSTANCE_NAME_PATTERN.fullmatch(text_fields[name]):
+                raise SourceConfigurationError(
+                    f"SOURCE_JOBS_JSON item {index} field {name} must use only "
+                    "lowercase letters, digits, hyphens, or underscores and "
+                    "must not exceed 63 characters."
+                )
+        try:
+            role = SourceRole(text_fields["role"])
+        except ValueError as error:
+            raise SourceConfigurationError(
+                f"SOURCE_JOBS_JSON item {index} has an unsupported role."
+            ) from error
+        interval_seconds = raw_job["interval_seconds"]
+        if (
+            isinstance(interval_seconds, bool)
+            or not isinstance(interval_seconds, int)
+            or interval_seconds <= 0
+        ):
+            raise SourceConfigurationError(
+                f"SOURCE_JOBS_JSON item {index} interval_seconds must be a "
+                "positive integer."
+            )
+        jobs.append(
+            SourceJobDefinition(
+                job_key=text_fields["job_key"],
+                source_key=text_fields["source_key"],
+                role=role,
+                scope=SourceScope(
+                    sport_key=text_fields["sport_key"],
+                    competition_key=text_fields["competition_key"],
+                    season_key=text_fields["season_key"],
+                ),
+                interval_seconds=interval_seconds,
+            )
+        )
+    validate_source_jobs(jobs)
+    return tuple(jobs)
+
+
+def validate_source_jobs(jobs: list[SourceJobDefinition]) -> None:
+    job_keys = [job.job_key for job in jobs]
+    if len(job_keys) != len(set(job_keys)):
+        raise SourceConfigurationError(
+            "SOURCE_JOBS_JSON job_key values must be unique."
+        )
+
+    active_by_scope: dict[SourceScope, list[SourceJobDefinition]] = {}
+    seen_source_scopes: set[tuple[str, SourceScope]] = set()
+    for job in jobs:
+        if not job.enabled:
+            continue
+        source_scope = (job.source_key, job.scope)
+        if source_scope in seen_source_scopes:
+            raise SourceConfigurationError(
+                "A source may have only one active job per competition and season."
+            )
+        seen_source_scopes.add(source_scope)
+        active_by_scope.setdefault(job.scope, []).append(job)
+
+    for scope, scoped_jobs in active_by_scope.items():
+        authorities = [
+            job for job in scoped_jobs if job.role is SourceRole.AUTHORITATIVE
+        ]
+        if len(authorities) != 1:
+            raise SourceConfigurationError(
+                "Each active competition and season scope must have exactly one "
+                f"authoritative source: {scope.sport_key}/"
+                f"{scope.competition_key}/{scope.season_key}."
+            )
+
+
 def load_settings() -> Settings:
     return Settings(
         instance_name=get_instance_name(),
@@ -259,4 +386,5 @@ def load_settings() -> Settings:
             )
         ),
         api_football=load_api_football_settings(),
+        source_jobs=load_source_jobs(),
     )

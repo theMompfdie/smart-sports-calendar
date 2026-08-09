@@ -20,6 +20,12 @@ from app.database.synchronization_query_repository import (
     SynchronizationQueryRepository,
 )
 from app.graph.client import CalendarReference
+from app.providers.contracts import (
+    SourceConfigurationError,
+    SourceJobDefinition,
+    SourceRole,
+    SourceScope,
+)
 from app.synchronization.event_synchronizer import EventSynchronizer
 from app.synchronization.outlook_event_payload_builder import (
     OutlookEventPayloadBuilder,
@@ -48,6 +54,22 @@ def create_settings(
         synchronization_batch_limit=100,
         graph_base_url="https://graph.microsoft.com/v1.0",
         graph_startup_validation_enabled=False,
+    )
+
+
+def api_football_job(
+    role: SourceRole = SourceRole.AUTHORITATIVE,
+) -> SourceJobDefinition:
+    return SourceJobDefinition(
+        job_key="api-football-premier-league",
+        source_key="api_football",
+        role=role,
+        scope=SourceScope(
+            sport_key="football",
+            competition_key="premier_league",
+            season_key="2026_27",
+        ),
+        interval_seconds=900,
     )
 
 
@@ -175,6 +197,7 @@ def test_container_provides_enabled_api_football_client(
             enabled=True,
             api_key="provider-secret",
         ),
+        source_jobs=(api_football_job(),),
     )
 
     container = ApplicationContainer(settings=enabled_settings)
@@ -205,13 +228,14 @@ def test_container_never_logs_api_football_key(
             enabled=True,
             api_key="provider-secret",
         ),
+        source_jobs=(api_football_job(),),
     )
     container = ApplicationContainer(settings=settings)
     container.logger = MagicMock()
 
     with (
         patch.object(container, "_register_signal_handlers"),
-        patch.object(container.scheduler, "run"),
+        patch.object(container.scheduler, "run_jobs"),
     ):
         container.run()
 
@@ -295,12 +319,13 @@ def test_run_registers_enabled_api_football_source_without_live_call(
             enabled=True,
             api_key="provider-secret",
         ),
+        source_jobs=(api_football_job(),),
     )
     container = ApplicationContainer(settings=settings)
 
     with (
         patch.object(container, "_register_signal_handlers"),
-        patch.object(container.scheduler, "run"),
+        patch.object(container.scheduler, "run_jobs"),
         patch.object(container.api_football_client, "get_all") as provider_get_all,
     ):
         container.run()
@@ -433,6 +458,7 @@ def test_enabled_provider_cycle_imports_before_calendar_sync(tmp_path: Path) -> 
             api_key="provider-secret",
             import_interval_seconds=900,
         ),
+        source_jobs=(api_football_job(),),
     )
     container = ApplicationContainer(settings=settings)
     runtime = container.api_football_import_runtime_service
@@ -470,6 +496,7 @@ def test_failed_or_overlapping_provider_cycle_does_not_sync(tmp_path: Path) -> N
             enabled=True,
             api_key="provider-secret",
         ),
+        source_jobs=(api_football_job(),),
     )
     container = ApplicationContainer(settings=settings)
     runtime = container.api_football_import_runtime_service
@@ -500,6 +527,7 @@ def test_calendar_failure_happens_after_committed_provider_import(
             enabled=True,
             api_key="provider-secret",
         ),
+        source_jobs=(api_football_job(),),
     )
     container = ApplicationContainer(settings=settings)
     runtime = container.api_football_import_runtime_service
@@ -530,3 +558,67 @@ def test_calendar_failure_happens_after_committed_provider_import(
         container._run_scheduled_cycle()
 
     import_run.assert_called_once_with()
+
+
+def test_explicit_source_job_is_persisted_and_uses_multi_job_scheduler(
+    tmp_path: Path,
+) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        api_football=ApiFootballSettings(
+            enabled=True,
+            api_key="provider-secret",
+        ),
+        source_jobs=(api_football_job(),),
+    )
+    container = ApplicationContainer(settings=settings)
+
+    with (
+        patch.object(container, "_register_signal_handlers"),
+        patch.object(container.scheduler, "run_jobs") as run_jobs,
+    ):
+        container.run()
+
+    assignments = container.source_assignments_repository.get_all(enabled_only=True)
+    assert len(assignments) == 1
+    assert assignments[0].job_key == "api-football-premier-league"
+    assert assignments[0].role is SourceRole.AUTHORITATIVE
+    run_jobs.assert_called_once_with(
+        jobs=container.source_scheduled_jobs,
+        stop_event=container.stop_event,
+    )
+
+
+def test_container_rejects_non_authoritative_role_for_writing_adapter(
+    tmp_path: Path,
+) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        api_football=ApiFootballSettings(
+            enabled=True,
+            api_key="provider-secret",
+        ),
+        source_jobs=(api_football_job(SourceRole.VERIFICATION),),
+    )
+
+    with pytest.raises(
+        SourceConfigurationError,
+        match="exactly one authoritative",
+    ):
+        ApplicationContainer(settings=settings)
+
+
+def test_container_requires_source_job_for_enabled_adapter(tmp_path: Path) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        api_football=ApiFootballSettings(
+            enabled=True,
+            api_key="provider-secret",
+        ),
+    )
+
+    with pytest.raises(
+        SourceConfigurationError,
+        match="must be configured together",
+    ):
+        ApplicationContainer(settings=settings)
