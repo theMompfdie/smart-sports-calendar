@@ -325,9 +325,9 @@ Keep `GRAPH_STARTUP_VALIDATION_ENABLED` enabled for normal deployments. Disable 
 API-Football is disabled by default. When `API_FOOTBALL_ENABLED=true`,
 `API_FOOTBALL_API_KEY` is required. The application imports the mapped current
 Premier League season every `API_FOOTBALL_IMPORT_INTERVAL_SECONDS`, persists a
-separate provider-import report, and then runs Outlook synchronization after a
-successful import. The API key is sent only in the `x-apisports-key` header and
-must never be logged.
+separate provider-import report, and independently runs Outlook synchronization
+every `HEARTBEAT_INTERVAL`. The API key is sent only in the
+`x-apisports-key` header and must never be logged.
 
 ## Deployment
 

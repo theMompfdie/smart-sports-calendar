@@ -110,6 +110,12 @@ def test_container_registers_authoritative_football_data_runtime(
     assert [job.job_key for job in container.source_scheduled_jobs] == [
         "football-data-premier-league"
     ]
+    assert [
+        (job.job_key, job.interval_seconds) for job in container.scheduled_jobs
+    ] == [
+        ("football-data-premier-league", 3600),
+        ("system:calendar-synchronization", 300),
+    ]
 
 
 def test_run_initializes_sports_catalog(
@@ -528,6 +534,39 @@ def test_enabled_provider_cycle_imports_before_calendar_sync(tmp_path: Path) -> 
     assert container.scheduler.interval_seconds == 900
 
 
+def test_source_jobs_and_calendar_sync_are_scheduled_independently(
+    tmp_path: Path,
+) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        football_data=FootballDataSettings(enabled=True, api_key="secret"),
+        source_jobs=(football_data_job(),),
+    )
+    container = ApplicationContainer(settings=settings)
+    runtime = container.football_data_import_runtime_service
+    assert runtime is not None
+    source_job, calendar_job = container.scheduled_jobs
+
+    with (
+        patch.object(runtime, "run", return_value=None) as import_run,
+        patch.object(
+            container.synchronization_runtime_service,
+            "run",
+        ) as synchronize,
+    ):
+        source_job.task()
+        synchronize.assert_not_called()
+
+        calendar_job.task()
+        calendar_job.task()
+
+    import_run.assert_called_once_with()
+    assert synchronize.call_count == 2
+    synchronize.assert_called_with(calendar_id="calendar-1", limit=100)
+    assert source_job.interval_seconds == 3600
+    assert calendar_job.interval_seconds == 300
+
+
 def test_failed_or_overlapping_provider_cycle_does_not_sync(tmp_path: Path) -> None:
     settings = replace(
         create_settings(tmp_path / "sports.db"),
@@ -623,7 +662,7 @@ def test_explicit_source_job_is_persisted_and_uses_multi_job_scheduler(
     assert assignments[0].job_key == "api-football-premier-league"
     assert assignments[0].role is SourceRole.AUTHORITATIVE
     run_jobs.assert_called_once_with(
-        jobs=container.source_scheduled_jobs,
+        jobs=container.scheduled_jobs,
         stop_event=container.stop_event,
     )
 

@@ -5,9 +5,10 @@
 The `football_data` adapter is the sole released authoritative writer for
 `football/premier_league/2026_27`. One scheduled cycle makes three API v4
 requests: competition `PL`, its 2026 teams, and its 2026 matches with a limit
-of 500. A successful canonical import is followed by the existing Outlook
-synchronization runtime. Any provider, validation, mapping, or persistence
-failure stops before Outlook handoff.
+of 500. Outlook synchronization runs independently at `HEARTBEAT_INTERVAL`, so
+additional calendar batches do not consume provider quota. Any provider,
+validation, mapping, or persistence failure makes no canonical changes; the
+calendar job may still reconcile previously committed events.
 
 The transport sends the API token only as `X-Auth-Token`, applies separate
 connect/read timeouts, bounded transient retries, response-size limits, HTTPS

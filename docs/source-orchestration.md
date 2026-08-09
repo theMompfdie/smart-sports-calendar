@@ -76,10 +76,18 @@ logged with its safe `job_key`, then the scheduler continues with other due
 jobs. Provider-specific bounded retry and quota logic remains inside the
 adapter boundary.
 
+Outlook calendar synchronization is a separate scheduled job controlled by
+`HEARTBEAT_INTERVAL`. Source jobs are registered first so the initial import
+precedes the first calendar batch. Provider callbacks do not invoke Graph;
+therefore a backlog larger than `SYNCHRONIZATION_BATCH_LIMIT` continues across
+calendar heartbeats without consuming provider quota, and a failed provider
+job does not prevent later synchronization of already committed canonical
+events.
+
 Provider import run metadata records the safe job key, source key, role,
 competition key, season key, canonical IDs, authoritative flag, completeness,
 observation ID, UTC window, attempts, and sanitized quota aggregates. A failed
-or overlapping import never hands off to Outlook.
+or overlapping import makes no canonical changes.
 
 ## Persistence and migration
 
