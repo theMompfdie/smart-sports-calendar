@@ -271,9 +271,11 @@ def test_get_by_event_id_selects_mapping_for_requested_calendar(
     )
 
     assert synchronization_event is not None
-    assert synchronization_event.mapping == expected_mapping
-    assert synchronization_event.mapping.calendar_id == "calendar-2"
-    assert synchronization_event.mapping.content_hash == "calendar-2-hash"
+    mapping = synchronization_event.mapping
+    assert mapping is not None
+    assert mapping == expected_mapping
+    assert mapping.calendar_id == "calendar-2"
+    assert mapping.content_hash == "calendar-2-hash"
 
 
 def test_get_by_event_id_rejects_missing_required_sport(
@@ -524,6 +526,127 @@ def test_get_candidates_returns_limited_stable_chronological_order(
         first_equal_event.id,
         second_equal_event.id,
     ]
+
+
+def test_get_candidates_prioritizes_actionable_work_before_synced_mapping(
+    tmp_path: Path,
+) -> None:
+    database_path = create_database(tmp_path)
+    sport = SportsRepository(database_path).upsert(
+        sport_key="football",
+        name="Football",
+    )
+    events = SportsEventsRepository(database_path)
+    mappings = CalendarEventMappingsRepository(database_path)
+    synced_event = events.upsert(
+        sport_id=sport.id,
+        event_key="synced_event",
+        event_type="match",
+        title="Synced event",
+        start_time="2026-08-01T19:00:00+00:00",
+    )
+    synced_mapping = mappings.create_pending(synced_event.id, "calendar-1")
+    assert (
+        mappings.mark_synced(
+            synced_mapping.id,
+            outlook_event_id="outlook-synced",
+            outlook_change_key=None,
+            content_hash="synced-hash",
+        )
+        is not None
+    )
+
+    actionable_ids: set[int] = set()
+    for day, status in enumerate(
+        (None, "pending", "failed", "delete_pending", "deleted"),
+        start=10,
+    ):
+        event = events.upsert(
+            sport_id=sport.id,
+            event_key=f"actionable_{status or 'unmapped'}",
+            event_type="match",
+            title=f"Actionable {status or 'unmapped'}",
+            start_time=f"2026-08-{day:02d}T19:00:00+00:00",
+        )
+        actionable_ids.add(event.id)
+        if status is None:
+            continue
+        mapping = mappings.create_pending(event.id, "calendar-1")
+        with sqlite3.connect(database_path) as connection:
+            connection.execute(
+                "UPDATE calendar_event_mappings SET sync_status = ? WHERE id = ?",
+                (status, mapping.id),
+            )
+
+    candidates = SynchronizationQueryRepository(database_path).get_candidates(
+        calendar_id="calendar-1",
+        limit=len(actionable_ids),
+    )
+
+    assert {candidate.event.id for candidate in candidates} == actionable_ids
+    assert synced_event.id not in {candidate.event.id for candidate in candidates}
+
+
+def test_get_candidates_rotates_synced_mappings_by_oldest_sync_time(
+    tmp_path: Path,
+) -> None:
+    database_path = create_database(tmp_path)
+    sport = SportsRepository(database_path).upsert(
+        sport_key="football",
+        name="Football",
+    )
+    events = SportsEventsRepository(database_path)
+    mappings = CalendarEventMappingsRepository(database_path)
+    newer_sync_event = events.upsert(
+        sport_id=sport.id,
+        event_key="newer_sync_event",
+        event_type="match",
+        title="Newer sync event",
+        start_time="2026-08-01T19:00:00+00:00",
+    )
+    older_sync_event = events.upsert(
+        sport_id=sport.id,
+        event_key="older_sync_event",
+        event_type="match",
+        title="Older sync event",
+        start_time="2026-08-31T19:00:00+00:00",
+    )
+    newer_mapping = mappings.create_pending(newer_sync_event.id, "calendar-1")
+    older_mapping = mappings.create_pending(older_sync_event.id, "calendar-1")
+    assert (
+        mappings.mark_synced(
+            newer_mapping.id,
+            outlook_event_id="outlook-newer",
+            outlook_change_key=None,
+            content_hash="newer-hash",
+        )
+        is not None
+    )
+    assert (
+        mappings.mark_synced(
+            older_mapping.id,
+            outlook_event_id="outlook-older",
+            outlook_change_key=None,
+            content_hash="older-hash",
+        )
+        is not None
+    )
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            "UPDATE calendar_event_mappings SET last_synced_at = ? WHERE id = ?",
+            ("2026-08-09T12:00:00+00:00", newer_mapping.id),
+        )
+        connection.execute(
+            "UPDATE calendar_event_mappings SET last_synced_at = ? WHERE id = ?",
+            ("2026-08-09T11:00:00+00:00", older_mapping.id),
+        )
+
+    candidates = SynchronizationQueryRepository(database_path).get_candidates(
+        calendar_id="calendar-1",
+        limit=1,
+    )
+
+    assert [candidate.event.id for candidate in candidates] == [older_sync_event.id]
 
 
 def test_get_candidates_includes_cancelled_event(

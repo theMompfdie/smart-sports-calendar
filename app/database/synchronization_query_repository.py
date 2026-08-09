@@ -83,6 +83,14 @@ class SynchronizationQueryRepository:
                     AND se.deleted_at IS NULL
                 )
                 ORDER BY
+                    CASE
+                        WHEN cem.sync_status = 'synced' THEN 1
+                        ELSE 0
+                    END,
+                    CASE
+                        WHEN cem.sync_status = 'synced'
+                        THEN cem.last_synced_at
+                    END,
                     se.start_time,
                     se.id
                 LIMIT ?

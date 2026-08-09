@@ -242,6 +242,7 @@ def test_synchronize_event_returns_unchanged_for_equal_content_hash() -> None:
     ) = create_synchronizer()
     mapping = create_mapping(content_hash="current-hash")
     synchronization_event = create_synchronization_event(mapping=mapping)
+    mappings_repository.mark_checked.return_value = mapping
 
     with patch(
         "app.synchronization.event_synchronizer.calculate_content_hash",
@@ -262,6 +263,7 @@ def test_synchronize_event_returns_unchanged_for_equal_content_hash() -> None:
     graph_client.create_event.assert_not_called()
     graph_client.update_event.assert_not_called()
     mappings_repository.create_pending.assert_not_called()
+    mappings_repository.mark_checked.assert_called_once_with(mapping.id)
     mappings_repository.mark_synced.assert_not_called()
     mappings_repository.mark_failed.assert_not_called()
 
@@ -398,6 +400,7 @@ def test_synchronize_event_skips_unchanged_cancelled_event() -> None:
         status="cancelled",
         mapping=mapping,
     )
+    mappings_repository.mark_checked.return_value = mapping
 
     with patch(
         "app.synchronization.event_synchronizer.calculate_content_hash",
@@ -413,6 +416,7 @@ def test_synchronize_event_skips_unchanged_cancelled_event() -> None:
     assert result.content_hash == "cancelled-hash"
 
     graph_client.update_event.assert_not_called()
+    mappings_repository.mark_checked.assert_called_once_with(mapping.id)
     mappings_repository.mark_synced.assert_not_called()
     mappings_repository.mark_failed.assert_not_called()
 

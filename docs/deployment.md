@@ -151,7 +151,7 @@ same calendar. Do not target a general-purpose personal calendar.
 | `M365_USER_ID` | none | Required target mailbox identifier |
 | `OUTLOOK_CALENDAR_NAME` | `SMART Sports Calendar` | Startup reachability lookup; must identify the dedicated target calendar |
 | `OUTLOOK_CALENDAR_ID` | none | Required immutable Graph calendar ID used by synchronization writes |
-| `SYNCHRONIZATION_BATCH_LIMIT` | `100` | Positive integer maximum events processed per calendar run |
+| `SYNCHRONIZATION_BATCH_LIMIT` | `100` | Positive maximum per run; urgent/unmapped work runs first and synced mappings rotate oldest-synchronized-first |
 | `GRAPH_BASE_URL` | Microsoft Graph v1.0 | Graph API root; use the documented production endpoint unless testing an isolated mock |
 | `GRAPH_STARTUP_VALIDATION_ENABLED` | `true` | Boolean; keep enabled for deployed environments |
 
