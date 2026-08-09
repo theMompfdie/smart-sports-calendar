@@ -75,9 +75,7 @@ def test_get_by_event_id_returns_complete_event_aggregate(
     source = DataSourcesRepository(database_path).upsert(
         source_key="football_data",
         name="football-data.org",
-        metadata={
-            "attribution": "Football data provided by the Football-Data.org API"
-        },
+        metadata={"attribution": "Football data provided by the Football-Data.org API"},
     )
     SourceAssignmentsRepository(database_path).synchronize(
         (

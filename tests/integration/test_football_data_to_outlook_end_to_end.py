@@ -239,9 +239,8 @@ def test_adding_authoritative_attribution_updates_existing_event_once(tmp_path) 
     assert [operation.method for operation in graph.operations] == ["POST", "PATCH"]
     assert attributed_mapping is not None
     assert attributed_mapping.transaction_id == first_mapping.transaction_id
-    assert (
-        "Football data provided by the Football-Data.org API"
-        in graph_body_content(graph.operations[-1])
+    assert "Football data provided by the Football-Data.org API" in graph_body_content(
+        graph.operations[-1]
     )
 
 
