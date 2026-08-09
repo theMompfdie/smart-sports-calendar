@@ -478,10 +478,13 @@ python -m app.operations.staging_evidence --database /data/sports.db
 ```
 
 The command opens SQLite in read-only mode and reports only database integrity,
-schema version, startup count, fixture count, calendar-mapping status counts,
-and recent synchronization counters. It deliberately omits configuration,
-event details, error messages, metadata, calendar IDs, Outlook IDs, and source
-URLs. Review the output before adding it to sanitized GitHub evidence.
+schema version, startup count, public authoritative source/scope keys, fixture
+and source-mapping aggregates, kickoff range, source freshness, normalized
+status counts, calendar-mapping status counts, and recent synchronization
+counters. It deliberately omits configuration, provider external IDs, event
+details, error messages, metadata, calendar IDs, Outlook IDs, raw responses,
+and source URLs. Review the output before adding it to sanitized GitHub
+evidence.
 
 Do not replace this with `env`, `docker inspect`, a raw database dump, or
 `SELECT *` output. Those sources may disclose deployment or tenant data.
