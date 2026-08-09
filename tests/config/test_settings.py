@@ -40,8 +40,57 @@ def configure_required_environment(
         "API_FOOTBALL_RETRY_BASE_DELAY_SECONDS",
         "API_FOOTBALL_RETRY_MAX_DELAY_SECONDS",
         "API_FOOTBALL_IMPORT_INTERVAL_SECONDS",
+        "FOOTBALL_DATA_ENABLED",
+        "FOOTBALL_DATA_API_KEY",
+        "FOOTBALL_DATA_BASE_URL",
+        "FOOTBALL_DATA_CONNECT_TIMEOUT_SECONDS",
+        "FOOTBALL_DATA_READ_TIMEOUT_SECONDS",
+        "FOOTBALL_DATA_MAX_ATTEMPTS",
+        "FOOTBALL_DATA_RETRY_BASE_DELAY_SECONDS",
+        "FOOTBALL_DATA_RETRY_MAX_DELAY_SECONDS",
+        "FOOTBALL_DATA_MINIMUM_REQUEST_INTERVAL_SECONDS",
+        "FOOTBALL_DATA_REQUESTS_PER_MINUTE",
     ):
         monkeypatch.delenv(name, raising=False)
+
+
+def test_load_settings_validates_football_data_authority_and_plan_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("FOOTBALL_DATA_ENABLED", "true")
+    monkeypatch.setenv("FOOTBALL_DATA_API_KEY", "secret-token")
+    monkeypatch.setenv(
+        "SOURCE_JOBS_JSON",
+        json.dumps(
+            [
+                {
+                    "job_key": "football-data-premier-league",
+                    "source_key": "football_data",
+                    "sport_key": "football",
+                    "competition_key": "premier_league",
+                    "season_key": "2026_27",
+                    "role": "authoritative",
+                    "interval_seconds": 3600,
+                }
+            ]
+        ),
+    )
+
+    settings = load_settings()
+
+    assert settings.football_data.enabled is True
+    assert settings.football_data.api_key == "secret-token"
+    assert settings.football_data.requests_per_minute == 10
+    assert "secret-token" not in repr(settings.football_data)
+
+
+def test_load_settings_rejects_football_data_rate_above_approved_plan(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("FOOTBALL_DATA_REQUESTS_PER_MINUTE", "11")
+
+    with pytest.raises(ProviderConfigurationError, match="plan limit"):
+        load_settings()
 
 
 def test_load_settings_loads_synchronization_configuration(

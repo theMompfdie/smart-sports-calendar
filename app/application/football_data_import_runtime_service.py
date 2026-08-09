@@ -1,0 +1,66 @@
+import logging
+from threading import Lock
+
+from app.application.api_football_import_orchestrator import ProviderImportRunResult
+from app.application.football_data_import_orchestrator import (
+    FootballDataImportOrchestrator,
+)
+from app.database.sync_runs_repository import SyncRunsRepository
+
+
+class FootballDataImportRuntimeService:
+    RUN_TYPE = "provider_import"
+
+    def __init__(
+        self,
+        orchestrator: FootballDataImportOrchestrator,
+        sync_runs_repository: SyncRunsRepository,
+        logger: logging.Logger,
+    ) -> None:
+        self._orchestrator = orchestrator
+        self._sync_runs_repository = sync_runs_repository
+        self._logger = logger
+        self._lock = Lock()
+        self._recovered = False
+
+    def run(self) -> ProviderImportRunResult | None:
+        if not self._lock.acquire(blocking=False):
+            self._logger.warning("football-data.org import skipped: run already active")
+            return None
+        try:
+            if not self._recovered:
+                self._sync_runs_repository.recover_running(
+                    run_type=self.RUN_TYPE,
+                    error_message=(
+                        "Interrupted provider import recovered during startup."
+                    ),
+                )
+                self._recovered = True
+            self._logger.info("football-data.org provider import cycle started")
+            result = self._orchestrator.import_current_premier_league()
+            self._logger.info(
+                (
+                    "football-data.org provider import completed: run_id=%s "
+                    "status=%s processed=%s created=%s updated=%s unchanged=%s "
+                    "cancelled=%s deleted=%s deferred=%s failed=%s"
+                ),
+                result.sync_run_id,
+                result.status,
+                result.items_processed,
+                result.items_created,
+                result.items_updated,
+                result.items_unchanged,
+                result.items_cancelled,
+                result.items_deleted,
+                result.items_deferred,
+                result.items_failed,
+            )
+            return result
+        except Exception as error:
+            self._logger.error(
+                "football-data.org provider import failed: category=%s",
+                type(error).__name__,
+            )
+            raise
+        finally:
+            self._lock.release()

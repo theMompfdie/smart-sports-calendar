@@ -3,8 +3,8 @@
 ## Scope
 
 Issue #74 introduces the provider-neutral authority and scheduling boundary for
-`v0.4.5-beta.1`. It does not implement the football-data.org transport or
-canonical import; that remains in #76.
+`v0.4.5-beta.1`. Issue #76 uses this boundary for the implemented
+football-data.org Premier League transport and canonical import.
 
 ## Source jobs
 
@@ -32,8 +32,9 @@ Example for the existing API-Football adapter:
 ]
 ```
 
-Keep the environment-variable form on one line. The approved
-`football_data` source key cannot be enabled until #76 registers its adapter.
+Keep the environment-variable form on one line. `football_data` is the only
+released authoritative adapter for `football/premier_league/2026_27`; it must
+be paired with `FOOTBALL_DATA_ENABLED=true`.
 
 ## Validation
 

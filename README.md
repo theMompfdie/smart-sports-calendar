@@ -14,15 +14,15 @@
 live validation for `v0.4.5-beta.1`
 ([tracker #72](https://github.com/theMompfdie/smart-sports-calendar/issues/72))
 
-**Automated tests:** 518 passing tests
+**Automated tests:** 554 passing tests
 
 The application foundation, persistent domain model, repository layer, Microsoft Graph integration, Outlook synchronization engine, and the scheduled, reported API-Football Premier League import runtime are implemented.
 
 The current release is not yet approved for production use. Provider-neutral
-source selection, a permitted Premier League authority, credential-safe staging
-validation, and controlled production promotion are the blocking steps before
-Phase 5. The official ECAL calendar is not approved for automated ingestion;
-`football-data.org` is the next candidate to qualify.
+source selection and the approved football-data.org Premier League authority
+are implemented on `develop`; credential-safe staging validation and controlled
+production promotion remain blocking before Phase 5. The official ECAL
+calendar is not approved for automated ingestion.
 
 ## Project Vision
 
@@ -105,7 +105,9 @@ Provider-neutral source jobs provide explicit competition/season authority,
 roles, independent intervals, adapter registration, fail-closed startup
 validation, and persistent assignment history. The current API-Football writer
 must be paired with an explicit authoritative source job when enabled. The
-approved football-data.org adapter remains part of issue #76.
+football-data.org API v4 adapter is the sole released authoritative writer for
+the 2026/27 Premier League scope and fails closed before canonical or Outlook
+handoff unless the complete 20-team, 380-match snapshot validates.
 
 Phase 4 documentation:
 
@@ -115,6 +117,7 @@ Phase 4 documentation:
 - [ECAL automated-source rejection ADR](docs/adr/0002-reject-ecal-as-automated-source.md)
 - [football-data.org Premier League selection ADR](docs/adr/0003-select-football-data-for-premier-league.md)
 - [football-data.org qualification](docs/football-data-qualification.md)
+- [football-data.org Premier League import](docs/football-data-premier-league-import.md)
 - [provider-independent integration contract](docs/provider-integration-contract.md)
 - [provider-neutral source orchestration](docs/source-orchestration.md)
 - [Premier League catalog mapping](docs/api-football-catalog-mapping.md)
