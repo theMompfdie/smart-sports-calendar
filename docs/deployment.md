@@ -356,6 +356,11 @@ During release-candidate qualification, freeze staging to the immutable
 candidate tag. Resume automatic `develop` updates only after qualification is
 finished. Production must never track `develop`.
 
+For `v0.4.5-beta.1`, publishing the GitHub pre-release and manually promoting
+it to production are separate decisions. The pre-release may be qualified in
+isolated staging, but production promotion remains blocked until the deferred
+controlled provider-failure exercise in issue #101 is complete.
+
 The implementation and remaining live-validation order is documented in
 [`v0.4-stabilization-roadmap.md`](v0.4-stabilization-roadmap.md).
 
@@ -545,13 +550,19 @@ GitHub Release
 Portainer source build
         │
         ▼
-Controlled alpha deployment
+Immutable beta staging qualification
+        │
+        ▼
+Controlled manual production promotion
 ```
 
 The release branch is created from fully validated `develop`, reviewed into
-`main`, and tagged on the resulting `main` commit. GitHub Releases publishes
-the release notes as a pre-release. GHCR remains a future enhancement; do not
-document or deploy a registry image that has not been built and verified.
+`main`, and signed-tagged on the resulting `main` commit. Staging is frozen to
+that immutable tag for candidate verification before GitHub Releases publishes
+the release notes as a pre-release. Production promotion is a separate manual
+gate and must honor unresolved release blockers such as #101. GHCR remains a
+future enhancement; do not document or deploy a registry image that has not
+been built and verified.
 
 ---
 
