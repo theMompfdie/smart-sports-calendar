@@ -34,6 +34,7 @@ class SynchronizationEvent:
     results: tuple[EventResult, ...]
     statistics: tuple[EventStatistic, ...]
     mapping: CalendarEventMapping | None
+    source_attribution: str | None = None
 
 
 class SynchronizationQueryRepository:
@@ -181,6 +182,11 @@ class SynchronizationQueryRepository:
             event_id=event.id,
             calendar_id=calendar_id,
         )
+        source_attribution = self._load_source_attribution(
+            connection=connection,
+            competition_id=event.competition_id,
+            season_id=event.season_id,
+        )
 
         return SynchronizationEvent(
             event=event,
@@ -192,6 +198,7 @@ class SynchronizationQueryRepository:
             results=results,
             statistics=statistics,
             mapping=mapping,
+            source_attribution=source_attribution,
         )
 
     def _connect(self) -> sqlite3.Connection:
@@ -374,6 +381,48 @@ class SynchronizationQueryRepository:
         ).fetchone()
 
         return None if row is None else self._map_calendar_event_mapping(row)
+
+    def _load_source_attribution(
+        self,
+        connection: sqlite3.Connection,
+        competition_id: int | None,
+        season_id: int | None,
+    ) -> str | None:
+        if competition_id is None or season_id is None:
+            return None
+
+        rows = connection.execute(
+            """
+            SELECT ds.metadata_json
+            FROM source_assignments AS sa
+            INNER JOIN data_sources AS ds
+                ON ds.id = sa.source_id
+            WHERE sa.competition_id = ?
+              AND sa.season_id = ?
+              AND sa.role = 'authoritative'
+              AND sa.is_enabled = 1
+              AND ds.is_active = 1
+            ORDER BY sa.id
+            """,
+            (competition_id, season_id),
+        ).fetchall()
+
+        if not rows:
+            return None
+        if len(rows) > 1:
+            raise RuntimeError(
+                "Multiple active authoritative sources found for event scope."
+            )
+
+        metadata = self._deserialize_metadata(rows[0]["metadata_json"])
+        if metadata is None or "attribution" not in metadata:
+            return None
+
+        attribution = metadata["attribution"]
+        if not isinstance(attribution, str):
+            raise RuntimeError("Authoritative source attribution must be text.")
+
+        return attribution.strip() or None
 
     @classmethod
     def _map_sports_event(

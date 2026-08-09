@@ -6,6 +6,7 @@ from app.database.calendar_event_mappings_repository import (
     CalendarEventMappingsRepository,
 )
 from app.database.competitions_repository import CompetitionsRepository
+from app.database.data_sources_repository import DataSourcesRepository
 from app.database.database import Database
 from app.database.event_participants_repository import (
     EventParticipantsRepository,
@@ -16,11 +17,16 @@ from app.database.event_statistics_repository import (
 )
 from app.database.participants_repository import ParticipantsRepository
 from app.database.seasons_repository import SeasonsRepository
+from app.database.source_assignments_repository import (
+    SourceAssignmentsRepository,
+    SourceAssignmentWrite,
+)
 from app.database.sports_events_repository import SportsEventsRepository
 from app.database.sports_repository import SportsRepository
 from app.database.synchronization_query_repository import (
     SynchronizationQueryRepository,
 )
+from app.providers.contracts import SourceRole
 
 
 def create_database(tmp_path: Path) -> Path:
@@ -65,6 +71,25 @@ def test_get_by_event_id_returns_complete_event_aggregate(
         start_date="2026-08-21",
         end_date="2027-05-30",
         is_current=True,
+    )
+    source = DataSourcesRepository(database_path).upsert(
+        source_key="football_data",
+        name="football-data.org",
+        metadata={
+            "attribution": "Football data provided by the Football-Data.org API"
+        },
+    )
+    SourceAssignmentsRepository(database_path).synchronize(
+        (
+            SourceAssignmentWrite(
+                job_key="football-data-premier-league",
+                source_id=source.id,
+                competition_id=competition.id,
+                season_id=season.id,
+                role=SourceRole.AUTHORITATIVE,
+                interval_seconds=3600,
+            ),
+        )
     )
 
     events_repository = SportsEventsRepository(database_path)
@@ -169,6 +194,9 @@ def test_get_by_event_id_returns_complete_event_aggregate(
     assert synchronization_event.season == season
     assert synchronization_event.parent_event == parent_event
     assert synchronization_event.mapping == mapping
+    assert synchronization_event.source_attribution == (
+        "Football data provided by the Football-Data.org API"
+    )
 
     assert len(synchronization_event.participants) == 2
 
@@ -232,6 +260,7 @@ def test_get_by_event_id_supports_missing_optional_relationships(
     assert synchronization_event.results == ()
     assert synchronization_event.statistics == ()
     assert synchronization_event.mapping is None
+    assert synchronization_event.source_attribution is None
 
 
 def test_get_by_event_id_selects_mapping_for_requested_calendar(

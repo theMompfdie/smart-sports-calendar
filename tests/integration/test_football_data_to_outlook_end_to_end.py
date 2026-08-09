@@ -27,6 +27,10 @@ from app.database.participants_repository import ParticipantsRepository
 from app.database.season_participants_repository import SeasonParticipantsRepository
 from app.database.seasons_catalog import initialize_seasons_catalog
 from app.database.seasons_repository import SeasonsRepository
+from app.database.source_assignments_repository import (
+    SourceAssignmentsRepository,
+    SourceAssignmentWrite,
+)
 from app.database.source_mappings_repository import SourceMappingsRepository
 from app.database.sports_catalog import initialize_sports_catalog
 from app.database.sports_events_repository import SportsEventsRepository
@@ -40,7 +44,10 @@ from app.synchronization.event_synchronizer import EventSynchronizer
 from app.synchronization.outlook_event_payload_builder import OutlookEventPayloadBuilder
 from app.synchronization.synchronization_orchestrator import SynchronizationOrchestrator
 
-from tests.integration.provider_outlook_support import RecordingGraphClient
+from tests.integration.provider_outlook_support import (
+    CapturedGraphOperation,
+    RecordingGraphClient,
+)
 from tests.providers.football_data.support import snapshot
 
 CALENDAR_ID = "staging-calendar"
@@ -55,7 +62,17 @@ class SnapshotAdapter:
         return self.snapshot
 
 
-def create_harness(database_path):
+def graph_body_content(operation: CapturedGraphOperation) -> str:
+    payload = operation.payload
+    assert payload is not None
+    body = payload["body"]
+    assert isinstance(body, dict)
+    content = body["content"]
+    assert isinstance(content, str)
+    return content
+
+
+def create_harness(database_path, *, persist_source_assignment: bool = True):
     Database(database_path).initialize()
     sports = SportsRepository(database_path)
     competitions = CompetitionsRepository(database_path)
@@ -72,7 +89,7 @@ def create_harness(database_path):
         participants, memberships, sports, competitions, seasons
     )
     settings = FootballDataSettings(enabled=True, api_key="test-token")
-    register_football_data_source(settings, sources)
+    football_data_source = register_football_data_source(settings, sources)
 
     api_source = register_api_football_source(
         ApiFootballSettings(enabled=False, api_key=""), sources
@@ -123,6 +140,19 @@ def create_harness(database_path):
         scope=SourceScope("football", "premier_league", "2026_27"),
         interval_seconds=3600,
     )
+    if persist_source_assignment:
+        SourceAssignmentsRepository(database_path).synchronize(
+            (
+                SourceAssignmentWrite(
+                    job_key=job.job_key,
+                    source_id=football_data_source.id,
+                    competition_id=batch.competition_id,
+                    season_id=batch.season_id,
+                    role=job.role,
+                    interval_seconds=job.interval_seconds,
+                ),
+            )
+        )
     provider = FootballDataImportOrchestrator(
         premier_league_service=service,
         import_service=ApiFootballFixtureImportService(
@@ -156,6 +186,65 @@ def create_harness(database_path):
     )
 
 
+def test_adding_authoritative_attribution_updates_existing_event_once(tmp_path) -> None:
+    database_path = tmp_path / "attribution-upgrade.db"
+    (
+        _,
+        calendar,
+        _,
+        graph,
+        sources,
+        _,
+        _,
+        api_fixture_mapping,
+    ) = create_harness(database_path, persist_source_assignment=False)
+
+    first_sync = calendar.synchronize(CALENDAR_ID, 100)
+    mappings = CalendarEventMappingsRepository(database_path)
+    first_mapping = mappings.get_by_event(api_fixture_mapping.event_id, CALENDAR_ID)
+    assert first_mapping is not None
+    assert first_sync.items_created == 1
+    assert "Football data provided" not in graph_body_content(graph.operations[-1])
+
+    event = SportsEventsRepository(database_path).get_by_id(
+        api_fixture_mapping.event_id
+    )
+    source = sources.get_by_key("football_data")
+    assert event is not None
+    assert event.competition_id is not None
+    assert event.season_id is not None
+    assert source is not None
+    SourceAssignmentsRepository(database_path).synchronize(
+        (
+            SourceAssignmentWrite(
+                job_key="football-data-premier-league",
+                source_id=source.id,
+                competition_id=event.competition_id,
+                season_id=event.season_id,
+                role=SourceRole.AUTHORITATIVE,
+                interval_seconds=3600,
+            ),
+        )
+    )
+
+    attribution_sync = calendar.synchronize(CALENDAR_ID, 100)
+    attributed_mapping = mappings.get_by_event(
+        api_fixture_mapping.event_id,
+        CALENDAR_ID,
+    )
+    unchanged_sync = calendar.synchronize(CALENDAR_ID, 100)
+
+    assert attribution_sync.items_updated == 1
+    assert unchanged_sync.items_unchanged == 1
+    assert [operation.method for operation in graph.operations] == ["POST", "PATCH"]
+    assert attributed_mapping is not None
+    assert attributed_mapping.transaction_id == first_mapping.transaction_id
+    assert (
+        "Football data provided by the Football-Data.org API"
+        in graph_body_content(graph.operations[-1])
+    )
+
+
 def test_complete_snapshot_is_idempotent_and_kickoff_correction_updates_graph(
     tmp_path,
 ) -> None:
@@ -182,6 +271,12 @@ def test_complete_snapshot_is_idempotent_and_kickoff_correction_updates_graph(
     assert first_operation_count == 380
     assert all(
         operation.payload is not None and "end" in operation.payload
+        for operation in graph.operations
+    )
+    assert all(
+        operation.payload is not None
+        and "Football data provided by the Football-Data.org API"
+        in graph_body_content(operation)
         for operation in graph.operations
     )
 
