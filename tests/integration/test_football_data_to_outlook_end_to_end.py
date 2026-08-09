@@ -29,6 +29,7 @@ from app.database.seasons_catalog import initialize_seasons_catalog
 from app.database.seasons_repository import SeasonsRepository
 from app.database.source_mappings_repository import SourceMappingsRepository
 from app.database.sports_catalog import initialize_sports_catalog
+from app.database.sports_events_repository import SportsEventsRepository
 from app.database.sports_repository import SportsRepository
 from app.database.sync_runs_repository import SyncRunsRepository
 from app.database.synchronization_query_repository import (
@@ -158,6 +159,7 @@ def create_harness(database_path):
 def test_complete_snapshot_is_idempotent_and_kickoff_correction_updates_graph(
     tmp_path,
 ) -> None:
+    database_path = tmp_path / "football-data.db"
     (
         provider,
         calendar,
@@ -167,7 +169,7 @@ def test_complete_snapshot_is_idempotent_and_kickoff_correction_updates_graph(
         mappings,
         api_mapping,
         api_fixture_mapping,
-    ) = create_harness(tmp_path / "football-data.db")
+    ) = create_harness(database_path)
 
     first_import = provider.import_current_premier_league()
     first_sync = calendar.synchronize(CALENDAR_ID, 500)
@@ -177,6 +179,10 @@ def test_complete_snapshot_is_idempotent_and_kickoff_correction_updates_graph(
     assert first_import.items_unchanged == 1
     assert first_sync.items_created == 380
     assert first_operation_count == 380
+    assert all(
+        operation.payload is not None and "end" in operation.payload
+        for operation in graph.operations
+    )
 
     second_import = provider.import_current_premier_league()
     second_sync = calendar.synchronize(CALENDAR_ID, 500)
@@ -217,3 +223,8 @@ def test_complete_snapshot_is_idempotent_and_kickoff_correction_updates_graph(
     )
     assert football_data_fixture_mapping is not None
     assert football_data_fixture_mapping.internal_id == api_fixture_mapping.event_id
+    canonical_event = SportsEventsRepository(database_path).get_by_id(
+        football_data_fixture_mapping.internal_id
+    )
+    assert canonical_event is not None
+    assert canonical_event.end_time is None
