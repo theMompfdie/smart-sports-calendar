@@ -53,11 +53,19 @@ class SynchronizationRuntimeService:
             self._logger.info(
                 (
                     "Synchronization cycle completed: "
-                    "run_id=%s status=%s processed=%s failed=%s"
+                    "run_id=%s status=%s processed=%s created=%s "
+                    "updated=%s unchanged=%s cancelled=%s deleted=%s "
+                    "deferred=%s failed=%s"
                 ),
                 result.sync_run_id,
                 result.status,
                 result.items_processed,
+                result.items_created,
+                result.items_updated,
+                result.items_unchanged,
+                result.items_cancelled,
+                result.items_deleted,
+                result.items_deferred,
                 result.items_failed,
             )
 
