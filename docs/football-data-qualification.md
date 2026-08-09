@@ -2,11 +2,26 @@
 
 ## Status
 
-**Pending live evidence.** Public technical and contractual evidence supports
-continued qualification, but `football-data.org` is not yet approved as the
-Premier League authority. No `FOOTBALL_DATA_API_KEY` was present in the local
-environment or ignored `.env` during this review, so the required read-only
-2026/27 validation has not been executed.
+**First live evidence passed; repeat identity observation pending.** Public
+technical and contractual evidence supports continued qualification. The
+secret-safe read-only check passed for the 2026/27 Premier League on 2026-08-09,
+but `football-data.org` is not approved as the authority until a second run
+confirms the same match-identity fingerprint.
+
+The reviewed first-run evidence was:
+
+- API version `v4`, competition code `PL`, competition ID `2021`;
+- season ID `2502`, from 2026-08-21 through 2027-05-30;
+- 20 distinct teams;
+- 380 matches with 380 distinct positive match IDs;
+- all 380 matches in `SCHEDULED` status; and
+- kickoff coverage from 2026-08-21T19:00:00Z through
+  2027-05-30T12:00:00Z.
+
+No token, request header, account identifier, team name, fixture detail, raw
+payload, or secret-bearing URL was recorded. The optional remaining-quota
+header was not present, so its aggregate value was `null`; the command still
+made exactly three read-only requests.
 
 ## Public evidence reviewed on 2026-08-09
 
@@ -41,9 +56,10 @@ the exact safe purge/migration procedure must be finalized before approval.
 
 The repository includes a read-only command that performs exactly three HTTPS
 requests: competition, teams, and matches. It emits only aggregate identifiers,
-counts, UTC boundaries, status counts, API version, and the minimum remaining
-request count. It never emits the API token, raw body, authorization header,
-account identifier, team names, or fixture details.
+counts, UTC boundaries, status counts, API version, a SHA-256 fingerprint of
+the sorted match IDs, the latest source-update timestamp, and the minimum
+remaining request count. It never emits the API token, raw body, authorization
+header, account identifier, team names, match IDs, or fixture details.
 
 In PowerShell, enter the token without echoing it or storing it in shell
 history:
@@ -60,6 +76,7 @@ The command fails closed unless it observes:
 - competition code `PL` and a current season starting in 2026;
 - exactly 20 distinct team IDs;
 - exactly 380 matches and 380 distinct positive match IDs;
+- a deterministic SHA-256 fingerprint over the sorted match IDs;
 - the same competition and season identity on every match;
 - two distinct known participants on every match;
 - UTC `utcDate` and `lastUpdated` values; and
@@ -71,10 +88,9 @@ be copied into GitHub.
 
 ## Remaining approval gates
 
-- Execute the command with a key registered for this single application.
-- Confirm the live response contains the expected 20 teams and 380 fixtures.
-- Repeat after a safe interval and confirm match IDs remain stable.
-- Record the observed delay/freshness and quota cost without fixture details.
+- Repeat after a safe interval and confirm `match_ids_sha256` is unchanged.
+- Record the second run's `latest_source_update_utc` and optional aggregate
+  quota value without fixture details.
 - Confirm with the operator that visible attribution and subscription-
   cancellation cleanup are acceptable.
 - Define removal behavior: absence becomes evidence only after two complete,
