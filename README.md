@@ -4,25 +4,27 @@
 
 ## Current Status
 
-**Current release:** `v0.4.0-alpha.1`
+**Current release:** `v0.4.5-beta.1`
 
-**Development stage:** Alpha
+**Development stage:** Beta
 
 **Completed phases:** Phase 1, Phase 2, Phase 3, and Phase 4
 
-**Active delivery track:** authoritative-source orchestration and isolated
-live validation for `v0.4.5-beta.1`
-([tracker #72](https://github.com/theMompfdie/smart-sports-calendar/issues/72))
+**Active delivery track:** release qualification and controlled production
+promotion for `v0.4.5-beta.1`
+([tracker #64](https://github.com/theMompfdie/smart-sports-calendar/issues/64))
 
-**Automated tests:** 561 passing tests
+**Automated tests:** 566 passing tests
 
 The application foundation, persistent domain model, repository layer, Microsoft Graph integration, Outlook synchronization engine, and the scheduled, reported API-Football Premier League import runtime are implemented.
 
-The current release is not yet approved for production use. Provider-neutral
-source selection and the approved football-data.org Premier League authority
-are implemented on `develop`; credential-safe staging validation and controlled
-production promotion remain blocking before Phase 5. The official ECAL
-calendar is not approved for automated ingestion.
+The beta includes provider-neutral source selection, the approved
+football-data.org Premier League authority, isolated multi-instance deployment,
+and credential-safe live staging validation through Outlook. It is not yet
+approved for production use: the controlled live provider-failure exercise is
+deferred to [#101](https://github.com/theMompfdie/smart-sports-calendar/issues/101)
+and blocks manual production promotion. The official ECAL calendar is not
+approved for automated ingestion.
 
 ## Project Vision
 
@@ -448,7 +450,7 @@ feature/* -> develop -> release/* -> main -> Release
 
 ### v0.4.5 Authoritative-Source Beta
 
-**Status:** _In progress_
+**Status:** _Beta pre-release_
 
 **Target release:** `v0.4.5-beta.1`
 
@@ -459,7 +461,9 @@ feature/* -> develop -> release/* -> main -> Release
 - complete provider-neutral per-competition source orchestration
 - integrate the qualified football-data.org Premier League authority
 - complete credential-safe provider and Microsoft Graph live validation
-- qualify an immutable candidate and promote it to production manually
+- qualify and publish an immutable GitHub beta candidate
+- promote to production manually only after the deferred live provider-failure
+  exercise in issue #101
 
 This track is managed by
 [GitHub issue #72](https://github.com/theMompfdie/smart-sports-calendar/issues/72).
@@ -497,6 +501,21 @@ delivery order and operational boundaries.
 
 Detailed Phase 4 release notes are available in
 [`RELEASE_NOTES_v0.4.0-alpha.1.md`](RELEASE_NOTES_v0.4.0-alpha.1.md).
+
+Detailed authoritative-source beta release notes are available in
+[`RELEASE_NOTES_v0.4.5-beta.1.md`](RELEASE_NOTES_v0.4.5-beta.1.md).
+
+### `v0.4.5-beta.1`
+
+- isolated staging and production Docker/Portainer operating model
+- provider-neutral per-competition and per-season source authority
+- qualified football-data.org API v4 Premier League integration
+- complete 2026/27 Premier League import with 380 stable fixtures
+- independent recurring provider and Outlook synchronization schedules
+- visible authoritative-source attribution in Outlook events
+- secret-safe qualification and staging-evidence commands
+- credential-safe live staging validation and idempotent Outlook convergence
+- controlled production promotion remains blocked by deferred issue #101
 
 ### `v0.4.0-alpha.1`
 

@@ -203,8 +203,18 @@ Required delivery order:
    credentials in CI;
 5. complete #63 against the dedicated staging Outlook calendar with real
    Premier League data from the approved authority;
-6. complete #64, publish `v0.4.5-beta.1` from verified `main`, and manually
-   promote that immutable tag to production.
+6. complete the beta-publication portion of #64 and publish
+   `v0.4.5-beta.1` from verified `main`;
+7. complete deferred live provider-failure exercise #101 before the manual
+   production-promotion portion of #64.
+
+Issue #63 is complete for beta qualification with an explicitly accepted
+limitation: the controlled live provider network-failure exercise was not
+performed. Deterministic retry, fail-closed, scheduler-isolation, and
+idempotency coverage remains required and green. Issue #101 owns the missing
+live evidence. This limitation does not block publishing the GitHub beta
+pre-release, but it must block manual production promotion and must be stated
+in release notes and GitHub tracking.
 
 ### Source policy
 
@@ -237,7 +247,8 @@ In scope:
 * non-destructive coexistence with existing API-Football source mappings;
 * isolated live staging validation through SQLite and Microsoft Graph;
 * unchanged-cycle idempotency, restart/recovery, backup/restore, release notes,
-  and manual production promotion.
+  and beta pre-release publication;
+* manual production promotion only after #101 is complete.
 
 Out of scope:
 
