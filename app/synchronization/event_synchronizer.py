@@ -173,6 +173,12 @@ class EventSynchronizer:
             )
 
         if mapping.content_hash == content_hash:
+            checked_mapping = self._mappings_repository.mark_checked(mapping.id)
+            if checked_mapping is None:
+                raise EventSynchronizationError(
+                    f"Unchanged calendar mapping could not be marked as checked: "
+                    f"{mapping.id}"
+                )
             return EventSynchronizationResult(
                 status=(
                     EventSynchronizationStatus.CANCELLED
@@ -181,8 +187,8 @@ class EventSynchronizer:
                 ),
                 event_id=event.id,
                 calendar_id=calendar_id,
-                outlook_event_id=mapping.outlook_event_id,
-                content_hash=content_hash,
+                outlook_event_id=checked_mapping.outlook_event_id,
+                content_hash=checked_mapping.content_hash,
             )
 
         return self._update_event(

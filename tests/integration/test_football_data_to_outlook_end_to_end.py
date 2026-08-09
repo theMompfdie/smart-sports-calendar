@@ -172,12 +172,13 @@ def test_complete_snapshot_is_idempotent_and_kickoff_correction_updates_graph(
     ) = create_harness(database_path)
 
     first_import = provider.import_current_premier_league()
-    first_sync = calendar.synchronize(CALENDAR_ID, 500)
+    first_sync_batches = tuple(calendar.synchronize(CALENDAR_ID, 100) for _ in range(4))
     first_operation_count = len(graph.operations)
 
     assert first_import.items_created == 379
     assert first_import.items_unchanged == 1
-    assert first_sync.items_created == 380
+    assert [batch.items_created for batch in first_sync_batches] == [100, 100, 100, 80]
+    assert all(batch.items_failed == 0 for batch in first_sync_batches)
     assert first_operation_count == 380
     assert all(
         operation.payload is not None and "end" in operation.payload

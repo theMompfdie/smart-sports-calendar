@@ -14,7 +14,7 @@
 live validation for `v0.4.5-beta.1`
 ([tracker #72](https://github.com/theMompfdie/smart-sports-calendar/issues/72))
 
-**Automated tests:** 558 passing tests
+**Automated tests:** 561 passing tests
 
 The application foundation, persistent domain model, repository layer, Microsoft Graph integration, Outlook synchronization engine, and the scheduled, reported API-Football Premier League import runtime are implemented.
 
@@ -316,7 +316,9 @@ API_FOOTBALL_IMPORT_INTERVAL_SECONDS=3600
 used for all synchronization writes. `OUTLOOK_CALENDAR_NAME` is used only by
 the optional startup reachability check and must refer to the same dedicated
 SMART Sports Calendar. `SYNCHRONIZATION_BATCH_LIMIT` limits the number of
-events processed in one run.
+events processed in one run. Bounded runs process unmapped and retry/lifecycle
+work before ordinary synced mappings; synced mappings are revalidated in
+oldest-synchronized-first order so every event progresses without starvation.
 
 Keep `GRAPH_STARTUP_VALIDATION_ENABLED` enabled for normal deployments. Disable it only for isolated tests or environments without Graph connectivity. Never commit secrets.
 
