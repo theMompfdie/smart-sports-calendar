@@ -256,7 +256,7 @@ Deployment is performed directly from Git.
 The released `v0.4.0-alpha.1` Compose definition has fixed container and volume
 names and supports only one deployment on a Docker host. The current
 development Compose definition removes those conflicts for the target
-`v0.4.0-beta.1`. Do not use the new multi-instance procedure with the old alpha
+`v0.4.5-beta.1`. Do not use the new multi-instance procedure with the old alpha
 tag.
 
 Never work around an old release conflict by pointing two containers at the

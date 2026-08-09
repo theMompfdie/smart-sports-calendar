@@ -10,16 +10,18 @@
 
 **Completed phases:** Phase 1, Phase 2, Phase 3, and Phase 4
 
-**Active delivery track:** v0.4 deployment stabilization for
-`v0.4.0-beta.1` ([tracker #61](https://github.com/theMompfdie/smart-sports-calendar/issues/61))
+**Active delivery track:** official calendar-feed orchestration and isolated
+live validation for `v0.4.5-beta.1`
+([tracker #72](https://github.com/theMompfdie/smart-sports-calendar/issues/72))
 
-**Automated tests:** 486 passing tests
+**Automated tests:** 494 passing tests
 
 The application foundation, persistent domain model, repository layer, Microsoft Graph integration, Outlook synchronization engine, and the scheduled, reported API-Football Premier League import runtime are implemented.
 
-The current release is not yet approved for production use. Multi-instance
-Portainer isolation, credential-safe staging validation, and controlled
-production promotion are the blocking stabilization steps before Phase 5.
+The current release is not yet approved for production use. Provider-neutral
+source selection, an official Premier League calendar-feed integration,
+credential-safe staging validation, and controlled production promotion are
+the blocking steps before Phase 5.
 
 ## Project Vision
 
@@ -423,21 +425,23 @@ feature/* -> develop -> release/* -> main -> Release
 - deterministic provider-to-Outlook end-to-end integration coverage implemented
 - deployment, upgrade, live-validation, and release documentation completed
 
-### v0.4 Stabilization – Isolated Staging and Production Readiness
+### v0.4.5 Official Calendar-Feed Beta
 
 **Status:** _In progress_
 
-**Target release:** `v0.4.0-beta.1`
+**Target release:** `v0.4.5-beta.1`
 
 - document the two-stack Portainer operating model
 - remove Docker Compose naming and persistence conflicts
 - verify at least three independent local containers
 - deploy an isolated staging stack with automatic `develop` updates
-- complete credential-safe API-Football and Microsoft Graph live validation
+- add provider-neutral per-competition source orchestration
+- integrate an approved official Premier League calendar feed
+- complete credential-safe official-feed and Microsoft Graph live validation
 - qualify an immutable candidate and promote it to production manually
 
 This track is managed by
-[GitHub issue #61](https://github.com/theMompfdie/smart-sports-calendar/issues/61).
+[GitHub issue #72](https://github.com/theMompfdie/smart-sports-calendar/issues/72).
 Phase 5 does not begin until its blocking stabilization gates are complete. See
 the [v0.4 stabilization roadmap](docs/v0.4-stabilization-roadmap.md) for the
 delivery order and operational boundaries.
