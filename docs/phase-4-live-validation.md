@@ -98,6 +98,9 @@ OUTLOOK_CALENDAR_NAME=SMART Sports Calendar
 OUTLOOK_CALENDAR_ID=<dedicated-calendar-id>
 GRAPH_STARTUP_VALIDATION_ENABLED=true
 API_FOOTBALL_ENABLED=false
+FOOTBALL_DATA_ENABLED=true
+FOOTBALL_DATA_API_KEY=<deployment-secret>
+SOURCE_JOBS_JSON=[{"job_key":"football-data-premier-league","source_key":"football_data","sport_key":"football","competition_key":"premier_league","season_key":"2026_27","role":"authoritative","interval_seconds":3600}]
 API_FOOTBALL_API_KEY=<deployment-secret>
 API_FOOTBALL_IMPORT_INTERVAL_SECONDS=3600
 ```

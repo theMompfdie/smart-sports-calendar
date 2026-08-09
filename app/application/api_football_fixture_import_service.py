@@ -61,9 +61,13 @@ class ApiFootballFixtureImportService:
         self,
         data_sources_repository: DataSourcesRepository,
         fixture_import_repository: FixtureImportRepository,
+        source_key: str = "api_football",
     ) -> None:
         self._data_sources_repository = data_sources_repository
         self._fixture_import_repository = fixture_import_repository
+        if not source_key.strip():
+            raise ValueError("source_key must not be blank.")
+        self._source_key = source_key.strip()
 
     def import_fixtures(
         self,
@@ -71,10 +75,10 @@ class ApiFootballFixtureImportService:
         scope: FixtureImportScope,
     ) -> FixtureImportResult:
         self._validate_fixtures(fixtures, scope)
-        source = self._data_sources_repository.get_by_key("api_football")
+        source = self._data_sources_repository.get_by_key(self._source_key)
         if source is None:
             raise ProviderResolutionError(
-                "API-Football data source must exist before fixture import."
+                "Configured data source must exist before fixture import."
             )
         records = tuple(self._to_record(fixture) for fixture in fixtures)
         scope_record = FixtureImportScopeRecord(
@@ -146,8 +150,7 @@ class ApiFootballFixtureImportService:
                     f"external_id={fixture.external_id}."
                 )
 
-    @staticmethod
-    def _to_record(fixture: NormalizedFixture) -> FixtureImportRecord:
+    def _to_record(self, fixture: NormalizedFixture) -> FixtureImportRecord:
         return FixtureImportRecord(
             external_id=fixture.external_id,
             sport_id=fixture.sport_id,
@@ -174,4 +177,5 @@ class ApiFootballFixtureImportService:
             city=fixture.city,
             source_updated_at=fixture.source_updated_at,
             metadata=fixture.metadata,
+            event_key_prefix=self._source_key,
         )

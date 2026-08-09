@@ -54,7 +54,7 @@ perform automatic failover or combine fields from multiple providers.
 ## Consequences
 
 - Issue #74 may implement provider-neutral source authority and scheduling.
-- Issue #76 may implement the football-data.org adapter and Premier League
+- Issue #76 implements the football-data.org adapter and Premier League
   canonical import after #74 is complete.
 - Issue #63 must use this source for the isolated live staging gate.
 - API-Football remains a supported legacy source but is not an automatic

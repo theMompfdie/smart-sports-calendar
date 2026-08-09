@@ -118,12 +118,19 @@ The complete provider settings are:
 | `API_FOOTBALL_RETRY_MAX_DELAY_SECONDS` | `30` | Positive finite cap, not lower than the base delay |
 | `API_FOOTBALL_IMPORT_INTERVAL_SECONDS` | `3600` | Legacy positive provider interval; an explicit source job's `interval_seconds` is authoritative |
 | `SOURCE_JOBS_JSON` | `[]` | Provider-neutral job array; every active competition/season scope requires exactly one authority and every enabled adapter requires a matching job |
+| `FOOTBALL_DATA_ENABLED` | `false` | Enables the approved API v4 Premier League adapter; requires one matching authoritative source job |
+| `FOOTBALL_DATA_API_KEY` | empty | Secret API token; required only when enabled and never stored in Git |
+| `FOOTBALL_DATA_BASE_URL` | `https://api.football-data.org` | HTTPS-only provider origin without credentials, query, or fragment |
+| `FOOTBALL_DATA_MAX_ATTEMPTS` | `3` | Bounded transient retry count, maximum `10` |
+| `FOOTBALL_DATA_REQUESTS_PER_MINUTE` | `10` | Must not exceed the approved free-plan limit |
+| `FOOTBALL_DATA_MINIMUM_REQUEST_INTERVAL_SECONDS` | `6.1` | Enforces the configured per-minute request budget |
 
 The JSON value must remain on one line in `.env` or Portainer. Adapter and job
 enablement must agree. The existing API-Football adapter supports only the
-`authoritative` role because it writes canonical data. The approved
-`football_data` source must remain disabled until its adapter is implemented
-by #76. See [source orchestration](source-orchestration.md).
+`authoritative` role because it writes canonical data. `football_data` is
+implemented only for the authoritative 2026/27 Premier League scope. Keep its
+token in Portainer or another ignored operator secret store. See
+[source orchestration](source-orchestration.md).
 
 `OUTLOOK_CALENDAR_ID` is required for every Graph write. It must be the
 immutable Graph ID of the dedicated SMART Sports Calendar.

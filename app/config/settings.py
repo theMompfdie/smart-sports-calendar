@@ -31,6 +31,20 @@ class ApiFootballSettings:
 
 
 @dataclass(frozen=True)
+class FootballDataSettings:
+    enabled: bool
+    api_key: str = field(repr=False)
+    base_url: str = "https://api.football-data.org"
+    connect_timeout_seconds: float = 5.0
+    read_timeout_seconds: float = 30.0
+    max_attempts: int = 3
+    retry_base_delay_seconds: float = 1.0
+    retry_max_delay_seconds: float = 30.0
+    minimum_request_interval_seconds: float = 6.1
+    requests_per_minute: int = 10
+
+
+@dataclass(frozen=True)
 class Settings:
     database_path: Path
     log_level: str
@@ -49,6 +63,9 @@ class Settings:
             enabled=False,
             api_key="",
         )
+    )
+    football_data: FootballDataSettings = field(
+        default_factory=lambda: FootballDataSettings(enabled=False, api_key="")
     )
     source_jobs: tuple[SourceJobDefinition, ...] = ()
     instance_name: str = "default"
@@ -224,6 +241,97 @@ def load_api_football_settings() -> ApiFootballSettings:
     )
 
 
+def load_football_data_settings() -> FootballDataSettings:
+    try:
+        enabled = get_boolean_environment_variable(
+            "FOOTBALL_DATA_ENABLED", default=False
+        )
+    except ValueError as error:
+        raise ProviderConfigurationError(str(error)) from error
+    api_key = os.getenv("FOOTBALL_DATA_API_KEY", "").strip()
+    if enabled and not api_key:
+        raise ProviderConfigurationError(
+            "FOOTBALL_DATA_API_KEY must be configured when "
+            "FOOTBALL_DATA_ENABLED is true."
+        )
+    base_url = os.getenv(
+        "FOOTBALL_DATA_BASE_URL", "https://api.football-data.org"
+    ).rstrip("/")
+    parsed_url = urlsplit(base_url)
+    try:
+        _ = parsed_url.port
+    except ValueError as error:
+        raise ProviderConfigurationError(
+            "FOOTBALL_DATA_BASE_URL must be an HTTPS URL with a valid port."
+        ) from error
+    if (
+        parsed_url.scheme != "https"
+        or not parsed_url.hostname
+        or parsed_url.username is not None
+        or parsed_url.password is not None
+        or parsed_url.query
+        or parsed_url.fragment
+    ):
+        raise ProviderConfigurationError(
+            "FOOTBALL_DATA_BASE_URL must be an HTTPS URL without credentials, "
+            "query parameters, or fragments."
+        )
+    try:
+        max_attempts = get_positive_integer_environment_variable(
+            "FOOTBALL_DATA_MAX_ATTEMPTS", default=3
+        )
+        requests_per_minute = get_positive_integer_environment_variable(
+            "FOOTBALL_DATA_REQUESTS_PER_MINUTE", default=10
+        )
+    except ValueError as error:
+        raise ProviderConfigurationError(str(error)) from error
+    if max_attempts > 10:
+        raise ProviderConfigurationError(
+            "FOOTBALL_DATA_MAX_ATTEMPTS must not exceed 10."
+        )
+    if requests_per_minute > 10:
+        raise ProviderConfigurationError(
+            "FOOTBALL_DATA_REQUESTS_PER_MINUTE must not exceed the approved "
+            "plan limit of 10."
+        )
+    retry_base = get_positive_float_environment_variable(
+        "FOOTBALL_DATA_RETRY_BASE_DELAY_SECONDS", default=1.0
+    )
+    retry_max = get_positive_float_environment_variable(
+        "FOOTBALL_DATA_RETRY_MAX_DELAY_SECONDS", default=30.0
+    )
+    if retry_max < retry_base:
+        raise ProviderConfigurationError(
+            "FOOTBALL_DATA_RETRY_MAX_DELAY_SECONDS must be greater than or "
+            "equal to FOOTBALL_DATA_RETRY_BASE_DELAY_SECONDS."
+        )
+    minimum_interval = get_positive_float_environment_variable(
+        "FOOTBALL_DATA_MINIMUM_REQUEST_INTERVAL_SECONDS", default=6.1
+    )
+    required_interval = 60.0 / requests_per_minute
+    if minimum_interval < required_interval:
+        raise ProviderConfigurationError(
+            "FOOTBALL_DATA_MINIMUM_REQUEST_INTERVAL_SECONDS must enforce the "
+            "configured requests-per-minute limit."
+        )
+    return FootballDataSettings(
+        enabled=enabled,
+        api_key=api_key,
+        base_url=base_url,
+        connect_timeout_seconds=get_positive_float_environment_variable(
+            "FOOTBALL_DATA_CONNECT_TIMEOUT_SECONDS", default=5.0
+        ),
+        read_timeout_seconds=get_positive_float_environment_variable(
+            "FOOTBALL_DATA_READ_TIMEOUT_SECONDS", default=30.0
+        ),
+        max_attempts=max_attempts,
+        retry_base_delay_seconds=retry_base,
+        retry_max_delay_seconds=retry_max,
+        minimum_request_interval_seconds=minimum_interval,
+        requests_per_minute=requests_per_minute,
+    )
+
+
 def load_source_jobs() -> tuple[SourceJobDefinition, ...]:
     raw_value = os.getenv("SOURCE_JOBS_JSON", "[]").strip()
     try:
@@ -386,5 +494,6 @@ def load_settings() -> Settings:
             )
         ),
         api_football=load_api_football_settings(),
+        football_data=load_football_data_settings(),
         source_jobs=load_source_jobs(),
     )

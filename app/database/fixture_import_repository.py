@@ -47,6 +47,7 @@ class FixtureImportRecord:
     city: str | None
     source_updated_at: datetime | None
     metadata: dict[str, str] | None
+    event_key_prefix: str = "api_football"
 
 
 @dataclass(frozen=True)
@@ -138,6 +139,32 @@ class FixtureImportRepository:
         ).fetchone()
 
         if mapping is None:
+            cross_source_event_id = self._find_cross_source_event(connection, fixture)
+            if cross_source_event_id is not None:
+                try:
+                    connection.execute(
+                        """
+                        INSERT INTO source_mappings (
+                            source_id, object_type, internal_id, external_id,
+                            created_at, updated_at
+                        ) VALUES (?, 'event', ?, ?, ?, ?)
+                        """,
+                        (
+                            source_id,
+                            cross_source_event_id,
+                            fixture.external_id,
+                            timestamp,
+                            timestamp,
+                        ),
+                    )
+                except sqlite3.IntegrityError as error:
+                    raise FixtureImportConflictError(
+                        "Cross-source fixture mapping conflicts with an existing "
+                        f"identity: external_id={fixture.external_id}."
+                    ) from error
+                mapping = {"internal_id": cross_source_event_id}
+
+        if mapping is None:
             if not fixture.kickoff_confirmed or fixture.kickoff_utc is None:
                 return FixtureImportItemResult(
                     external_id=fixture.external_id,
@@ -183,8 +210,8 @@ class FixtureImportRepository:
                 "Fixture mapping points to a missing canonical event: "
                 f"external_id={fixture.external_id}, event_id={event_id}."
             )
-        expected_key = self.event_key(source_id, fixture.external_id)
-        if event["event_key"] != expected_key:
+        expected_key = self.event_key(fixture.event_key_prefix, fixture.external_id)
+        if event["event_key"] != expected_key and ":fixture:" not in event["event_key"]:
             raise FixtureImportConflictError(
                 "Fixture mapping points to an event with a conflicting stable key: "
                 f"external_id={fixture.external_id}, event_id={event_id}."
@@ -234,6 +261,60 @@ class FixtureImportRepository:
             ),
         )
 
+    @staticmethod
+    def _find_cross_source_event(
+        connection: sqlite3.Connection,
+        fixture: FixtureImportRecord,
+    ) -> int | None:
+        if len(fixture.participants) != 2:
+            return None
+        by_role = {
+            participant.role: participant for participant in fixture.participants
+        }
+        home = by_role.get("home")
+        away = by_role.get("away")
+        if home is None or away is None:
+            return None
+        rows = connection.execute(
+            """
+            SELECT event.id
+            FROM sports_events AS event
+            WHERE event.sport_id = ?
+              AND event.competition_id = ?
+              AND event.season_id = ?
+              AND event.event_type = ?
+              AND EXISTS (
+                  SELECT 1 FROM event_participants AS home
+                  WHERE home.event_id = event.id
+                    AND home.participant_id = ? AND home.role = 'home'
+              )
+              AND EXISTS (
+                  SELECT 1 FROM event_participants AS away
+                  WHERE away.event_id = event.id
+                    AND away.participant_id = ? AND away.role = 'away'
+              )
+              AND (
+                  SELECT COUNT(*) FROM event_participants AS participant
+                  WHERE participant.event_id = event.id
+              ) = 2
+            ORDER BY event.id
+            """,
+            (
+                fixture.sport_id,
+                fixture.competition_id,
+                fixture.season_id,
+                fixture.event_type,
+                home.participant_id,
+                away.participant_id,
+            ),
+        ).fetchall()
+        if len(rows) > 1:
+            raise FixtureImportConflictError(
+                "Cross-source fixture correlation is ambiguous for the declared "
+                "home/away participants."
+            )
+        return None if not rows else int(rows[0]["id"])
+
     def _create_event(
         self,
         connection: sqlite3.Connection,
@@ -261,7 +342,7 @@ class FixtureImportRepository:
                 fixture.sport_id,
                 fixture.competition_id,
                 fixture.season_id,
-                self.event_key(source_id, fixture.external_id),
+                self.event_key(fixture.event_key_prefix, fixture.external_id),
                 fixture.event_type,
                 fixture.title,
                 fixture.stage,
@@ -494,9 +575,8 @@ class FixtureImportRepository:
         return not (scope.window_end_utc is not None and start > scope.window_end_utc)
 
     @staticmethod
-    def event_key(source_id: int, external_id: str) -> str:
-        del source_id
-        return f"api_football:fixture:{external_id}"
+    def event_key(source_key: str, external_id: str) -> str:
+        return f"{source_key}:fixture:{external_id}"
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self.database_path)

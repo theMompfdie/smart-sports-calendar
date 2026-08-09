@@ -14,7 +14,7 @@ from app.application.api_football_import_runtime_service import (
     ApiFootballImportRuntimeService,
 )
 from app.application.container import ApplicationContainer
-from app.config.settings import ApiFootballSettings, Settings
+from app.config.settings import ApiFootballSettings, FootballDataSettings, Settings
 from app.database.fixture_import_repository import FixtureImportRepository
 from app.database.synchronization_query_repository import (
     SynchronizationQueryRepository,
@@ -71,6 +71,45 @@ def api_football_job(
         ),
         interval_seconds=900,
     )
+
+
+def football_data_job() -> SourceJobDefinition:
+    return SourceJobDefinition(
+        job_key="football-data-premier-league",
+        source_key="football_data",
+        role=SourceRole.AUTHORITATIVE,
+        scope=SourceScope("football", "premier_league", "2026_27"),
+        interval_seconds=3600,
+    )
+
+
+def test_container_requires_matching_football_data_job(tmp_path: Path) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        football_data=FootballDataSettings(enabled=True, api_key="secret"),
+    )
+
+    with pytest.raises(SourceConfigurationError, match="FOOTBALL_DATA_ENABLED"):
+        ApplicationContainer(settings=settings)
+
+
+@patch("app.application.container.FootballDataClient")
+def test_container_registers_authoritative_football_data_runtime(
+    client_type: MagicMock, tmp_path: Path
+) -> None:
+    client_type.return_value = MagicMock()
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        football_data=FootballDataSettings(enabled=True, api_key="secret"),
+        source_jobs=(football_data_job(),),
+    )
+
+    container = ApplicationContainer(settings=settings)
+
+    assert container.football_data_import_runtime_service is not None
+    assert [job.job_key for job in container.source_scheduled_jobs] == [
+        "football-data-premier-league"
+    ]
 
 
 def test_run_initializes_sports_catalog(
