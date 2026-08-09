@@ -67,8 +67,8 @@ The suite verifies:
 - cancellation, correction, postponement, and reactivation;
 - two-observation authoritative removal and Outlook deletion;
 - identity-preserving reappearance through the persistent transaction ID;
-- malformed and partially failed collections without removal evidence or
-  Outlook handoff;
+- malformed and partially failed collections without canonical mutation or
+  removal evidence, followed by idempotent calendar revalidation;
 - real SQLite persistence and provider-run finalization failures;
 - retry convergence after provider and Graph failures;
 - separate provider-import and calendar-sync reporting;

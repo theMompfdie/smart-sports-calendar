@@ -105,7 +105,7 @@ output before copying it outside staging.
 6. Restart the container normally. Confirm `database_quick_check` remains `ok`,
    `startup_records` increases, and prior fixtures, mappings, and runs persist.
 
-## Stage 2: Complete import and Outlook handoff
+## Stage 2: Complete import and independent Outlook synchronization
 
 1. Record only the non-identifying provider quota count before the cycle. Quota
    headers may be unavailable and are not required evidence.
@@ -118,8 +118,9 @@ output before copying it outside staging.
    mappings, the expected kickoff range, current provider freshness, and status
    counts totaling 380.
 5. Verify a completed `provider_import` run precedes a separate
-   `calendar_sync` run. No Outlook handoff may begin before the complete
-   provider snapshot is committed.
+   `calendar_sync` run on the initial startup. The first calendar batch may
+   consume newly imported provider data only after the complete snapshot is
+   committed. Later calendar jobs remain independent of provider outcomes.
 6. Verify created items appear only in the dedicated staging calendar and carry
    the expected Premier League content.
 7. Review application and Portainer logs for tokens, secrets, authorization
@@ -128,8 +129,9 @@ output before copying it outside staging.
 
 Stop and disable `FOOTBALL_DATA_ENABLED` if collection is empty, partial,
 malformed, stale, outside the intended scope, or unexpectedly quota-intensive.
-The last-known-good snapshot must remain intact and must produce neither Outlook
-writes nor removal evidence.
+The failed collection must not change the last-known-good snapshot or produce
+removal evidence. An independently due calendar job may revalidate the existing
+canonical state, but it must not issue an unnecessary Graph write.
 
 ## Stage 3: Unchanged-cycle idempotency
 
@@ -154,8 +156,10 @@ Perform these exercises only against staging:
 1. Temporarily deny the staging container's outbound connection to
    `api.football-data.org` using the operator-controlled staging network. Do not
    alter or expose the token and do not send artificial traffic to the provider.
-2. Observe one failed provider cycle. Verify there is no Outlook handoff, no
-   removal evidence, and the last-known-good 380 fixtures remain active.
+2. Observe one failed provider cycle. Verify it produces no canonical mutation
+   or removal evidence and the last-known-good 380 fixtures remain active. A
+   separately due calendar cycle is expected to remain operational; it must
+   report unchanged decisions and issue no Graph create, update, or delete.
 3. Restore staging egress and observe the next successful cycle. Verify it
    converges without duplicates or unnecessary Graph writes.
 4. Stop and restart the container during the controlled validation window.
@@ -185,7 +189,7 @@ error text that has not been sanitized.
 - Sole authoritative source assignment: `<result>`
 - SQLite restart persistence: `<result>`
 - Complete 20-team / 380-fixture import: `<result>`
-- Separate Outlook handoff: `<result>`
+- Independent calendar scheduling and first-import ordering: `<result>`
 - Second-cycle idempotency: `<result>`
 - Controlled transient-failure recovery: `<result>`
 - Restart/interrupted-run recovery: `<result>`
