@@ -14,10 +14,17 @@ from app.application.api_football_import_runtime_service import (
     ApiFootballImportRuntimeService,
 )
 from app.application.container import ApplicationContainer
-from app.config.settings import ApiFootballSettings, Settings
+from app.config.settings import ApiFootballSettings, FootballDataSettings, Settings
 from app.database.fixture_import_repository import FixtureImportRepository
 from app.database.synchronization_query_repository import (
     SynchronizationQueryRepository,
+)
+from app.graph.client import CalendarReference
+from app.providers.contracts import (
+    SourceConfigurationError,
+    SourceJobDefinition,
+    SourceRole,
+    SourceScope,
 )
 from app.synchronization.event_synchronizer import EventSynchronizer
 from app.synchronization.outlook_event_payload_builder import (
@@ -48,6 +55,67 @@ def create_settings(
         graph_base_url="https://graph.microsoft.com/v1.0",
         graph_startup_validation_enabled=False,
     )
+
+
+def api_football_job(
+    role: SourceRole = SourceRole.AUTHORITATIVE,
+) -> SourceJobDefinition:
+    return SourceJobDefinition(
+        job_key="api-football-premier-league",
+        source_key="api_football",
+        role=role,
+        scope=SourceScope(
+            sport_key="football",
+            competition_key="premier_league",
+            season_key="2026_27",
+        ),
+        interval_seconds=900,
+    )
+
+
+def football_data_job() -> SourceJobDefinition:
+    return SourceJobDefinition(
+        job_key="football-data-premier-league",
+        source_key="football_data",
+        role=SourceRole.AUTHORITATIVE,
+        scope=SourceScope("football", "premier_league", "2026_27"),
+        interval_seconds=3600,
+    )
+
+
+def test_container_requires_matching_football_data_job(tmp_path: Path) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        football_data=FootballDataSettings(enabled=True, api_key="secret"),
+    )
+
+    with pytest.raises(SourceConfigurationError, match="FOOTBALL_DATA_ENABLED"):
+        ApplicationContainer(settings=settings)
+
+
+@patch("app.application.container.FootballDataClient")
+def test_container_registers_authoritative_football_data_runtime(
+    client_type: MagicMock, tmp_path: Path
+) -> None:
+    client_type.return_value = MagicMock()
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        football_data=FootballDataSettings(enabled=True, api_key="secret"),
+        source_jobs=(football_data_job(),),
+    )
+
+    container = ApplicationContainer(settings=settings)
+
+    assert container.football_data_import_runtime_service is not None
+    assert [job.job_key for job in container.source_scheduled_jobs] == [
+        "football-data-premier-league"
+    ]
+    assert [
+        (job.job_key, job.interval_seconds) for job in container.scheduled_jobs
+    ] == [
+        ("football-data-premier-league", 3600),
+        ("system:calendar-synchronization", 300),
+    ]
 
 
 def test_run_initializes_sports_catalog(
@@ -153,6 +221,17 @@ def test_container_disables_api_football_client_by_default(
     )
 
 
+def test_container_logger_identifies_instance(tmp_path: Path) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        instance_name="staging",
+    )
+
+    container = ApplicationContainer(settings=settings)
+
+    assert container.logger.name == "smart-sports-calendar.staging"
+
+
 def test_container_provides_enabled_api_football_client(
     tmp_path: Path,
 ) -> None:
@@ -163,6 +242,7 @@ def test_container_provides_enabled_api_football_client(
             enabled=True,
             api_key="provider-secret",
         ),
+        source_jobs=(api_football_job(),),
     )
 
     container = ApplicationContainer(settings=enabled_settings)
@@ -193,17 +273,86 @@ def test_container_never_logs_api_football_key(
             enabled=True,
             api_key="provider-secret",
         ),
+        source_jobs=(api_football_job(),),
     )
     container = ApplicationContainer(settings=settings)
     container.logger = MagicMock()
 
     with (
         patch.object(container, "_register_signal_handlers"),
-        patch.object(container.scheduler, "run"),
+        patch.object(container.scheduler, "run_jobs"),
     ):
         container.run()
 
     assert "provider-secret" not in str(container.logger.method_calls)
+
+
+def test_graph_startup_validation_accepts_matching_calendar_target(
+    tmp_path: Path,
+) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        graph_startup_validation_enabled=True,
+    )
+    container = ApplicationContainer(settings=settings)
+
+    with (
+        patch.object(container, "_register_signal_handlers"),
+        patch.object(container.graph_token_provider, "get_access_token"),
+        patch.object(
+            container.graph_client,
+            "find_calendar_by_name",
+            return_value=CalendarReference(
+                id=settings.outlook_calendar_id,
+                name=settings.outlook_calendar_name,
+            ),
+        ),
+        patch.object(container.scheduler, "run") as scheduler_run,
+    ):
+        container.run()
+
+    scheduler_run.assert_called_once_with(
+        task=container._run_scheduled_cycle,
+        stop_event=container.stop_event,
+    )
+
+
+def test_graph_startup_validation_rejects_mismatching_calendar_target(
+    tmp_path: Path,
+) -> None:
+    configured_calendar_id = "configured-sensitive-calendar-id"
+    resolved_calendar_id = "resolved-sensitive-calendar-id"
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        graph_startup_validation_enabled=True,
+        outlook_calendar_id=configured_calendar_id,
+    )
+    container = ApplicationContainer(settings=settings)
+    container.logger = MagicMock()
+
+    with (
+        patch.object(container, "_register_signal_handlers"),
+        patch.object(container.graph_token_provider, "get_access_token"),
+        patch.object(
+            container.graph_client,
+            "find_calendar_by_name",
+            return_value=CalendarReference(
+                id=resolved_calendar_id,
+                name=settings.outlook_calendar_name,
+            ),
+        ),
+        patch.object(container.scheduler, "run") as scheduler_run,
+        pytest.raises(
+            RuntimeError,
+            match="Configured Outlook calendar target does not match",
+        ) as error,
+    ):
+        container.run()
+
+    scheduler_run.assert_not_called()
+    diagnostic_text = f"{error.value} {container.logger.method_calls}"
+    assert configured_calendar_id not in diagnostic_text
+    assert resolved_calendar_id not in diagnostic_text
 
 
 def test_run_registers_enabled_api_football_source_without_live_call(
@@ -215,12 +364,13 @@ def test_run_registers_enabled_api_football_source_without_live_call(
             enabled=True,
             api_key="provider-secret",
         ),
+        source_jobs=(api_football_job(),),
     )
     container = ApplicationContainer(settings=settings)
 
     with (
         patch.object(container, "_register_signal_handlers"),
-        patch.object(container.scheduler, "run"),
+        patch.object(container.scheduler, "run_jobs"),
         patch.object(container.api_football_client, "get_all") as provider_get_all,
     ):
         container.run()
@@ -353,6 +503,7 @@ def test_enabled_provider_cycle_imports_before_calendar_sync(tmp_path: Path) -> 
             api_key="provider-secret",
             import_interval_seconds=900,
         ),
+        source_jobs=(api_football_job(),),
     )
     container = ApplicationContainer(settings=settings)
     runtime = container.api_football_import_runtime_service
@@ -383,6 +534,39 @@ def test_enabled_provider_cycle_imports_before_calendar_sync(tmp_path: Path) -> 
     assert container.scheduler.interval_seconds == 900
 
 
+def test_source_jobs_and_calendar_sync_are_scheduled_independently(
+    tmp_path: Path,
+) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        football_data=FootballDataSettings(enabled=True, api_key="secret"),
+        source_jobs=(football_data_job(),),
+    )
+    container = ApplicationContainer(settings=settings)
+    runtime = container.football_data_import_runtime_service
+    assert runtime is not None
+    source_job, calendar_job = container.scheduled_jobs
+
+    with (
+        patch.object(runtime, "run", return_value=None) as import_run,
+        patch.object(
+            container.synchronization_runtime_service,
+            "run",
+        ) as synchronize,
+    ):
+        source_job.task()
+        synchronize.assert_not_called()
+
+        calendar_job.task()
+        calendar_job.task()
+
+    import_run.assert_called_once_with()
+    assert synchronize.call_count == 2
+    synchronize.assert_called_with(calendar_id="calendar-1", limit=100)
+    assert source_job.interval_seconds == 3600
+    assert calendar_job.interval_seconds == 300
+
+
 def test_failed_or_overlapping_provider_cycle_does_not_sync(tmp_path: Path) -> None:
     settings = replace(
         create_settings(tmp_path / "sports.db"),
@@ -390,6 +574,7 @@ def test_failed_or_overlapping_provider_cycle_does_not_sync(tmp_path: Path) -> N
             enabled=True,
             api_key="provider-secret",
         ),
+        source_jobs=(api_football_job(),),
     )
     container = ApplicationContainer(settings=settings)
     runtime = container.api_football_import_runtime_service
@@ -420,6 +605,7 @@ def test_calendar_failure_happens_after_committed_provider_import(
             enabled=True,
             api_key="provider-secret",
         ),
+        source_jobs=(api_football_job(),),
     )
     container = ApplicationContainer(settings=settings)
     runtime = container.api_football_import_runtime_service
@@ -450,3 +636,67 @@ def test_calendar_failure_happens_after_committed_provider_import(
         container._run_scheduled_cycle()
 
     import_run.assert_called_once_with()
+
+
+def test_explicit_source_job_is_persisted_and_uses_multi_job_scheduler(
+    tmp_path: Path,
+) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        api_football=ApiFootballSettings(
+            enabled=True,
+            api_key="provider-secret",
+        ),
+        source_jobs=(api_football_job(),),
+    )
+    container = ApplicationContainer(settings=settings)
+
+    with (
+        patch.object(container, "_register_signal_handlers"),
+        patch.object(container.scheduler, "run_jobs") as run_jobs,
+    ):
+        container.run()
+
+    assignments = container.source_assignments_repository.get_all(enabled_only=True)
+    assert len(assignments) == 1
+    assert assignments[0].job_key == "api-football-premier-league"
+    assert assignments[0].role is SourceRole.AUTHORITATIVE
+    run_jobs.assert_called_once_with(
+        jobs=container.scheduled_jobs,
+        stop_event=container.stop_event,
+    )
+
+
+def test_container_rejects_non_authoritative_role_for_writing_adapter(
+    tmp_path: Path,
+) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        api_football=ApiFootballSettings(
+            enabled=True,
+            api_key="provider-secret",
+        ),
+        source_jobs=(api_football_job(SourceRole.VERIFICATION),),
+    )
+
+    with pytest.raises(
+        SourceConfigurationError,
+        match="exactly one authoritative",
+    ):
+        ApplicationContainer(settings=settings)
+
+
+def test_container_requires_source_job_for_enabled_adapter(tmp_path: Path) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        api_football=ApiFootballSettings(
+            enabled=True,
+            api_key="provider-secret",
+        ),
+    )
+
+    with pytest.raises(
+        SourceConfigurationError,
+        match="must be configured together",
+    ):
+        ApplicationContainer(settings=settings)

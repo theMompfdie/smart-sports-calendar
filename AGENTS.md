@@ -123,11 +123,25 @@ Use small logical commits. Prefer:
 
 When helping with commits, provide a concrete commit message.
 
+Commits are expected to use the repository's configured GPG signing. If
+signing requires an interactive PIN, hardware token, or other operator action,
+stop before creating the commit and tell the user exactly which commit command
+to run. Resume with signature verification, push, PR maintenance, and CI only
+after the signed commit exists. Never fall back to `--no-gpg-sign` unless the
+user explicitly authorizes that specific unsigned commit.
+
 ## PRs and Issues
 
 PRs should state what changed, why, key decisions, tests, related issue, and limitations if applicable.
 
 Use `Closes #42` when merge should close an issue and `Refs #42` otherwise.
+
+Whenever creating or editing an issue or pull request, inspect and maintain its
+complete GitHub metadata. Add or correct the assignee, labels, milestone,
+issue/PR relationships, target branch, draft/readiness state, and description
+when any item is missing, stale, or inconsistent with the active delivery
+track. Recheck metadata after retargeting, stacking, or merging related PRs.
+Do not leave metadata cleanup for the user unless permissions prevent it.
 
 Before recommending merge verify CI, Ruff, pytest, acceptance criteria, conflicts, unresolved review comments, and documentation impact.
 
@@ -147,6 +161,7 @@ Existing milestones:
 * Phase 2 — `v0.2.0-alpha.1`
 * Phase 3 — `v0.3.0-alpha.1`
 * Phase 4 — `v0.4.0-alpha.1`
+* Authoritative-source beta — `v0.4.5-beta.1`
 
 Production target: `v1.0.0`
 
@@ -164,6 +179,103 @@ Phase completion normally requires:
 8. obsolete branches cleaned up
 
 Do not release unverified code.
+
+## Current v0.4.5 Authoritative-Source Beta Boundary
+
+The active delivery track is GitHub master issue #72.
+
+Target release: `v0.4.5-beta.1`. The previously planned
+`v0.4.0-beta.1` is superseded and must not be tagged or released.
+
+The beta extends the completed deployment-isolation foundation from #61 with a
+provider-neutral source orchestrator and one production-like Premier League
+integration backed by a permitted, qualified authoritative source. The
+official ECAL calendar was rejected for automated retrieval in #73.
+
+Required delivery order:
+
+1. approve the source policy, provider contract, identity rules, and
+   licensing/operational evidence in #72 and #73;
+2. implement provider-neutral registration, configuration, scheduling, and
+   per-competition source selection;
+3. qualify and implement the permitted Premier League authority and mapping;
+4. prove deterministic lifecycle handling and regression coverage without live
+   credentials in CI;
+5. complete #63 against the dedicated staging Outlook calendar with real
+   Premier League data from the approved authority;
+6. complete the beta-publication portion of #64 and publish
+   `v0.4.5-beta.1` from verified `main`;
+7. complete deferred live provider-failure exercise #101 before the manual
+   production-promotion portion of #64.
+
+Issue #63 is complete for beta qualification with an explicitly accepted
+limitation: the controlled live provider network-failure exercise was not
+performed. Deterministic retry, fail-closed, scheduler-isolation, and
+idempotency coverage remains required and green. Issue #101 owns the missing
+live evidence. This limitation does not block publishing the GitHub beta
+pre-release, but it must block manual production promotion and must be stated
+in release notes and GitHub tracking.
+
+### Source policy
+
+* Prefer documented official APIs or officially offered, automatically updated
+  calendar feeds as the authoritative source for a competition.
+* Each competition and season has exactly one enabled authoritative writer.
+* Additional sources may be configured only as `bootstrap`, `verification`, or
+  operator-selected alternatives. Automatic failover and simultaneous merging
+  are not part of `v0.4.5-beta.1`.
+* A transient source failure keeps the last known good canonical state and must
+  not cause another source to overwrite, cancel, or remove events.
+* Stable source identifiers are mandatory. For iCalendar feeds, the source UID
+  must remain stable across fixture changes before the feed can be authoritative.
+* Cross-source correlation may use mapped competition, season, participants,
+  round/leg, and kickoff tolerance to produce candidates, but ambiguous matches
+  require explicit review and must never be merged heuristically.
+* Only a complete successful authoritative snapshot may contribute removal
+  evidence. Verification and bootstrap sources never delete canonical events.
+* Undocumented website endpoints and HTML scraping are excluded unless the
+  operator has explicit written permission. Transfermarkt is not an automated
+  source under the current terms.
+
+### `v0.4.5-beta.1` scope boundary
+
+In scope:
+
+* provider-neutral orchestration needed to select sources per competition;
+* the transport and validation adapter for the approved permitted authority;
+* current Premier League catalog and fixtures from that authority;
+* non-destructive coexistence with existing API-Football source mappings;
+* isolated live staging validation through SQLite and Microsoft Graph;
+* unchanged-cycle idempotency, restart/recovery, backup/restore, release notes,
+  and beta pre-release publication;
+* manual production promotion only after #101 is complete.
+
+Out of scope:
+
+* adding a second competition to the released beta;
+* automatic provider failover or multi-source field aggregation;
+* live scores, standings, statistics, lineups, odds, or historical enrichment;
+* Transfermarkt scraping or undocumented private website APIs;
+* automated ECAL retrieval without explicit written permission;
+* redesigning the Outlook synchronization engine;
+* the full broad configuration scope of #3;
+* automatic production deployment.
+
+The deployment operating model remains unchanged:
+
+* `smart-calendar-staging` may follow `develop` during normal development and is
+  frozen to the immutable candidate tag for qualification;
+* `smart-calendar-prod` never tracks `develop` and is promoted manually from an
+  explicitly approved immutable tag;
+* staging and production have distinct stack names, volumes, SQLite databases,
+  Outlook calendars, credentials, configuration, and log streams;
+* no two active instances may share a writable database or target calendar;
+* live credentials and feed URLs containing secrets are supplied only by the
+  operator and never enter source control, CI, issues, PRs, logs, screenshots,
+  or validation artifacts.
+
+Phase 5 competition expansion must not begin until #72, #63, and #64 are
+complete and `v0.4.5-beta.1` has been published from verified code.
 
 ## Docker, Security, Dependencies
 
@@ -267,6 +379,11 @@ ci:
 
 Do not commit, push, merge, delete branches, create releases, or mutate GitHub objects unless the user explicitly requests that action.
 
+When an authorized commit cannot be signed non-interactively, hand the commit
+step to the user instead of bypassing GPG signing. Continue only after verifying
+the resulting commit signature. An unsigned fallback requires explicit approval
+for that individual commit.
+
 Never use destructive Git commands to discard local work without explicit approval.
 
 Issues and Pull Requests
@@ -285,6 +402,11 @@ related issue
 limitations or follow-up work
 
 Use `Closes #ISSUE_NUMBER` only when merging should close the issue. Otherwise use `Refs #ISSUE_NUMBER`.
+
+For every issue or pull-request create/update operation, also verify and repair
+assignees, labels, milestone, relationships, base branch, draft/readiness
+state, and the required description sections. Repeat this check after stacked
+PRs are retargeted or merged.
 
 Before recommending a merge, verify:
 
@@ -306,6 +428,7 @@ Phase 1: v0.1.0-alpha.1
 Phase 2: v0.2.0-alpha.1
 Phase 3: v0.3.0-alpha.1
 Phase 4: v0.4.0-alpha.1
+Authoritative-source beta target: v0.4.5-beta.1
 
 Production target:
 

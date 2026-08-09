@@ -48,6 +48,48 @@ This contract does not define an HTTP client or retry implementation.
 - Provider capabilities describe observable behavior; callers do not infer
   capabilities from provider names.
 
+## Source authority and calendar-feed snapshots
+
+Exactly one source may be the authoritative writer for a competition and
+season at a time. Official provenance is preferred, but it does not override
+usage terms or the technical contract. Verification, bootstrap, and fallback
+sources are read-only and cannot create removal evidence, cancel canonical
+events, or overwrite authoritative fields. Automatic failover is outside the
+`v0.4.5-beta.1` boundary.
+
+For iCalendar sources, `UID` is the only acceptable provider event identity.
+`SUMMARY`, participant names, kickoff, and venue are mutable fields. A feed is
+a complete authoritative snapshot only when the HTTP exchange, calendar
+container, every `VEVENT`, scope, expected season, identities, timezones, and
+integrity invariants all validate. HTTP success or parser success alone is not
+sufficient.
+
+Malformed, partial, truncated, over-limit, empty, stale, unexpectedly reduced,
+wrong-scope, or conditionally inconsistent feeds fail closed and retain the
+last-known-good state. They cannot trigger canonical or Outlook writes and
+cannot contribute absence/removal evidence. A `304 Not Modified` response may
+reuse the prior validated snapshot but is not a new removal observation.
+
+Calendar subscription URLs are credentials when they contain subscriber or
+unguessable identifiers. They are supplied only through the deployment secret
+store and must not appear in configuration examples, logs, exceptions, run
+metadata, evidence, tests, screenshots, issues, or pull requests. Redirect
+targets must preserve the same secrecy and be restricted by an explicit origin
+policy.
+
+The complete rejected-ECAL assessment and the future iCalendar transport rules
+are in
+[`premier-league-official-feed-qualification.md`](premier-league-official-feed-qualification.md).
+
+For the approved 2026/27 Premier League source, `football_data` is the sole
+authoritative writer for competition `PL` and season start year `2026`.
+Provider match IDs are the external fixture identity. A collection is complete
+only when it validates as one 20-team, 380-match snapshot for the expected
+competition and season. Absence may contribute removal evidence only after two
+consecutive complete authoritative snapshots. API-Football may coexist as
+disabled, bootstrap, or verification-only configuration but cannot overwrite
+fields, cancel events, or produce removal evidence for this scope.
+
 ## Typed concepts
 
 The following Python-like definitions describe the required semantics. They are
@@ -350,6 +392,13 @@ ordinary fixture re-import.
 | `cancelled_at` | Import system | Set on first cancellation; clear only after an explicit provider correction policy |
 | `deleted_at` | Reconciliation system | Set only after confirmed removal policy |
 | `metadata_json` | Mixed, allowlisted | Store only documented, non-secret fields with explicit ownership |
+
+An absent canonical `end_time` remains absent in persistence. At the Microsoft
+Graph boundary, the Outlook presentation policy derives a deterministic
+two-hour end from the canonical start so that Graph receives a valid event
+interval. This presentation-only fallback does not change provider ownership,
+canonical data, fixture identity, or future updates when a trusted canonical
+end becomes available.
 
 Provider import must not overwrite user/project-owned values merely because a
 provider field is absent. Field clearing requires an explicit, tested mapping

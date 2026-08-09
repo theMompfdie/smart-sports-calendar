@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -24,6 +24,7 @@ class OutlookDateTime:
 class OutlookEventPresentation:
     categories: tuple[str, ...] = ("SMART Sports Calendar",)
     reminder_minutes_before_start: int = 15
+    default_duration_minutes: int = 120
     show_as: str = "busy"
     cancelled_prefix: str = "[CANCELLED]"
     cancelled_category: str = "Cancelled"
@@ -31,6 +32,8 @@ class OutlookEventPresentation:
     def __post_init__(self) -> None:
         if self.reminder_minutes_before_start < 0:
             raise ValueError("Reminder minutes must not be negative.")
+        if self.default_duration_minutes <= 0:
+            raise ValueError("Default duration minutes must be positive.")
 
 
 @dataclass(frozen=True)
@@ -77,15 +80,16 @@ class OutlookEventPayloadBuilder:
     def build(self, synchronization_event: SynchronizationEvent) -> OutlookEventPayload:
         event = synchronization_event.event
         is_cancelled = event.status.casefold() == "cancelled"
+        start = self._build_date_time(event.start_time, event.timezone)
 
         return OutlookEventPayload(
             subject=self._build_subject(event.title, is_cancelled),
             body=self._build_body(synchronization_event, is_cancelled),
-            start=self._build_date_time(event.start_time, event.timezone),
+            start=start,
             end=(
                 self._build_date_time(event.end_time, event.timezone)
                 if event.end_time is not None
-                else None
+                else self._build_fallback_end(event.start_time, event.timezone)
             ),
             location=self._build_location(
                 event.venue_name,
@@ -162,6 +166,9 @@ class OutlookEventPayloadBuilder:
                 for statistic in statistics
             )
 
+        if synchronization_event.source_attribution is not None:
+            lines.extend(("", f"Source: {synchronization_event.source_attribution}"))
+
         return "\n".join(lines)
 
     def _build_categories(
@@ -200,6 +207,35 @@ class OutlookEventPayloadBuilder:
 
         return OutlookDateTime(
             date_time=parsed.isoformat(timespec="seconds"),
+            time_zone=time_zone,
+        )
+
+    def _build_fallback_end(
+        self,
+        start_value: str,
+        time_zone: str,
+    ) -> OutlookDateTime:
+        try:
+            zone = ZoneInfo(time_zone)
+        except ZoneInfoNotFoundError as error:
+            raise ValueError(f"Unknown event time zone: {time_zone}") from error
+
+        try:
+            parsed_start = datetime.fromisoformat(start_value)
+        except ValueError as error:
+            raise ValueError(f"Invalid event date-time: {start_value}") from error
+
+        if parsed_start.tzinfo is None:
+            zoned_start = parsed_start.replace(tzinfo=zone)
+        else:
+            zoned_start = parsed_start.astimezone(zone)
+
+        end = (
+            zoned_start.astimezone(UTC)
+            + timedelta(minutes=self._presentation.default_duration_minutes)
+        ).astimezone(zone)
+        return OutlookDateTime(
+            date_time=end.replace(tzinfo=None).isoformat(timespec="seconds"),
             time_zone=time_zone,
         )
 
@@ -247,7 +283,11 @@ class OutlookEventPayloadBuilder:
         result: EventResult,
         participant_names: dict[int, str],
     ) -> str:
-        label = participant_names.get(result.participant_id, result.result_type)
+        label = (
+            result.result_type
+            if result.participant_id is None
+            else participant_names.get(result.participant_id, result.result_type)
+        )
         value = cls._render_value(result.value_number, result.value_text)
         final_suffix = " (final)" if result.is_final else ""
         return f"- {label}: {value}{final_suffix}"
@@ -259,7 +299,11 @@ class OutlookEventPayloadBuilder:
         participant_names: dict[int, str],
     ) -> str:
         name = statistic.statistic_name or statistic.statistic_key
-        participant = participant_names.get(statistic.participant_id)
+        participant = (
+            None
+            if statistic.participant_id is None
+            else participant_names.get(statistic.participant_id)
+        )
         label = f"{participant} – {name}" if participant is not None else name
         value = cls._render_value(statistic.value_number, statistic.value_text)
         unit = f" {statistic.unit}" if statistic.unit is not None else ""

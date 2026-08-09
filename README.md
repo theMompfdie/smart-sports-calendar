@@ -4,15 +4,27 @@
 
 ## Current Status
 
-**Current release:** `v0.4.0-alpha.1`
+**Current release:** `v0.4.5-beta.1`
 
-**Development stage:** Alpha
+**Development stage:** Beta
 
 **Completed phases:** Phase 1, Phase 2, Phase 3, and Phase 4
 
-**Automated tests:** 477 passing tests
+**Active delivery track:** release qualification and controlled production
+promotion for `v0.4.5-beta.1`
+([tracker #64](https://github.com/theMompfdie/smart-sports-calendar/issues/64))
+
+**Automated tests:** 566 passing tests
 
 The application foundation, persistent domain model, repository layer, Microsoft Graph integration, Outlook synchronization engine, and the scheduled, reported API-Football Premier League import runtime are implemented.
+
+The beta includes provider-neutral source selection, the approved
+football-data.org Premier League authority, isolated multi-instance deployment,
+and credential-safe live staging validation through Outlook. It is not yet
+approved for production use: the controlled live provider-failure exercise is
+deferred to [#101](https://github.com/theMompfdie/smart-sports-calendar/issues/101)
+and blocks manual production promotion. The official ECAL calendar is not
+approved for automated ingestion.
 
 ## Project Vision
 
@@ -43,6 +55,9 @@ The application focuses on:
 - persistent SQLite volume
 - container health check
 - Portainer-compatible deployment
+- project-scoped images, containers, networks, and SQLite volumes
+- validated per-instance identifiers in logs and Docker labels
+- credential-free three-instance Compose isolation validation
 - GitHub Actions CI pipeline
 
 ### Microsoft 365 Integration
@@ -88,11 +103,25 @@ The catalog, normalization, fixture-import, reporting, and runtime services are
 dependency-injected. API-Football remains opt-in and performs no provider call
 unless explicitly enabled.
 
+Provider-neutral source jobs provide explicit competition/season authority,
+roles, independent intervals, adapter registration, fail-closed startup
+validation, and persistent assignment history. The current API-Football writer
+must be paired with an explicit authoritative source job when enabled. The
+football-data.org API v4 adapter is the sole released authoritative writer for
+the 2026/27 Premier League scope and fails closed before canonical or Outlook
+handoff unless the complete 20-team, 380-match snapshot validates.
+
 Phase 4 documentation:
 
 - [provider requirements and evaluation](docs/provider-evaluation.md)
 - [API-Football selection ADR](docs/adr/0001-select-api-football.md)
+- [Premier League official-feed qualification](docs/premier-league-official-feed-qualification.md)
+- [ECAL automated-source rejection ADR](docs/adr/0002-reject-ecal-as-automated-source.md)
+- [football-data.org Premier League selection ADR](docs/adr/0003-select-football-data-for-premier-league.md)
+- [football-data.org qualification](docs/football-data-qualification.md)
+- [football-data.org Premier League import](docs/football-data-premier-league-import.md)
 - [provider-independent integration contract](docs/provider-integration-contract.md)
+- [provider-neutral source orchestration](docs/source-orchestration.md)
 - [Premier League catalog mapping](docs/api-football-catalog-mapping.md)
 - [fixture normalization](docs/api-football-fixture-normalization.md)
 - [idempotent fixture import](docs/api-football-fixture-import.md)
@@ -101,6 +130,7 @@ Phase 4 documentation:
 - [deployment and operations](docs/deployment.md)
 - [manual live validation](docs/phase-4-live-validation.md)
 - [Phase 4 release checklist](docs/phase-4-release-checklist.md)
+- [v0.4 stabilization roadmap](docs/v0.4-stabilization-roadmap.md)
 
 ### Database and Persistence
 
@@ -180,7 +210,11 @@ Synchronization runs retain progress counters and final results. Failures are is
 
 ## Domain Model
 
-The database model covers sports, competitions, seasons, participants, season participants, data sources, source mappings, sports events, event participants, results, statistics, calendar event mappings, and synchronization runs. It supports team-based competitions and participant-based sports that may be added later.
+The database model covers sports, competitions, seasons, participants, season
+participants, data sources, source assignments, source mappings, sports
+events, event participants, results, statistics, calendar event mappings, and
+synchronization runs. It supports team-based competitions and
+participant-based sports that may be added later.
 
 ## Design Principles
 
@@ -284,16 +318,18 @@ API_FOOTBALL_IMPORT_INTERVAL_SECONDS=3600
 used for all synchronization writes. `OUTLOOK_CALENDAR_NAME` is used only by
 the optional startup reachability check and must refer to the same dedicated
 SMART Sports Calendar. `SYNCHRONIZATION_BATCH_LIMIT` limits the number of
-events processed in one run.
+events processed in one run. Bounded runs process unmapped and retry/lifecycle
+work before ordinary synced mappings; synced mappings are revalidated in
+oldest-synchronized-first order so every event progresses without starvation.
 
 Keep `GRAPH_STARTUP_VALIDATION_ENABLED` enabled for normal deployments. Disable it only for isolated tests or environments without Graph connectivity. Never commit secrets.
 
 API-Football is disabled by default. When `API_FOOTBALL_ENABLED=true`,
 `API_FOOTBALL_API_KEY` is required. The application imports the mapped current
 Premier League season every `API_FOOTBALL_IMPORT_INTERVAL_SECONDS`, persists a
-separate provider-import report, and then runs Outlook synchronization after a
-successful import. The API key is sent only in the `x-apisports-key` header and
-must never be logged.
+separate provider-import report, and independently runs Outlook synchronization
+every `HEARTBEAT_INTERVAL`. The API key is sent only in the
+`x-apisports-key` header and must never be logged.
 
 ## Deployment
 
@@ -311,7 +347,9 @@ Stop the application without deleting its persistent data:
 docker compose down
 ```
 
-SQLite data is stored in the `smart_sports_data` volume. Removing the container does not remove the database; deleting the volume permanently deletes it.
+SQLite data is stored in the project-scoped `smart_sports_data` logical volume.
+Removing a container does not remove the database; deleting the corresponding
+project volume permanently deletes it.
 
 For deployment, upgrade, backup, rollback, and troubleshooting information,
 see [`docs/deployment.md`](docs/deployment.md).
@@ -339,10 +377,10 @@ python -m ruff format --check .
 docker compose config
 ```
 
-Expected automated test result for the Phase 4 release candidate:
+Expected automated test result for the current development state:
 
 ```text
-477 passed
+486 passed
 ```
 
 ## Development Workflow
@@ -410,6 +448,29 @@ feature/* -> develop -> release/* -> main -> Release
 - deterministic provider-to-Outlook end-to-end integration coverage implemented
 - deployment, upgrade, live-validation, and release documentation completed
 
+### v0.4.5 Authoritative-Source Beta
+
+**Status:** _Beta pre-release_
+
+**Target release:** `v0.4.5-beta.1`
+
+- document the two-stack Portainer operating model
+- remove Docker Compose naming and persistence conflicts
+- verify at least three independent local containers
+- deploy an isolated staging stack with automatic `develop` updates
+- complete provider-neutral per-competition source orchestration
+- integrate the qualified football-data.org Premier League authority
+- complete credential-safe provider and Microsoft Graph live validation
+- qualify and publish an immutable GitHub beta candidate
+- promote to production manually only after the deferred live provider-failure
+  exercise in issue #101
+
+This track is managed by
+[GitHub issue #72](https://github.com/theMompfdie/smart-sports-calendar/issues/72).
+Phase 5 does not begin until its blocking stabilization gates are complete. See
+the [v0.4 stabilization roadmap](docs/v0.4-stabilization-roadmap.md) for the
+delivery order and operational boundaries.
+
 ### Phase 5 – Additional Domestic Competitions
 
 **Status:** _Planned_
@@ -440,6 +501,21 @@ feature/* -> develop -> release/* -> main -> Release
 
 Detailed Phase 4 release notes are available in
 [`RELEASE_NOTES_v0.4.0-alpha.1.md`](RELEASE_NOTES_v0.4.0-alpha.1.md).
+
+Detailed authoritative-source beta release notes are available in
+[`RELEASE_NOTES_v0.4.5-beta.1.md`](RELEASE_NOTES_v0.4.5-beta.1.md).
+
+### `v0.4.5-beta.1`
+
+- isolated staging and production Docker/Portainer operating model
+- provider-neutral per-competition and per-season source authority
+- qualified football-data.org API v4 Premier League integration
+- complete 2026/27 Premier League import with 380 stable fixtures
+- independent recurring provider and Outlook synchronization schedules
+- visible authoritative-source attribution in Outlook events
+- secret-safe qualification and staging-evidence commands
+- credential-safe live staging validation and idempotent Outlook convergence
+- controlled production promotion remains blocked by deferred issue #101
 
 ### `v0.4.0-alpha.1`
 

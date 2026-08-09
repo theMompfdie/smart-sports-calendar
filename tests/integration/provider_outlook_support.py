@@ -164,8 +164,8 @@ class ScriptedApiFootballTransport:
                 header_names=tuple(sorted(name.casefold() for name in headers)),
             )
         )
-        page = int(query["page"])
         if parsed.path == "/fixtures":
+            page = int(query["page"])
             failures = self._fixture_failures.get(page)
             if failures:
                 failure = failures.pop(0)

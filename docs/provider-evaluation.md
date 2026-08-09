@@ -6,7 +6,8 @@ This document defines the requirements and evidence used to select the first
 football data provider for SMART Sports Calendar. It supports GitHub Issue #43
 and records facts verified on 2026-08-08. Provider documentation, prices, and
 terms can change; the sources must be rechecked before purchasing a plan or
-enabling production access.
+enabling production access. The official Premier League/ECAL calendar was
+assessed separately on 2026-08-09 for issue #73.
 
 The initial use case is deliberately narrow: import current English Premier
 League competition, season, team, and fixture data into the existing canonical
@@ -60,6 +61,28 @@ not treated as equivalent to technical or contractual guarantees.
 
 No live API requests, trial accounts, credentials, or secrets were used for
 this evaluation.
+
+## v0.4.5 Premier League source reassessment
+
+The Premier League's official digital calendar is delivered by ECAL. It is not
+approved for automated ingestion: ECAL's public end-user terms limit the
+service to personal use and prohibit robots, scraping, data mining, and similar
+collection. Because authorized acquisition was not established, the project
+did not create a subscription or inspect a personalized ICS payload. Stable
+event identity, lifecycle representation, complete-snapshot behavior, and HTTP
+cache validators therefore also remain unverified.
+
+The dated evidence, rejection rationale, future iCalendar safety contract, and
+parser decision are in
+[`premier-league-official-feed-qualification.md`](premier-league-official-feed-qualification.md)
+and [ADR 0002](adr/0002-reject-ecal-as-automated-source.md).
+
+`football-data.org` is approved as the 2026/27 Premier League authority by
+[ADR 0003](adr/0003-select-football-data-for-premier-league.md). Its public
+terms govern registered API use, require visible attribution and credential
+confidentiality, and impose a cancellation cleanup obligation. Secret-safe
+live qualification proved 20 teams, 380 unique matches, and stable match
+identity across two fingerprint-bearing observations.
 
 ## Comparison matrix
 
@@ -130,12 +153,15 @@ The free plan is EUR 0/month, covers 12 competitions, and permits 10 calls per
 minute. Scores and schedules may be delayed. Paid plans increase freshness,
 coverage, and call limits.
 
-It is not selected because the public pages reviewed did not expose usage,
-attribution, storage, and redistribution terms with the same clarity as the
-other candidates. Its published match-status vocabulary also does not contain a
-distinct abandoned status. These are manageable technical issues, but the
-licensing ambiguity is a mandatory-requirement risk. It remains the preferred
-fallback if written usage confirmation is obtained.
+It was not selected in the original 2026-08-08 evaluation because the public
+terms had not yet been located and its published match-status vocabulary does
+not contain a distinct abandoned status. The 2026-08-09 reassessment located
+the general terms: a registered API key is scoped to one application,
+credentials must remain confidential, visible attribution is required, and
+data may no longer be referenced after subscription cancellation. These terms
+remove the earlier discovery ambiguity. The operator accepted the required
+attribution and scoped re-source-or-remove cancellation workflow. The source
+is approved under ADR 0003 with fail-closed complete-snapshot rules.
 
 ### Sportmonks Football API
 
@@ -182,6 +208,7 @@ Sources were accessed on 2026-08-08.
 
 - [Coverage](https://www.football-data.org/coverage)
 - [Pricing](https://www.football-data.org/pricing)
+- [Terms, privacy, and attribution](https://www.football-data.org/about)
 - [Match resource and statuses](https://docs.football-data.org/general/v4/match.html)
 - [API policies and throttling](https://docs.football-data.org/general/v4/policies.html)
 - [Errors](https://docs.football-data.org/general/v4/errors.html)

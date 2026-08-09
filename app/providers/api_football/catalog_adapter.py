@@ -17,7 +17,7 @@ PREMIER_LEAGUE_ID = 39
 
 
 class ApiFootballCollectionClient(Protocol):
-    def get_all(
+    def get_unpaginated(
         self,
         endpoint: str,
         query: dict[str, str | int] | None = None,
@@ -29,7 +29,7 @@ class ApiFootballCatalogAdapter:
         self._client = client
 
     def find_premier_league(self) -> ApiFootballLeague:
-        collection = self._client.get_all(
+        collection = self._client.get_unpaginated(
             "/leagues",
             query={"id": PREMIER_LEAGUE_ID},
         )
@@ -66,7 +66,7 @@ class ApiFootballCatalogAdapter:
         league_id: int,
         season_year: int,
     ) -> tuple[ApiFootballTeam, ...]:
-        collection = self._client.get_all(
+        collection = self._client.get_unpaginated(
             "/teams",
             query={
                 "league": league_id,

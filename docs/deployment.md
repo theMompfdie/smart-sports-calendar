@@ -4,11 +4,11 @@ This document describes how to build, deploy, and maintain the SMART Sports Cale
 
 ---
 
-# Architecture
+## Architecture
 
 The application is designed to run as a Docker container.
 
-```
+```text
 GitHub Repository
         │
         ▼
@@ -29,19 +29,19 @@ SQLite Database
 
 ---
 
-# Repository
+## Repository
 
 The project is deployed directly from the Git repository.
 
 Current development branch:
 
-```
+```text
 develop
 ```
 
 Release deployments use a reviewed commit from:
 
-```
+```text
 main
 ```
 
@@ -52,15 +52,15 @@ implemented yet.
 
 ---
 
-# Local Development
+## Local Development
 
-## Build
+### Build
 
 ```bash
 docker compose build
 ```
 
-## Start
+### Start
 
 ```bash
 docker compose up
@@ -72,19 +72,19 @@ or
 docker compose up -d
 ```
 
-## Show running containers
+### Show running containers
 
 ```bash
 docker compose ps
 ```
 
-## View logs
+### View local logs
 
 ```bash
 docker compose logs -f
 ```
 
-## Stop
+### Stop
 
 ```bash
 docker compose down
@@ -92,7 +92,7 @@ docker compose down
 
 The command above **does not delete** persistent data.
 
-## Scheduled API-Football imports
+### Scheduled API-Football imports
 
 API-Football is opt-in. Configure these values through the deployment secret
 store or Portainer environment; never commit a real key:
@@ -101,6 +101,7 @@ store or Portainer environment; never commit a real key:
 API_FOOTBALL_ENABLED=true
 API_FOOTBALL_API_KEY=replace-with-deployment-secret
 API_FOOTBALL_IMPORT_INTERVAL_SECONDS=3600
+SOURCE_JOBS_JSON=[{"job_key":"api-football-premier-league","source_key":"api_football","sport_key":"football","competition_key":"premier_league","season_key":"2026_27","role":"authoritative","interval_seconds":3600}]
 ```
 
 The complete provider settings are:
@@ -115,28 +116,42 @@ The complete provider settings are:
 | `API_FOOTBALL_MAX_ATTEMPTS` | `3` | Positive integer, maximum `10` |
 | `API_FOOTBALL_RETRY_BASE_DELAY_SECONDS` | `1` | Positive finite first backoff delay |
 | `API_FOOTBALL_RETRY_MAX_DELAY_SECONDS` | `30` | Positive finite cap, not lower than the base delay |
-| `API_FOOTBALL_IMPORT_INTERVAL_SECONDS` | `3600` | Positive integer scheduler interval while the provider is enabled |
+| `API_FOOTBALL_IMPORT_INTERVAL_SECONDS` | `3600` | Legacy positive provider interval; an explicit source job's `interval_seconds` is authoritative |
+| `SOURCE_JOBS_JSON` | `[]` | Provider-neutral job array; every active competition/season scope requires exactly one authority and every enabled adapter requires a matching job |
+| `FOOTBALL_DATA_ENABLED` | `false` | Enables the approved API v4 Premier League adapter; requires one matching authoritative source job |
+| `FOOTBALL_DATA_API_KEY` | empty | Secret API token; required only when enabled and never stored in Git |
+| `FOOTBALL_DATA_BASE_URL` | `https://api.football-data.org` | HTTPS-only provider origin without credentials, query, or fragment |
+| `FOOTBALL_DATA_MAX_ATTEMPTS` | `3` | Bounded transient retry count, maximum `10` |
+| `FOOTBALL_DATA_REQUESTS_PER_MINUTE` | `10` | Must not exceed the approved free-plan limit |
+| `FOOTBALL_DATA_MINIMUM_REQUEST_INTERVAL_SECONDS` | `6.1` | Enforces the configured per-minute request budget |
+
+The JSON value must remain on one line in `.env` or Portainer. Adapter and job
+enablement must agree. The existing API-Football adapter supports only the
+`authoritative` role because it writes canonical data. `football_data` is
+implemented only for the authoritative 2026/27 Premier League scope. Keep its
+token in Portainer or another ignored operator secret store. See
+[source orchestration](source-orchestration.md).
 
 `OUTLOOK_CALENDAR_ID` is required for every Graph write. It must be the
 immutable Graph ID of the dedicated SMART Sports Calendar.
 `OUTLOOK_CALENDAR_NAME` is used by startup validation and must resolve to that
 same calendar. Do not target a general-purpose personal calendar.
 
-## Application and Microsoft Graph configuration
+### Application and Microsoft Graph configuration
 
 | Setting | Default | Validation and purpose |
 | --- | --- | --- |
 | `TZ` | `Europe/Vienna` in Compose | Operational container timezone; canonical fixture timestamps remain UTC |
 | `DATABASE_PATH` | `/data/sports.db` | SQLite file inside the persistent volume |
 | `LOG_LEVEL` | `INFO` | Python logging level; never use logs to expose configuration secrets |
-| `HEARTBEAT_INTERVAL` | `300` | Positive integer calendar-only interval while API-Football is disabled |
+| `HEARTBEAT_INTERVAL` | `300` | Positive interval for the independent Outlook calendar synchronization job |
 | `M365_TENANT_ID` | none | Required deployment secret/reference for Graph authentication |
 | `M365_CLIENT_ID` | none | Required deployment secret/reference for Graph authentication |
 | `M365_CLIENT_SECRET` | none | Required secret; never commit or print it |
 | `M365_USER_ID` | none | Required target mailbox identifier |
 | `OUTLOOK_CALENDAR_NAME` | `SMART Sports Calendar` | Startup reachability lookup; must identify the dedicated target calendar |
 | `OUTLOOK_CALENDAR_ID` | none | Required immutable Graph calendar ID used by synchronization writes |
-| `SYNCHRONIZATION_BATCH_LIMIT` | `100` | Positive integer maximum events processed per calendar run |
+| `SYNCHRONIZATION_BATCH_LIMIT` | `100` | Positive maximum per run; urgent/unmapped work runs first and synced mappings rotate oldest-synchronized-first |
 | `GRAPH_BASE_URL` | Microsoft Graph v1.0 | Graph API root; use the documented production endpoint unless testing an isolated mock |
 | `GRAPH_STARTUP_VALIDATION_ENABLED` | `true` | Boolean; keep enabled for deployed environments |
 
@@ -144,9 +159,12 @@ All settings are external. `.env.example` contains placeholders only. Use a
 local ignored `.env` file or Portainer secret/environment configuration for
 real values. The image must never contain credentials.
 
-When enabled, every interval performs a complete current Premier League import
-and invokes Outlook synchronization only after the canonical import succeeds.
-When disabled, the existing calendar-only cycle uses `HEARTBEAT_INTERVAL`.
+Each enabled source job imports its configured scope at its own
+`SOURCE_JOBS_JSON.interval_seconds`. Outlook synchronization is a separate job
+that runs every `HEARTBEAT_INTERVAL`, including while providers are enabled.
+At startup, configured source jobs are ordered before the first calendar job;
+later calendar batches continue independently without unnecessary provider
+requests.
 
 Provider-import and calendar-sync outcomes are stored separately in
 `sync_runs`. The runtime lock is process-local, so deploy only one application
@@ -154,17 +172,30 @@ instance for a shared SQLite database and Outlook calendar.
 
 ---
 
-# Persistent Storage
+## Persistent Storage
 
-Application data is stored inside the Docker named volume
+Application data is stored inside the Compose logical volume
 
-```
+```text
 smart_sports_data
 ```
 
+For multi-instance deployments, Docker prefixes the actual volume with the
+Compose project or Portainer stack name. Examples:
+
+```text
+smart-calendar-staging_smart_sports_data
+smart-calendar-prod_smart_sports_data
+```
+
+The released `v0.4.0-alpha.1` used the legacy unscoped physical volume name
+`smart_sports_data`. Preserve that volume during upgrade and follow an explicit
+backup/migration decision; do not attach it to staging and production at the
+same time.
+
 The SQLite database is located inside the container at
 
-```
+```text
 /data/sports.db
 ```
 
@@ -178,7 +209,7 @@ docker compose down --volumes
 
 This command should only be used when a complete reset is intended.
 
-## Backup before upgrade
+### Backup before upgrade
 
 Stop the service before copying SQLite so the backup is transactionally
 consistent:
@@ -197,7 +228,7 @@ docker compose start calendar-sync
 Store the backup outside the Docker volume and verify that the copied file is
 non-empty. Never use `docker compose down --volumes` during an upgrade.
 
-## Upgrade to v0.4.0-alpha.1
+### Upgrade to v0.4.0-alpha.1
 
 1. Back up `/data/sports.db` using the stopped-container procedure above.
 2. Review `.env` against `.env.example` without replacing real secrets with
@@ -215,7 +246,7 @@ non-empty. Never use `docker compose down --volumes` during an upgrade.
 Database initialization and forward migrations are idempotent. Schema
 downgrades are not implemented.
 
-## Rollback
+### Rollback
 
 Prefer a forward fix when the upgraded database is healthy. Running older code
 against a newer schema is not a supported downgrade path.
@@ -234,31 +265,144 @@ explicit operational decision.
 
 ---
 
-# Portainer Deployment
+## Portainer Deployment
 
 Deployment is performed directly from Git.
 
-Configuration:
+### Released alpha single-instance limitation
+
+The released `v0.4.0-alpha.1` Compose definition has fixed container and volume
+names and supports only one deployment on a Docker host. The current
+development Compose definition removes those conflicts for the target
+`v0.4.5-beta.1`. Do not use the new multi-instance procedure with the old alpha
+tag.
+
+Never work around an old release conflict by pointing two containers at the
+same SQLite volume or Outlook calendar.
+
+### Multiple Instances
+
+The current development Compose definition scopes generated container,
+image, network, and volume names through the Compose project name. Portainer
+uses the stack name as that project boundary.
+
+| Setting | Staging | Production |
+| --- | --- | --- |
+| Portainer stack | `smart-calendar-staging` | `smart-calendar-prod` |
+| Source | `develop` during normal development | approved immutable release tag |
+| GitOps updates | enabled | disabled |
+| Deployment action | automatic | explicit manual promotion |
+| SQLite storage | dedicated staging volume | dedicated production volume |
+| Outlook target | dedicated non-production calendar | dedicated production calendar |
+| Secrets | staging-only Portainer configuration | production-only Portainer configuration |
+| Logs | staging container stream | production container stream |
+
+Staging and production must not share writable storage, a database, an Outlook
+calendar, or secret configuration. The runtime lock is process-local and does
+not make shared state safe.
+
+Use lowercase instance identifiers containing letters, digits, hyphens, or
+underscores. The identifier appears in the application logger name and a
+non-secret Docker label. It does not replace the Portainer stack name.
+
+For a local staging example:
+
+```bash
+INSTANCE_NAME=staging IMAGE_TAG=develop \
+  docker compose --project-name smart-calendar-staging up --detach --build
+```
+
+For a PowerShell staging example:
+
+```powershell
+$env:INSTANCE_NAME = "staging"
+$env:IMAGE_TAG = "develop"
+docker compose --project-name smart-calendar-staging up --detach --build
+```
+
+The resulting resources include:
+
+```text
+smart-calendar-staging-calendar-sync-1
+smart-calendar-staging-calendar-sync:develop
+smart-calendar-staging_default
+smart-calendar-staging_smart_sports_data
+```
+
+Validate three rendered project configurations without starting containers:
+
+```bash
+python scripts/validate_multi_instance.py --config-only
+```
+
+With a running Docker daemon, execute the complete credential-free acceptance
+test:
+
+```bash
+python scripts/validate_multi_instance.py
+```
+
+The complete test starts three project-scoped probe containers concurrently,
+verifies their images, networks, volumes, SQLite data, and logs, and removes
+only those test stacks and test volumes afterward. The probe override performs
+no Microsoft Graph or provider calls.
+
+Use `smart-calendar-prod` and an approved immutable release value for
+`IMAGE_TAG` in production. The source checkout must be pinned to the same tag;
+`IMAGE_TAG` labels the locally built project image but does not select Git
+source by itself.
+
+During release-candidate qualification, freeze staging to the immutable
+candidate tag. Resume automatic `develop` updates only after qualification is
+finished. Production must never track `develop`.
+
+For `v0.4.5-beta.1`, publishing the GitHub pre-release and manually promoting
+it to production are separate decisions. The pre-release may be qualified in
+isolated staging, but production promotion remains blocked until the deferred
+controlled provider-failure exercise in issue #101 is complete.
+
+The implementation and remaining live-validation order is documented in
+[`v0.4-stabilization-roadmap.md`](v0.4-stabilization-roadmap.md).
+
+### Portainer source configuration
+
+Staging configuration:
 
 | Setting | Value |
-|----------|-------|
+| ---------- | ------- |
 | Build Method | Repository |
-| Branch or tag | `main` or an immutable released tag |
+| Branch or tag | `develop` during normal development |
+| Compose File | `docker-compose.yml` |
+| Authentication | GitHub Personal Access Token |
+| GitOps Updates | Enabled |
+| Stack name | `smart-calendar-staging` |
+| `INSTANCE_NAME` | `staging` |
+| `IMAGE_TAG` | `develop` |
+
+Production configuration:
+
+| Setting | Value |
+| ---------- | ------- |
+| Build Method | Repository |
+| Branch or tag | approved immutable release tag |
 | Compose File | `docker-compose.yml` |
 | Authentication | GitHub Personal Access Token |
 | GitOps Updates | Disabled |
+| Stack name | `smart-calendar-prod` |
+| `INSTANCE_NAME` | `prod` |
+| `IMAGE_TAG` | approved immutable release tag |
 
 Portainer clones the repository and builds the application locally using the provided Dockerfile.
 
 ---
 
-# Container Security
+## Container Security
 
 The application intentionally **does not run as root**.
 
 Container user:
 
-```
+```text
 UID: 10001
 GID: 10001
 ```
@@ -267,13 +411,13 @@ This follows Docker security best practices and limits the impact of a potential
 
 ---
 
-# Existing Volumes
+## Existing Volumes
 
 When migrating from an older container that was running as root, the database volume may still belong to the root user.
 
 Typical error:
 
-```
+```text
 sqlite3.OperationalError: attempt to write a readonly database
 ```
 
@@ -281,16 +425,19 @@ To fix ownership:
 
 ```bash
 docker run --rm \
-    -v smart_sports_data:/data \
+    -v smart-calendar-prod_smart_sports_data:/data \
     alpine:latest \
     chown -R 10001:10001 /data
 ```
+
+Replace the example with the exact project-scoped volume reported for the
+affected stack. The legacy alpha deployment uses `smart_sports_data`.
 
 Restart the container afterwards.
 
 ---
 
-# Health Check
+## Health Check
 
 The application exposes a Docker health check.
 
@@ -302,13 +449,13 @@ docker compose ps
 
 Expected:
 
-```
+```text
 healthy
 ```
 
 ---
 
-# Logs
+## Logs
 
 Application logs are written to standard output.
 
@@ -320,21 +467,43 @@ docker compose logs -f
 
 or through Portainer:
 
-```
-Containers
-→ smart-sports-calendar
+```text
+Stacks
+→ smart-calendar-staging or smart-calendar-prod
+→ calendar-sync container
 → Logs
 ```
 
 No dedicated log volume is used.
 
+### Secret-safe staging evidence
+
+For issue #63, open the `calendar-sync` container console for
+`smart-calendar-staging` and run:
+
+```bash
+python -m app.operations.staging_evidence --database /data/sports.db
+```
+
+The command opens SQLite in read-only mode and reports only database integrity,
+schema version, startup count, public authoritative source/scope keys, fixture
+and source-mapping aggregates, kickoff range, source freshness, normalized
+status counts, calendar-mapping status counts, and recent synchronization
+counters. It deliberately omits configuration, provider external IDs, event
+details, error messages, metadata, calendar IDs, Outlook IDs, raw responses,
+and source URLs. Review the output before adding it to sanitized GitHub
+evidence.
+
+Do not replace this with `env`, `docker inspect`, a raw database dump, or
+`SELECT *` output. Those sources may disclose deployment or tenant data.
+
 ---
 
-# Updating the Application
+## Updating the Application
 
 Current workflow:
 
-```
+```text
 VS Code
         │
         ▼
@@ -355,11 +524,11 @@ Container Restart
 
 ---
 
-# Release Workflow
+## Release Workflow
 
 The source and release workflow is:
 
-```
+```text
 VS Code
         │
         ▼
@@ -381,43 +550,49 @@ GitHub Release
 Portainer source build
         │
         ▼
-Controlled alpha deployment
+Immutable beta staging qualification
+        │
+        ▼
+Controlled manual production promotion
 ```
 
 The release branch is created from fully validated `develop`, reviewed into
-`main`, and tagged on the resulting `main` commit. GitHub Releases publishes
-the release notes as a pre-release. GHCR remains a future enhancement; do not
-document or deploy a registry image that has not been built and verified.
+`main`, and signed-tagged on the resulting `main` commit. Staging is frozen to
+that immutable tag for candidate verification before GitHub Releases publishes
+the release notes as a pre-release. Production promotion is a separate manual
+gate and must honor unresolved release blockers such as #101. GHCR remains a
+future enhancement; do not document or deploy a registry image that has not
+been built and verified.
 
 ---
 
-# Troubleshooting
+## Troubleshooting
 
-## Verify Docker configuration
+### Verify Docker configuration
 
 ```bash
 docker compose config
 ```
 
-## Verify running containers
+### Verify running containers
 
 ```bash
 docker ps
 ```
 
-## View logs
+### Inspect container logs
 
 ```bash
 docker compose logs -f
 ```
 
-## Restart container
+### Restart container
 
 ```bash
 docker compose restart
 ```
 
-## Provider or synchronization failure
+### Provider or synchronization failure
 
 Check logs and the separate `provider_import` and `calendar_sync` records in
 `sync_runs`. Provider configuration, authentication, authorization, timeout,
@@ -434,30 +609,31 @@ restart the single instance after verifying no run remains active.
 Never paste API keys, client secrets, tokens, authorization headers, or full
 secret-bearing URLs into logs, issues, or validation evidence.
 
-## Check persistent volumes
+### Check persistent volumes
 
 ```bash
 docker volume ls
 ```
 
-## Inspect the application volume
+### Inspect the application volume
 
 ```bash
-docker volume inspect smart_sports_data
+docker volume inspect smart-calendar-prod_smart_sports_data
 ```
 
 ---
 
-# Current Status
+## Current Status
 
 | Component | Status |
-|-----------|--------|
+| ----------- | -------- |
 | GitHub Repository | ✅ |
 | Develop Branch | ✅ |
 | Dockerfile | ✅ |
 | Docker Compose | ✅ |
 | Local Build | ✅ |
 | Portainer Git Deployment | ✅ |
+| Concurrent Staging and Production | Implemented; live Portainer validation pending |
 | SQLite Persistence | ✅ |
 | Health Check | ✅ |
 | Non-root Container | ✅ |

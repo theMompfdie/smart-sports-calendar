@@ -20,6 +20,7 @@ class SynchronizationRunResult:
     items_unchanged: int
     items_cancelled: int
     items_deleted: int
+    items_deferred: int
     items_failed: int
 
 
@@ -207,5 +208,6 @@ class SynchronizationOrchestrator:
             items_unchanged=sync_run.items_unchanged,
             items_cancelled=sync_run.items_cancelled,
             items_deleted=sync_run.items_deleted,
+            items_deferred=sync_run.items_deferred,
             items_failed=sync_run.items_failed,
         )

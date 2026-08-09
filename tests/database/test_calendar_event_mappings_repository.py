@@ -171,6 +171,39 @@ def test_get_by_outlook_event_returns_synced_mapping(
     assert loaded_mapping == synced_mapping
 
 
+def test_mark_checked_rotates_synced_mapping_without_graph_attempt(
+    tmp_path: Path,
+) -> None:
+    event_id, repository = create_repository(tmp_path)
+    created_mapping = repository.create_pending(
+        event_id=event_id,
+        calendar_id="calendar-1",
+    )
+    synced_mapping = repository.mark_synced(
+        mapping_id=created_mapping.id,
+        outlook_event_id="outlook-event-1",
+        outlook_change_key="change-key-1",
+        content_hash="hash-1",
+    )
+    assert synced_mapping is not None
+    with sqlite3.connect(repository.database_path) as connection:
+        connection.execute(
+            "UPDATE calendar_event_mappings SET last_synced_at = ? WHERE id = ?",
+            ("2026-08-01T00:00:00+00:00", synced_mapping.id),
+        )
+
+    checked_mapping = repository.mark_checked(synced_mapping.id)
+
+    assert checked_mapping is not None
+    assert checked_mapping.sync_status == "synced"
+    assert checked_mapping.sync_attempts == synced_mapping.sync_attempts
+    assert checked_mapping.transaction_id == synced_mapping.transaction_id
+    assert checked_mapping.outlook_event_id == synced_mapping.outlook_event_id
+    assert checked_mapping.content_hash == synced_mapping.content_hash
+    assert checked_mapping.last_synced_at is not None
+    assert checked_mapping.last_synced_at > "2026-08-01T00:00:00+00:00"
+
+
 def test_mark_failed_records_error_and_attempt(
     tmp_path: Path,
 ) -> None:

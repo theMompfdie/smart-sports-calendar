@@ -4,17 +4,17 @@ services:
       context: .
       dockerfile: Dockerfile
 
-    image: smart-sports-calendar:develop
+    image: ${COMPOSE_PROJECT_NAME:-smart-sports-calendar}-calendar-sync:${IMAGE_TAG:-develop}
     pull_policy: build
 
-    container_name: smart-sports-calendar
     restart: unless-stopped
 
     environment:
-      TZ: Europe/Vienna
-      DATABASE_PATH: /data/sports.db
-      LOG_LEVEL: INFO
-      HEARTBEAT_INTERVAL: 300
+      INSTANCE_NAME: ${INSTANCE_NAME:-local}
+      TZ: ${TZ:-Europe/Vienna}
+      DATABASE_PATH: ${DATABASE_PATH:-/data/sports.db}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      HEARTBEAT_INTERVAL: ${HEARTBEAT_INTERVAL:-300}
       M365_TENANT_ID: ${M365_TENANT_ID}
       M365_CLIENT_ID: ${M365_CLIENT_ID}
       M365_CLIENT_SECRET: ${M365_CLIENT_SECRET}
@@ -24,6 +24,17 @@ services:
       SYNCHRONIZATION_BATCH_LIMIT: ${SYNCHRONIZATION_BATCH_LIMIT:-100}
       GRAPH_BASE_URL: ${GRAPH_BASE_URL:-https://graph.microsoft.com/v1.0}
       GRAPH_STARTUP_VALIDATION_ENABLED: ${GRAPH_STARTUP_VALIDATION_ENABLED:-true}
+      SOURCE_JOBS_JSON: ${SOURCE_JOBS_JSON:-[]}
+      FOOTBALL_DATA_ENABLED: ${FOOTBALL_DATA_ENABLED:-false}
+      FOOTBALL_DATA_API_KEY: ${FOOTBALL_DATA_API_KEY:-}
+      FOOTBALL_DATA_BASE_URL: ${FOOTBALL_DATA_BASE_URL:-https://api.football-data.org}
+      FOOTBALL_DATA_CONNECT_TIMEOUT_SECONDS: ${FOOTBALL_DATA_CONNECT_TIMEOUT_SECONDS:-5}
+      FOOTBALL_DATA_READ_TIMEOUT_SECONDS: ${FOOTBALL_DATA_READ_TIMEOUT_SECONDS:-30}
+      FOOTBALL_DATA_MAX_ATTEMPTS: ${FOOTBALL_DATA_MAX_ATTEMPTS:-3}
+      FOOTBALL_DATA_RETRY_BASE_DELAY_SECONDS: ${FOOTBALL_DATA_RETRY_BASE_DELAY_SECONDS:-1}
+      FOOTBALL_DATA_RETRY_MAX_DELAY_SECONDS: ${FOOTBALL_DATA_RETRY_MAX_DELAY_SECONDS:-30}
+      FOOTBALL_DATA_REQUESTS_PER_MINUTE: ${FOOTBALL_DATA_REQUESTS_PER_MINUTE:-10}
+      FOOTBALL_DATA_MINIMUM_REQUEST_INTERVAL_SECONDS: ${FOOTBALL_DATA_MINIMUM_REQUEST_INTERVAL_SECONDS:-6.1}
       API_FOOTBALL_ENABLED: ${API_FOOTBALL_ENABLED:-false}
       API_FOOTBALL_API_KEY: ${API_FOOTBALL_API_KEY:-}
       API_FOOTBALL_BASE_URL: ${API_FOOTBALL_BASE_URL:-https://v3.football.api-sports.io}
@@ -41,8 +52,8 @@ services:
       test:
         - CMD-SHELL
         - >-
-          python -c "import sqlite3;
-          sqlite3.connect('/data/sports.db').execute('SELECT 1')"
+          python -c "import os, sqlite3;
+          sqlite3.connect(os.environ['DATABASE_PATH']).execute('SELECT 1')"
       interval: 60s
       timeout: 10s
       retries: 3
@@ -51,6 +62,8 @@ services:
     security_opt:
       - no-new-privileges:true
 
+    labels:
+      org.smart-sports-calendar.instance: ${INSTANCE_NAME:-local}
+
 volumes:
   smart_sports_data:
-    name: smart_sports_data

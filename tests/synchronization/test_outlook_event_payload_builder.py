@@ -57,6 +57,7 @@ def make_aggregate(
     *,
     event: SportsEvent | None = None,
     complete: bool = True,
+    source_attribution: str | None = None,
 ) -> SynchronizationEvent:
     sport = Sport(1, "football", "Football", None, None, TIMESTAMP, TIMESTAMP)
 
@@ -82,6 +83,7 @@ def make_aggregate(
             results=(),
             statistics=(),
             mapping=None,
+            source_attribution=source_attribution,
         )
 
     competition = Competition(
@@ -175,6 +177,7 @@ def make_aggregate(
         results=results,
         statistics=statistics,
         mapping=None,
+        source_attribution=source_attribution,
     )
 
 
@@ -200,16 +203,56 @@ def test_build_maps_complete_event() -> None:
     assert "- Arsenal – Possession: 54 percent (full time)" in payload.body
 
 
-def test_build_handles_minimal_event_without_invalid_optional_fields() -> None:
+def test_build_adds_fallback_end_to_minimal_event() -> None:
     payload = OutlookEventPayloadBuilder().build(make_aggregate(complete=False))
     graph_payload = payload.to_graph_dict()
 
-    assert payload.end is None
+    assert payload.end is not None
+    assert payload.end.date_time == "2026-08-21T21:00:00"
+    assert payload.end.time_zone == "Europe/London"
     assert payload.location is None
-    assert "end" not in graph_payload
+    assert graph_payload["end"] == {
+        "dateTime": "2026-08-21T21:00:00",
+        "timeZone": "Europe/London",
+    }
     assert "location" not in graph_payload
     assert "Competition:" not in payload.body
     assert "Participants:" not in payload.body
+
+
+def test_build_appends_authoritative_source_attribution() -> None:
+    attribution = "Football data provided by the Football-Data.org API"
+
+    payload = OutlookEventPayloadBuilder().build(
+        make_aggregate(source_attribution=attribution)
+    )
+
+    assert payload.body.endswith(f"\n\nSource: {attribution}")
+
+
+def test_build_omits_missing_source_attribution() -> None:
+    payload = OutlookEventPayloadBuilder().build(make_aggregate())
+
+    assert "Source:" not in payload.body
+
+
+def test_build_fallback_end_uses_absolute_duration_across_dst_change() -> None:
+    event = make_sports_event(
+        start_time="2026-10-25T00:30:00+00:00",
+        end_time=None,
+        timezone="Europe/London",
+    )
+
+    payload = OutlookEventPayloadBuilder().build(make_aggregate(event=event))
+
+    assert payload.start.date_time == "2026-10-25T01:30:00"
+    assert payload.end is not None
+    assert payload.end.date_time == "2026-10-25T02:30:00"
+
+
+def test_presentation_rejects_non_positive_default_duration() -> None:
+    with pytest.raises(ValueError, match="Default duration minutes must be positive"):
+        OutlookEventPresentation(default_duration_minutes=0)
 
 
 def test_build_represents_cancelled_event_deterministically() -> None:
@@ -237,6 +280,50 @@ def test_build_is_deterministic_for_differently_ordered_collections() -> None:
         builder.build(aggregate).to_graph_dict()
         == builder.build(aggregate).to_graph_dict()
     )
+
+
+def test_build_renders_event_level_result_and_statistic_without_participant() -> None:
+    aggregate = replace(
+        make_aggregate(),
+        results=(
+            EventResult(
+                3,
+                10,
+                "aggregate_score",
+                None,
+                None,
+                3,
+                1,
+                True,
+                None,
+                TIMESTAMP,
+                TIMESTAMP,
+            ),
+        ),
+        statistics=(
+            EventStatistic(
+                3,
+                10,
+                None,
+                None,
+                "attendance",
+                "Attendance",
+                60_000,
+                None,
+                None,
+                None,
+                None,
+                None,
+                TIMESTAMP,
+                TIMESTAMP,
+            ),
+        ),
+    )
+
+    payload = OutlookEventPayloadBuilder().build(aggregate)
+
+    assert "- aggregate_score: 3 (final)" in payload.body
+    assert "- Attendance: 60000" in payload.body
 
 
 def test_graph_serialization_uses_expected_microsoft_graph_shape() -> None:

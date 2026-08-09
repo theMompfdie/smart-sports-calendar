@@ -210,6 +210,34 @@ class CalendarEventMappingsRepository:
 
         return self.get_by_id(mapping_id)
 
+    def mark_checked(
+        self,
+        mapping_id: int,
+    ) -> CalendarEventMapping | None:
+        timestamp = self._timestamp()
+
+        with self._connect() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE calendar_event_mappings
+                SET last_synced_at = ?,
+                    last_sync_error = NULL,
+                    updated_at = ?
+                WHERE id = ?
+                  AND sync_status = 'synced'
+                """,
+                (
+                    timestamp,
+                    timestamp,
+                    mapping_id,
+                ),
+            )
+
+        if cursor.rowcount == 0:
+            return None
+
+        return self.get_by_id(mapping_id)
+
     def mark_failed(
         self,
         mapping_id: int,

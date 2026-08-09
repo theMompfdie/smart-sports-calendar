@@ -36,17 +36,22 @@ def create_service() -> tuple[
     )
 
 
-def create_result() -> SynchronizationRunResult:
+def create_result(
+    *,
+    status: str = "completed",
+    items_failed: int = 0,
+) -> SynchronizationRunResult:
     return SynchronizationRunResult(
         sync_run_id=1,
-        status="completed",
-        items_processed=1,
+        status=status,
+        items_processed=21 + items_failed,
         items_created=1,
-        items_updated=0,
-        items_unchanged=0,
-        items_cancelled=0,
-        items_deleted=0,
-        items_failed=0,
+        items_updated=2,
+        items_unchanged=3,
+        items_cancelled=4,
+        items_deleted=5,
+        items_deferred=6,
+        items_failed=items_failed,
     )
 
 
@@ -262,25 +267,65 @@ def test_run_logs_started_and_completed_cycle() -> None:
     sync_runs_repository.recover_running.return_value = []
     orchestrator.synchronize.return_value = expected_result
 
+    sensitive_calendar_id = "sensitive-calendar-id"
     service.run(
-        calendar_id="calendar-1",
+        calendar_id=sensitive_calendar_id,
         limit=100,
     )
 
     assert logger.info.call_args_list == [
         call(
-            "Synchronization cycle started for calendar %s with limit %s",
-            "calendar-1",
+            "Synchronization cycle started with limit %s",
             100,
         ),
         call(
             (
                 "Synchronization cycle completed: "
-                "run_id=%s status=%s processed=%s failed=%s"
+                "run_id=%s status=%s processed=%s created=%s "
+                "updated=%s unchanged=%s cancelled=%s deleted=%s "
+                "deferred=%s failed=%s"
             ),
             expected_result.sync_run_id,
             expected_result.status,
             expected_result.items_processed,
+            expected_result.items_created,
+            expected_result.items_updated,
+            expected_result.items_unchanged,
+            expected_result.items_cancelled,
+            expected_result.items_deleted,
+            expected_result.items_deferred,
             expected_result.items_failed,
         ),
     ]
+    assert sensitive_calendar_id not in str(logger.method_calls)
+
+
+def test_run_logs_all_counters_for_completed_cycle_with_errors() -> None:
+    service, orchestrator, sync_runs_repository, logger = create_service()
+    expected_result = create_result(
+        status="completed_with_errors",
+        items_failed=7,
+    )
+    sync_runs_repository.recover_running.return_value = []
+    orchestrator.synchronize.return_value = expected_result
+
+    service.run(calendar_id="calendar-1", limit=100)
+
+    logger.info.assert_called_with(
+        (
+            "Synchronization cycle completed: "
+            "run_id=%s status=%s processed=%s created=%s "
+            "updated=%s unchanged=%s cancelled=%s deleted=%s "
+            "deferred=%s failed=%s"
+        ),
+        1,
+        "completed_with_errors",
+        28,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+    )

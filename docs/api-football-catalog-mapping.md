@@ -29,7 +29,10 @@ contains an API key, account identifier, request header value, or raw response.
 
 The adapter requests `/leagues?id=39` and accepts exactly one response whose
 league ID is `39`. It does not search by name and does not accept the first item
-from an ambiguous response.
+from an ambiguous response. The `/leagues` and `/teams` catalog endpoints are
+requested without a `page` parameter because API-Football does not expose
+pagination parameters for them. Fixture collection keeps its separate paginated
+client path.
 
 API-Football represents a season by its starting year. Exactly one season entry
 must have `current=true`, and that year must equal the start year of the one

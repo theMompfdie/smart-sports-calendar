@@ -7,9 +7,9 @@ composes the existing API-Football catalog, fixture normalization, Phase 4.5
 persistence, and Outlook synchronization boundaries. It does not change the
 provider HTTP retry algorithm or the canonical fixture reconciliation rules.
 
-When API-Football is disabled, the existing calendar synchronization cycle
-continues without provider calls or provider-import run records. When enabled,
-one scheduled cycle executes in this order:
+When API-Football is disabled, the calendar synchronization job continues
+without provider calls or provider-import run records. When enabled, one
+provider job executes in this order:
 
 1. recover interrupted `provider_import` run records once after startup;
 2. refresh and validate the mapped Premier League catalog;
@@ -17,18 +17,20 @@ one scheduled cycle executes in this order:
 4. normalize the collection and construct a bounded authoritative UTC scope;
 5. atomically import the normalized fixtures;
 6. finalize the persistent provider-import report;
-7. invoke the existing Outlook synchronization runtime.
 
-Any failure before step 6 produces a failed provider-import run and prevents
-the Outlook handoff. An Outlook failure after step 6 does not roll back the
-already committed canonical import.
+Any failure before step 6 produces a failed provider-import run and no
+canonical changes. Outlook synchronization is independently scheduled and
+does not roll back an already committed canonical import.
 
 ## Scheduling and overlap
 
-`API_FOOTBALL_IMPORT_INTERVAL_SECONDS` controls the cycle interval when the
-provider is enabled and defaults to 3600 seconds. The existing
-`HEARTBEAT_INTERVAL` remains the calendar-only interval when the provider is
-disabled.
+`SOURCE_JOBS_JSON.interval_seconds` controls each provider job interval.
+`API_FOOTBALL_IMPORT_INTERVAL_SECONDS` remains the legacy provider interval
+when source-job orchestration is not configured. `HEARTBEAT_INTERVAL` controls
+the independent calendar synchronization job and defaults to 300 seconds.
+Provider jobs are registered before the calendar job so the startup import is
+available to the first synchronization batch. Subsequent batches can drain a
+backlog without repeating provider requests.
 
 The provider runtime uses a non-blocking process-local lock. A concurrent call
 is skipped explicitly and cannot create a second run. The scheduler uses the
@@ -82,5 +84,6 @@ tokens, authorization headers, or raw secret-bearing URLs.
 Automated tests use mocked provider and Graph boundaries plus migrated SQLite.
 They cover scope construction, counters, diagnostics, failures, recovery,
 overlap, disabled mode, scheduler ordering, graceful shutdown, and the
-post-import Outlook handoff. Phase 4.7 still owns the complete representative
-provider-payload-to-SQLite-to-mocked-Graph end-to-end suite.
+independent provider-import and Outlook synchronization boundaries. Phase 4.7
+still owns the complete representative provider-payload-to-SQLite-to-mocked-
+Graph end-to-end suite.

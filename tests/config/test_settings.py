@@ -1,8 +1,10 @@
+import json
 from pathlib import Path
 
 import pytest
 from app.config.settings import load_settings
 from app.providers.api_football.exceptions import ProviderConfigurationError
+from app.providers.contracts import SourceConfigurationError, SourceRole
 
 
 @pytest.fixture(autouse=True)
@@ -23,6 +25,11 @@ def configure_required_environment(
         "HEARTBEAT_INTERVAL",
         raising=False,
     )
+    monkeypatch.delenv(
+        "INSTANCE_NAME",
+        raising=False,
+    )
+    monkeypatch.delenv("SOURCE_JOBS_JSON", raising=False)
     for name in (
         "API_FOOTBALL_ENABLED",
         "API_FOOTBALL_API_KEY",
@@ -33,8 +40,57 @@ def configure_required_environment(
         "API_FOOTBALL_RETRY_BASE_DELAY_SECONDS",
         "API_FOOTBALL_RETRY_MAX_DELAY_SECONDS",
         "API_FOOTBALL_IMPORT_INTERVAL_SECONDS",
+        "FOOTBALL_DATA_ENABLED",
+        "FOOTBALL_DATA_API_KEY",
+        "FOOTBALL_DATA_BASE_URL",
+        "FOOTBALL_DATA_CONNECT_TIMEOUT_SECONDS",
+        "FOOTBALL_DATA_READ_TIMEOUT_SECONDS",
+        "FOOTBALL_DATA_MAX_ATTEMPTS",
+        "FOOTBALL_DATA_RETRY_BASE_DELAY_SECONDS",
+        "FOOTBALL_DATA_RETRY_MAX_DELAY_SECONDS",
+        "FOOTBALL_DATA_MINIMUM_REQUEST_INTERVAL_SECONDS",
+        "FOOTBALL_DATA_REQUESTS_PER_MINUTE",
     ):
         monkeypatch.delenv(name, raising=False)
+
+
+def test_load_settings_validates_football_data_authority_and_plan_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("FOOTBALL_DATA_ENABLED", "true")
+    monkeypatch.setenv("FOOTBALL_DATA_API_KEY", "secret-token")
+    monkeypatch.setenv(
+        "SOURCE_JOBS_JSON",
+        json.dumps(
+            [
+                {
+                    "job_key": "football-data-premier-league",
+                    "source_key": "football_data",
+                    "sport_key": "football",
+                    "competition_key": "premier_league",
+                    "season_key": "2026_27",
+                    "role": "authoritative",
+                    "interval_seconds": 3600,
+                }
+            ]
+        ),
+    )
+
+    settings = load_settings()
+
+    assert settings.football_data.enabled is True
+    assert settings.football_data.api_key == "secret-token"
+    assert settings.football_data.requests_per_minute == 10
+    assert "secret-token" not in repr(settings.football_data)
+
+
+def test_load_settings_rejects_football_data_rate_above_approved_plan(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("FOOTBALL_DATA_REQUESTS_PER_MINUTE", "11")
+
+    with pytest.raises(ProviderConfigurationError, match="plan limit"):
+        load_settings()
 
 
 def test_load_settings_loads_synchronization_configuration(
@@ -137,6 +193,43 @@ def test_load_settings_loads_default_database_path() -> None:
     settings = load_settings()
 
     assert settings.database_path == Path("/data/sports.db")
+
+
+def test_load_settings_uses_default_instance_name() -> None:
+    settings = load_settings()
+
+    assert settings.instance_name == "default"
+
+
+def test_load_settings_loads_instance_name(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("INSTANCE_NAME", "calendar-staging_1")
+
+    settings = load_settings()
+
+    assert settings.instance_name == "calendar-staging_1"
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "",
+        "Staging",
+        "staging calendar",
+        "staging.calendar",
+        "-staging",
+        "a" * 64,
+    ],
+)
+def test_load_settings_rejects_invalid_instance_name(
+    monkeypatch: pytest.MonkeyPatch,
+    value: str,
+) -> None:
+    monkeypatch.setenv("INSTANCE_NAME", value)
+
+    with pytest.raises(ValueError, match="INSTANCE_NAME must start"):
+        load_settings()
 
 
 def test_load_settings_disables_api_football_by_default() -> None:
@@ -278,4 +371,117 @@ def test_load_settings_rejects_retry_max_delay_below_base_delay(
         ProviderConfigurationError,
         match="API_FOOTBALL_RETRY_MAX_DELAY_SECONDS must be greater",
     ):
+        load_settings()
+
+
+def source_job(
+    *,
+    job_key: str,
+    source_key: str,
+    role: str,
+    competition_key: str = "premier_league",
+) -> dict[str, object]:
+    return {
+        "job_key": job_key,
+        "source_key": source_key,
+        "sport_key": "football",
+        "competition_key": competition_key,
+        "season_key": "2026_27",
+        "role": role,
+        "interval_seconds": 3600,
+    }
+
+
+def test_load_settings_loads_explicit_source_authority(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(
+        "SOURCE_JOBS_JSON",
+        json.dumps(
+            [
+                source_job(
+                    job_key="football-data-pl",
+                    source_key="football_data",
+                    role="authoritative",
+                ),
+                source_job(
+                    job_key="api-football-pl-verification",
+                    source_key="api_football",
+                    role="verification",
+                ),
+            ]
+        ),
+    )
+
+    jobs = load_settings().source_jobs
+
+    assert [job.job_key for job in jobs] == [
+        "football-data-pl",
+        "api-football-pl-verification",
+    ]
+    assert jobs[0].role is SourceRole.AUTHORITATIVE
+    assert jobs[1].role is SourceRole.VERIFICATION
+
+
+@pytest.mark.parametrize(
+    "payload,match",
+    [
+        ("{}", "JSON array"),
+        ("not-json", "valid JSON"),
+        (
+            json.dumps(
+                [
+                    source_job(
+                        job_key="one",
+                        source_key="source_one",
+                        role="verification",
+                    )
+                ]
+            ),
+            "exactly one authoritative",
+        ),
+        (
+            json.dumps(
+                [
+                    source_job(
+                        job_key="one",
+                        source_key="source_one",
+                        role="authoritative",
+                    ),
+                    source_job(
+                        job_key="two",
+                        source_key="source_two",
+                        role="authoritative",
+                    ),
+                ]
+            ),
+            "exactly one authoritative",
+        ),
+        (
+            json.dumps(
+                [
+                    source_job(
+                        job_key="duplicate",
+                        source_key="source_one",
+                        role="authoritative",
+                    ),
+                    source_job(
+                        job_key="duplicate",
+                        source_key="source_two",
+                        role="verification",
+                    ),
+                ]
+            ),
+            "job_key values must be unique",
+        ),
+    ],
+)
+def test_load_settings_rejects_invalid_source_authority(
+    monkeypatch: pytest.MonkeyPatch,
+    payload: str,
+    match: str,
+) -> None:
+    monkeypatch.setenv("SOURCE_JOBS_JSON", payload)
+
+    with pytest.raises(SourceConfigurationError, match=match):
         load_settings()

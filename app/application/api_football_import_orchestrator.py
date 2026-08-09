@@ -9,7 +9,6 @@ from app.application.api_football_fixture_import_service import (
 )
 from app.application.api_football_fixture_normalization_service import (
     ApiFootballFixtureNormalizationService,
-    NormalizedFixtureBatch,
 )
 from app.database.data_sources_repository import DataSourcesRepository
 from app.database.fixture_import_repository import (
@@ -18,6 +17,11 @@ from app.database.fixture_import_repository import (
 )
 from app.database.sync_runs_repository import SyncRun, SyncRunsRepository
 from app.providers.api_football.exceptions import ProviderResolutionError
+from app.providers.contracts import (
+    NormalizedFixtureBatch,
+    SourceJobDefinition,
+    SourceRole,
+)
 
 
 @dataclass(frozen=True)
@@ -49,12 +53,14 @@ class ApiFootballImportOrchestrator:
         import_service: ApiFootballFixtureImportService,
         data_sources_repository: DataSourcesRepository,
         sync_runs_repository: SyncRunsRepository,
+        job_definition: SourceJobDefinition | None = None,
     ) -> None:
         self._catalog_service = catalog_service
         self._normalization_service = normalization_service
         self._import_service = import_service
         self._data_sources_repository = data_sources_repository
         self._sync_runs_repository = sync_runs_repository
+        self._job_definition = job_definition
 
     def import_current_premier_league(self) -> ProviderImportRunResult:
         source = self._data_sources_repository.get_by_key("api_football")
@@ -64,9 +70,26 @@ class ApiFootballImportOrchestrator:
             )
         initial_metadata: dict[str, object] = {
             "operation": "premier_league_fixture_import",
+            "source_key": "api_football",
+            "job_key": (
+                self._job_definition.job_key
+                if self._job_definition is not None
+                else "api-football-legacy"
+            ),
+            "role": self._role.value,
+            "competition_key": (
+                self._job_definition.scope.competition_key
+                if self._job_definition is not None
+                else "premier_league"
+            ),
+            "season_key": (
+                self._job_definition.scope.season_key
+                if self._job_definition is not None
+                else "current"
+            ),
             "complete": True,
             "filtered": False,
-            "authoritative": True,
+            "authoritative": self._role is SourceRole.AUTHORITATIVE,
         }
         try:
             sync_run = self._sync_runs_repository.start(
@@ -82,7 +105,10 @@ class ApiFootballImportOrchestrator:
         try:
             self._catalog_service.map_current_premier_league()
             batch = self._normalization_service.normalize_current_premier_league_batch()
-            scope = self._scope(batch)
+            scope = self._scope(
+                batch,
+                authoritative=self._role is SourceRole.AUTHORITATIVE,
+            )
             import_result = self._import_service.import_fixtures(
                 batch.fixtures,
                 scope,
@@ -136,7 +162,11 @@ class ApiFootballImportOrchestrator:
             ) from error
 
     @staticmethod
-    def _scope(batch: NormalizedFixtureBatch) -> FixtureImportScope:
+    def _scope(
+        batch: NormalizedFixtureBatch,
+        *,
+        authoritative: bool = True,
+    ) -> FixtureImportScope:
         observed_at = batch.fetched_at_utc.astimezone(UTC)
         identity = ":".join(
             (
@@ -163,10 +193,16 @@ class ApiFootballImportOrchestrator:
                 time.max,
                 tzinfo=UTC,
             ),
-            authoritative=True,
+            authoritative=authoritative,
             complete=True,
             filtered=False,
         )
+
+    @property
+    def _role(self) -> SourceRole:
+        if self._job_definition is None:
+            return SourceRole.AUTHORITATIVE
+        return self._job_definition.role
 
     @staticmethod
     def _counters(import_result: FixtureImportResult) -> dict[str, int]:
@@ -181,8 +217,8 @@ class ApiFootballImportOrchestrator:
             "items_failed": 0,
         }
 
-    @staticmethod
     def _metadata(
+        self,
         batch: NormalizedFixtureBatch,
         scope: FixtureImportScope,
     ) -> dict[str, object]:
@@ -193,6 +229,23 @@ class ApiFootballImportOrchestrator:
             raise ValueError("Provider import reporting requires a bounded UTC window.")
         return {
             "operation": "premier_league_fixture_import",
+            "source_key": "api_football",
+            "job_key": (
+                self._job_definition.job_key
+                if self._job_definition is not None
+                else "api-football-legacy"
+            ),
+            "role": self._role.value,
+            "competition_key": (
+                self._job_definition.scope.competition_key
+                if self._job_definition is not None
+                else "premier_league"
+            ),
+            "season_key": (
+                self._job_definition.scope.season_key
+                if self._job_definition is not None
+                else "current"
+            ),
             "competition_id": scope.competition_id,
             "season_id": scope.season_id,
             "window_start_utc": window_start.isoformat(),
