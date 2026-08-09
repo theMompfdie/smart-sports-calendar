@@ -393,6 +393,13 @@ ordinary fixture re-import.
 | `deleted_at` | Reconciliation system | Set only after confirmed removal policy |
 | `metadata_json` | Mixed, allowlisted | Store only documented, non-secret fields with explicit ownership |
 
+An absent canonical `end_time` remains absent in persistence. At the Microsoft
+Graph boundary, the Outlook presentation policy derives a deterministic
+two-hour end from the canonical start so that Graph receives a valid event
+interval. This presentation-only fallback does not change provider ownership,
+canonical data, fixture identity, or future updates when a trusted canonical
+end becomes available.
+
 Provider import must not overwrite user/project-owned values merely because a
 provider field is absent. Field clearing requires an explicit, tested mapping
 rule.
