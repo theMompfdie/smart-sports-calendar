@@ -129,6 +129,13 @@ PRs should state what changed, why, key decisions, tests, related issue, and lim
 
 Use `Closes #42` when merge should close an issue and `Refs #42` otherwise.
 
+Whenever creating or editing an issue or pull request, inspect and maintain its
+complete GitHub metadata. Add or correct the assignee, labels, milestone,
+issue/PR relationships, target branch, draft/readiness state, and description
+when any item is missing, stale, or inconsistent with the active delivery
+track. Recheck metadata after retargeting, stacking, or merging related PRs.
+Do not leave metadata cleanup for the user unless permissions prevent it.
+
 Before recommending merge verify CI, Ruff, pytest, acceptance criteria, conflicts, unresolved review comments, and documentation impact.
 
 Issues should contain title, problem/context, goal, scope, acceptance criteria, and technical notes/dependencies where useful.
@@ -147,7 +154,7 @@ Existing milestones:
 * Phase 2 — `v0.2.0-alpha.1`
 * Phase 3 — `v0.3.0-alpha.1`
 * Phase 4 — `v0.4.0-alpha.1`
-* Official-feed beta — `v0.4.5-beta.1`
+* Authoritative-source beta — `v0.4.5-beta.1`
 
 Production target: `v1.0.0`
 
@@ -373,6 +380,11 @@ limitations or follow-up work
 
 Use `Closes #ISSUE_NUMBER` only when merging should close the issue. Otherwise use `Refs #ISSUE_NUMBER`.
 
+For every issue or pull-request create/update operation, also verify and repair
+assignees, labels, milestone, relationships, base branch, draft/readiness
+state, and the required description sections. Repeat this check after stacked
+PRs are retargeted or merged.
+
 Before recommending a merge, verify:
 
 acceptance criteria
@@ -393,7 +405,7 @@ Phase 1: v0.1.0-alpha.1
 Phase 2: v0.2.0-alpha.1
 Phase 3: v0.3.0-alpha.1
 Phase 4: v0.4.0-alpha.1
-Official-feed beta target: v0.4.5-beta.1
+Authoritative-source beta target: v0.4.5-beta.1
 
 Production target:
 

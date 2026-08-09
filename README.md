@@ -14,7 +14,7 @@
 live validation for `v0.4.5-beta.1`
 ([tracker #72](https://github.com/theMompfdie/smart-sports-calendar/issues/72))
 
-**Automated tests:** 494 passing tests
+**Automated tests:** 500 passing tests
 
 The application foundation, persistent domain model, repository layer, Microsoft Graph integration, Outlook synchronization engine, and the scheduled, reported API-Football Premier League import runtime are implemented.
 
@@ -107,6 +107,7 @@ Phase 4 documentation:
 - [API-Football selection ADR](docs/adr/0001-select-api-football.md)
 - [Premier League official-feed qualification](docs/premier-league-official-feed-qualification.md)
 - [ECAL automated-source rejection ADR](docs/adr/0002-reject-ecal-as-automated-source.md)
+- [football-data.org qualification](docs/football-data-qualification.md)
 - [provider-independent integration contract](docs/provider-integration-contract.md)
 - [Premier League catalog mapping](docs/api-football-catalog-mapping.md)
 - [fixture normalization](docs/api-football-fixture-normalization.md)
