@@ -89,6 +89,12 @@ competition key, season key, canonical IDs, authoritative flag, completeness,
 observation ID, UTC window, attempts, and sanitized quota aggregates. A failed
 or overlapping import makes no canonical changes.
 
+Public attribution is owned by the selected source catalog entry. The
+synchronization query resolves the optional attribution only from the enabled
+authoritative assignment for the event competition and season. The Outlook
+presentation layer renders that reviewed text without knowing provider keys or
+competition-specific rules.
+
 ## Persistence and migration
 
 Migration `007_create_source_assignments` adds a source-assignment table and a

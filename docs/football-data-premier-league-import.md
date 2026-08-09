@@ -64,6 +64,12 @@ The required visible attribution while this data is served is:
 
 > Football data provided by the Football-Data.org API
 
+The synchronization query resolves this text from the active authoritative
+source assignment. Outlook events display it at the end of the event body as
+`Source: Football data provided by the Football-Data.org API`. Changing the
+selected source or its reviewed attribution changes the payload hash, updates
+the existing event once, and then returns to unchanged synchronization.
+
 Before cancelling the subscription, disable retrieval and complete the scoped,
 backed-up re-source-or-remove procedure documented in
 [`football-data-qualification.md`](football-data-qualification.md). Do not

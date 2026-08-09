@@ -166,6 +166,9 @@ class OutlookEventPayloadBuilder:
                 for statistic in statistics
             )
 
+        if synchronization_event.source_attribution is not None:
+            lines.extend(("", f"Source: {synchronization_event.source_attribution}"))
+
         return "\n".join(lines)
 
     def _build_categories(

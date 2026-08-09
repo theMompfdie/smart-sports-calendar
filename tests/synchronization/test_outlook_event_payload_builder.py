@@ -57,6 +57,7 @@ def make_aggregate(
     *,
     event: SportsEvent | None = None,
     complete: bool = True,
+    source_attribution: str | None = None,
 ) -> SynchronizationEvent:
     sport = Sport(1, "football", "Football", None, None, TIMESTAMP, TIMESTAMP)
 
@@ -82,6 +83,7 @@ def make_aggregate(
             results=(),
             statistics=(),
             mapping=None,
+            source_attribution=source_attribution,
         )
 
     competition = Competition(
@@ -175,6 +177,7 @@ def make_aggregate(
         results=results,
         statistics=statistics,
         mapping=None,
+        source_attribution=source_attribution,
     )
 
 
@@ -215,6 +218,22 @@ def test_build_adds_fallback_end_to_minimal_event() -> None:
     assert "location" not in graph_payload
     assert "Competition:" not in payload.body
     assert "Participants:" not in payload.body
+
+
+def test_build_appends_authoritative_source_attribution() -> None:
+    attribution = "Football data provided by the Football-Data.org API"
+
+    payload = OutlookEventPayloadBuilder().build(
+        make_aggregate(source_attribution=attribution)
+    )
+
+    assert payload.body.endswith(f"\n\nSource: {attribution}")
+
+
+def test_build_omits_missing_source_attribution() -> None:
+    payload = OutlookEventPayloadBuilder().build(make_aggregate())
+
+    assert "Source:" not in payload.body
 
 
 def test_build_fallback_end_uses_absolute_duration_across_dst_change() -> None:
