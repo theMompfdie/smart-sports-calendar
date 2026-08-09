@@ -2,7 +2,7 @@ import logging
 from threading import Event
 from unittest.mock import MagicMock
 
-from app.scheduler.scheduler import Scheduler
+from app.scheduler.scheduler import ScheduledJob, Scheduler
 
 
 def test_scheduler_stops_responsively_when_task_requests_shutdown() -> None:
@@ -43,3 +43,27 @@ def test_scheduler_contains_task_failure_and_waits_for_shutdown() -> None:
 
     assert calls == 2
     logger.exception.assert_called_once_with("Scheduled task failed")
+
+
+def test_scheduler_isolates_failures_between_source_jobs() -> None:
+    stop_event = Event()
+    logger = MagicMock(spec=logging.Logger)
+    scheduler = Scheduler(interval_seconds=300, logger=logger)
+    failed = MagicMock(side_effect=RuntimeError("provider failed"))
+
+    def successful() -> None:
+        stop_event.set()
+
+    scheduler.run_jobs(
+        jobs=(
+            ScheduledJob("failed-source", 60, failed),
+            ScheduledJob("successful-source", 900, successful),
+        ),
+        stop_event=stop_event,
+    )
+
+    failed.assert_called_once_with()
+    logger.exception.assert_called_once_with(
+        "Scheduled job failed: job_key=%s",
+        "failed-source",
+    )

@@ -19,7 +19,8 @@ from app.application.api_football_import_orchestrator import (
 from app.application.api_football_import_runtime_service import (
     ApiFootballImportRuntimeService,
 )
-from app.config.settings import Settings, load_settings
+from app.application.source_registry import SourceRegistry
+from app.config.settings import Settings, load_settings, validate_source_jobs
 from app.database.calendar_event_mappings_repository import (
     CalendarEventMappingsRepository,
 )
@@ -36,6 +37,10 @@ from app.database.participants_repository import ParticipantsRepository
 from app.database.season_participants_repository import SeasonParticipantsRepository
 from app.database.seasons_catalog import initialize_seasons_catalog
 from app.database.seasons_repository import SeasonsRepository
+from app.database.source_assignments_repository import (
+    SourceAssignmentsRepository,
+    SourceAssignmentWrite,
+)
 from app.database.source_mappings_repository import SourceMappingsRepository
 from app.database.sports_catalog import initialize_sports_catalog
 from app.database.sports_events_repository import SportsEventsRepository
@@ -51,6 +56,7 @@ from app.providers.api_football.catalog_adapter import ApiFootballCatalogAdapter
 from app.providers.api_football.client import ApiFootballClient
 from app.providers.api_football.fixture_adapter import ApiFootballFixtureAdapter
 from app.providers.api_football.team_mappings import PREMIER_LEAGUE_TEAM_MAPPING
+from app.providers.contracts import SourceConfigurationError, SourceRole
 from app.scheduler.scheduler import Scheduler
 from app.synchronization.event_synchronizer import EventSynchronizer
 from app.synchronization.outlook_event_payload_builder import (
@@ -67,6 +73,27 @@ from app.synchronization.synchronization_runtime_service import (
 class ApplicationContainer:
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or load_settings()
+        validate_source_jobs(list(self.settings.source_jobs))
+        active_api_football_jobs = tuple(
+            job
+            for job in self.settings.source_jobs
+            if job.source_key == "api_football" and job.enabled
+        )
+        if self.settings.api_football.enabled != bool(active_api_football_jobs):
+            raise SourceConfigurationError(
+                "API_FOOTBALL_ENABLED and the active api_football source job "
+                "must be configured together."
+            )
+        if active_api_football_jobs and (
+            len(active_api_football_jobs) != 1
+            or active_api_football_jobs[0].scope.sport_key != "football"
+            or active_api_football_jobs[0].scope.competition_key != "premier_league"
+            or active_api_football_jobs[0].scope.season_key != "2026_27"
+        ):
+            raise SourceConfigurationError(
+                "The current API-Football adapter supports exactly the "
+                "football/premier_league/2026_27 scope."
+            )
         self.logger: logging.Logger = configure_logging(
             self.settings.log_level,
             self.settings.instance_name,
@@ -106,6 +133,9 @@ class ApplicationContainer:
             self.settings.database_path
         )
         self.source_mappings_repository = SourceMappingsRepository(
+            self.settings.database_path
+        )
+        self.source_assignments_repository = SourceAssignmentsRepository(
             self.settings.database_path
         )
         self.fixture_import_repository = FixtureImportRepository(
@@ -179,6 +209,14 @@ class ApplicationContainer:
                 import_service=self.api_football_fixture_import_service,
                 data_sources_repository=self.data_sources_repository,
                 sync_runs_repository=self.sync_runs_repository,
+                job_definition=next(
+                    (
+                        job
+                        for job in self.settings.source_jobs
+                        if job.source_key == "api_football" and job.enabled
+                    ),
+                    None,
+                ),
             )
             if catalog_service is not None and normalization_service is not None
             else None
@@ -216,6 +254,17 @@ class ApplicationContainer:
             ),
             logger=self.logger,
         )
+        self.source_registry = SourceRegistry()
+        if self.api_football_import_runtime_service is not None:
+            self.source_registry.register(
+                "api_football",
+                self._run_api_football_source_job,
+                supported_roles=frozenset({SourceRole.AUTHORITATIVE}),
+                writes_canonical=True,
+            )
+        self.source_scheduled_jobs = self.source_registry.build_scheduled_jobs(
+            self.settings.source_jobs
+        )
         self.stop_event = Event()
 
     def run(self) -> None:
@@ -243,6 +292,7 @@ class ApplicationContainer:
             settings=self.settings.api_football,
             repository=self.data_sources_repository,
         )
+        self._persist_source_assignments()
         self.database.record_startup()
 
         self.logger.info(
@@ -278,10 +328,16 @@ class ApplicationContainer:
             "enabled" if self.api_football_client is not None else "disabled",
         )
 
-        self.scheduler.run(
-            task=self._run_scheduled_cycle,
-            stop_event=self.stop_event,
-        )
+        if self.settings.source_jobs:
+            self.scheduler.run_jobs(
+                jobs=self.source_scheduled_jobs,
+                stop_event=self.stop_event,
+            )
+        else:
+            self.scheduler.run(
+                task=self._run_scheduled_cycle,
+                stop_event=self.stop_event,
+            )
         self.logger.info(
             "SMART Sports Calendar instance %s stopped",
             self.settings.instance_name,
@@ -315,3 +371,53 @@ class ApplicationContainer:
             if import_result is None:
                 return
         self._run_synchronization()
+
+    def _run_api_football_source_job(self) -> object | None:
+        runtime = self.api_football_import_runtime_service
+        if runtime is None:
+            raise SourceConfigurationError(
+                "API-Football source job has no configured runtime."
+            )
+        result = runtime.run()
+        if result is not None:
+            self._run_synchronization()
+        return result
+
+    def _persist_source_assignments(self) -> None:
+        assignments: list[SourceAssignmentWrite] = []
+        for job in self.settings.source_jobs:
+            source = self.data_sources_repository.get_by_key(job.source_key)
+            sport = self.sports_repository.get_by_key(job.scope.sport_key)
+            if source is None and not job.enabled:
+                continue
+            if source is None or sport is None:
+                raise SourceConfigurationError(
+                    f"Source job cannot resolve source or sport: {job.job_key}."
+                )
+            competition = self.competitions_repository.get_by_key(
+                sport_id=sport.id,
+                competition_key=job.scope.competition_key,
+            )
+            if competition is None:
+                raise SourceConfigurationError(
+                    f"Source job cannot resolve competition: {job.job_key}."
+                )
+            season = self.seasons_repository.get_by_key(
+                competition_id=competition.id,
+                season_key=job.scope.season_key,
+            )
+            if season is None:
+                raise SourceConfigurationError(
+                    f"Source job cannot resolve season: {job.job_key}."
+                )
+            assignments.append(
+                SourceAssignmentWrite(
+                    job_key=job.job_key,
+                    source_id=source.id,
+                    competition_id=competition.id,
+                    season_id=season.id,
+                    role=job.role,
+                    interval_seconds=job.interval_seconds,
+                )
+            )
+        self.source_assignments_repository.synchronize(tuple(assignments))

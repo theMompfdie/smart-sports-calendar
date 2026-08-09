@@ -1,9 +1,6 @@
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from app.application.api_football_fixture_normalization_service import (
-    NormalizedFixture,
-)
 from app.database.data_sources_repository import DataSourcesRepository
 from app.database.fixture_import_repository import (
     FixtureImportConflictError,
@@ -17,6 +14,7 @@ from app.providers.api_football.exceptions import (
     ProviderIntegrityError,
     ProviderResolutionError,
 )
+from app.providers.contracts import NormalizedFixture
 
 
 @dataclass(frozen=True)

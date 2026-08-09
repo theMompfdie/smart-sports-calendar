@@ -14,7 +14,7 @@
 live validation for `v0.4.5-beta.1`
 ([tracker #72](https://github.com/theMompfdie/smart-sports-calendar/issues/72))
 
-**Automated tests:** 500 passing tests
+**Automated tests:** 518 passing tests
 
 The application foundation, persistent domain model, repository layer, Microsoft Graph integration, Outlook synchronization engine, and the scheduled, reported API-Football Premier League import runtime are implemented.
 
@@ -101,6 +101,12 @@ The catalog, normalization, fixture-import, reporting, and runtime services are
 dependency-injected. API-Football remains opt-in and performs no provider call
 unless explicitly enabled.
 
+Provider-neutral source jobs provide explicit competition/season authority,
+roles, independent intervals, adapter registration, fail-closed startup
+validation, and persistent assignment history. The current API-Football writer
+must be paired with an explicit authoritative source job when enabled. The
+approved football-data.org adapter remains part of issue #76.
+
 Phase 4 documentation:
 
 - [provider requirements and evaluation](docs/provider-evaluation.md)
@@ -110,6 +116,7 @@ Phase 4 documentation:
 - [football-data.org Premier League selection ADR](docs/adr/0003-select-football-data-for-premier-league.md)
 - [football-data.org qualification](docs/football-data-qualification.md)
 - [provider-independent integration contract](docs/provider-integration-contract.md)
+- [provider-neutral source orchestration](docs/source-orchestration.md)
 - [Premier League catalog mapping](docs/api-football-catalog-mapping.md)
 - [fixture normalization](docs/api-football-fixture-normalization.md)
 - [idempotent fixture import](docs/api-football-fixture-import.md)
@@ -198,7 +205,11 @@ Synchronization runs retain progress counters and final results. Failures are is
 
 ## Domain Model
 
-The database model covers sports, competitions, seasons, participants, season participants, data sources, source mappings, sports events, event participants, results, statistics, calendar event mappings, and synchronization runs. It supports team-based competitions and participant-based sports that may be added later.
+The database model covers sports, competitions, seasons, participants, season
+participants, data sources, source assignments, source mappings, sports
+events, event participants, results, statistics, calendar event mappings, and
+synchronization runs. It supports team-based competitions and
+participant-based sports that may be added later.
 
 ## Design Principles
 
@@ -440,8 +451,8 @@ feature/* -> develop -> release/* -> main -> Release
 - remove Docker Compose naming and persistence conflicts
 - verify at least three independent local containers
 - deploy an isolated staging stack with automatic `develop` updates
-- add provider-neutral per-competition source orchestration
-- qualify and integrate a permitted Premier League authority
+- complete provider-neutral per-competition source orchestration
+- integrate the qualified football-data.org Premier League authority
 - complete credential-safe provider and Microsoft Graph live validation
 - qualify an immutable candidate and promote it to production manually
 

@@ -101,6 +101,7 @@ store or Portainer environment; never commit a real key:
 API_FOOTBALL_ENABLED=true
 API_FOOTBALL_API_KEY=replace-with-deployment-secret
 API_FOOTBALL_IMPORT_INTERVAL_SECONDS=3600
+SOURCE_JOBS_JSON=[{"job_key":"api-football-premier-league","source_key":"api_football","sport_key":"football","competition_key":"premier_league","season_key":"2026_27","role":"authoritative","interval_seconds":3600}]
 ```
 
 The complete provider settings are:
@@ -115,7 +116,14 @@ The complete provider settings are:
 | `API_FOOTBALL_MAX_ATTEMPTS` | `3` | Positive integer, maximum `10` |
 | `API_FOOTBALL_RETRY_BASE_DELAY_SECONDS` | `1` | Positive finite first backoff delay |
 | `API_FOOTBALL_RETRY_MAX_DELAY_SECONDS` | `30` | Positive finite cap, not lower than the base delay |
-| `API_FOOTBALL_IMPORT_INTERVAL_SECONDS` | `3600` | Positive integer scheduler interval while the provider is enabled |
+| `API_FOOTBALL_IMPORT_INTERVAL_SECONDS` | `3600` | Legacy positive provider interval; an explicit source job's `interval_seconds` is authoritative |
+| `SOURCE_JOBS_JSON` | `[]` | Provider-neutral job array; every active competition/season scope requires exactly one authority and every enabled adapter requires a matching job |
+
+The JSON value must remain on one line in `.env` or Portainer. Adapter and job
+enablement must agree. The existing API-Football adapter supports only the
+`authoritative` role because it writes canonical data. The approved
+`football_data` source must remain disabled until its adapter is implemented
+by #76. See [source orchestration](source-orchestration.md).
 
 `OUTLOOK_CALENDAR_ID` is required for every Graph write. It must be the
 immutable Graph ID of the dedicated SMART Sports Calendar.

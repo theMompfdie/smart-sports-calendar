@@ -164,6 +164,11 @@ def test_orchestrator_persists_scope_diagnostics_and_decision_counters() -> None
     assert complete_call["items_deferred"] == 1
     assert complete_call["items_failed"] == 0
     metadata = complete_call["metadata"]
+    assert metadata["job_key"] == "api-football-legacy"
+    assert metadata["source_key"] == "api_football"
+    assert metadata["role"] == "authoritative"
+    assert metadata["competition_key"] == "premier_league"
+    assert metadata["season_key"] == "current"
     assert metadata["request_attempts"] == 3
     assert metadata["rate_limits"]["daily_remaining"] == 91
     assert metadata["rate_limits"]["retry_after_seconds"] == 4.0

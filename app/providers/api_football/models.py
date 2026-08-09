@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from app.providers.contracts import RateLimitSnapshot
+
 
 @dataclass(frozen=True)
 class Pagination:
@@ -11,15 +13,6 @@ class Pagination:
     @property
     def has_next(self) -> bool:
         return self.current < self.total
-
-
-@dataclass(frozen=True)
-class RateLimitSnapshot:
-    daily_limit: int | None
-    daily_remaining: int | None
-    minute_limit: int | None
-    minute_remaining: int | None
-    retry_after_seconds: float | None
 
 
 @dataclass(frozen=True)

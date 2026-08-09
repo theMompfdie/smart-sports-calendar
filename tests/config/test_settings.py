@@ -1,8 +1,10 @@
+import json
 from pathlib import Path
 
 import pytest
 from app.config.settings import load_settings
 from app.providers.api_football.exceptions import ProviderConfigurationError
+from app.providers.contracts import SourceConfigurationError, SourceRole
 
 
 @pytest.fixture(autouse=True)
@@ -27,6 +29,7 @@ def configure_required_environment(
         "INSTANCE_NAME",
         raising=False,
     )
+    monkeypatch.delenv("SOURCE_JOBS_JSON", raising=False)
     for name in (
         "API_FOOTBALL_ENABLED",
         "API_FOOTBALL_API_KEY",
@@ -319,4 +322,117 @@ def test_load_settings_rejects_retry_max_delay_below_base_delay(
         ProviderConfigurationError,
         match="API_FOOTBALL_RETRY_MAX_DELAY_SECONDS must be greater",
     ):
+        load_settings()
+
+
+def source_job(
+    *,
+    job_key: str,
+    source_key: str,
+    role: str,
+    competition_key: str = "premier_league",
+) -> dict[str, object]:
+    return {
+        "job_key": job_key,
+        "source_key": source_key,
+        "sport_key": "football",
+        "competition_key": competition_key,
+        "season_key": "2026_27",
+        "role": role,
+        "interval_seconds": 3600,
+    }
+
+
+def test_load_settings_loads_explicit_source_authority(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(
+        "SOURCE_JOBS_JSON",
+        json.dumps(
+            [
+                source_job(
+                    job_key="football-data-pl",
+                    source_key="football_data",
+                    role="authoritative",
+                ),
+                source_job(
+                    job_key="api-football-pl-verification",
+                    source_key="api_football",
+                    role="verification",
+                ),
+            ]
+        ),
+    )
+
+    jobs = load_settings().source_jobs
+
+    assert [job.job_key for job in jobs] == [
+        "football-data-pl",
+        "api-football-pl-verification",
+    ]
+    assert jobs[0].role is SourceRole.AUTHORITATIVE
+    assert jobs[1].role is SourceRole.VERIFICATION
+
+
+@pytest.mark.parametrize(
+    "payload,match",
+    [
+        ("{}", "JSON array"),
+        ("not-json", "valid JSON"),
+        (
+            json.dumps(
+                [
+                    source_job(
+                        job_key="one",
+                        source_key="source_one",
+                        role="verification",
+                    )
+                ]
+            ),
+            "exactly one authoritative",
+        ),
+        (
+            json.dumps(
+                [
+                    source_job(
+                        job_key="one",
+                        source_key="source_one",
+                        role="authoritative",
+                    ),
+                    source_job(
+                        job_key="two",
+                        source_key="source_two",
+                        role="authoritative",
+                    ),
+                ]
+            ),
+            "exactly one authoritative",
+        ),
+        (
+            json.dumps(
+                [
+                    source_job(
+                        job_key="duplicate",
+                        source_key="source_one",
+                        role="authoritative",
+                    ),
+                    source_job(
+                        job_key="duplicate",
+                        source_key="source_two",
+                        role="verification",
+                    ),
+                ]
+            ),
+            "job_key values must be unique",
+        ),
+    ],
+)
+def test_load_settings_rejects_invalid_source_authority(
+    monkeypatch: pytest.MonkeyPatch,
+    payload: str,
+    match: str,
+) -> None:
+    monkeypatch.setenv("SOURCE_JOBS_JSON", payload)
+
+    with pytest.raises(SourceConfigurationError, match=match):
         load_settings()
