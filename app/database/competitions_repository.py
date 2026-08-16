@@ -5,6 +5,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from app.domain.competition_lifecycle import CompetitionFormat
+
 
 @dataclass(frozen=True)
 class Competition:
@@ -14,10 +16,18 @@ class Competition:
     name: str
     short_name: str | None
     country_code: str | None
-    competition_type: str | None
+    competition_type: CompetitionFormat | None
     metadata: dict[str, Any] | None
     created_at: str
     updated_at: str
+
+    def __post_init__(self) -> None:
+        if self.competition_type is not None:
+            object.__setattr__(
+                self,
+                "competition_type",
+                CompetitionFormat(self.competition_type),
+            )
 
 
 class CompetitionsRepository:
@@ -65,10 +75,15 @@ class CompetitionsRepository:
         name: str,
         short_name: str | None = None,
         country_code: str | None = None,
-        competition_type: str | None = None,
+        competition_type: CompetitionFormat | str | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> Competition:
         timestamp = datetime.now(UTC).isoformat()
+        competition_type_value = (
+            None
+            if competition_type is None
+            else CompetitionFormat(competition_type).value
+        )
         metadata_json = self._serialize_metadata(metadata)
 
         with self._connect() as connection:
@@ -101,7 +116,7 @@ class CompetitionsRepository:
                     name,
                     short_name,
                     country_code,
-                    competition_type,
+                    competition_type_value,
                     metadata_json,
                     timestamp,
                     timestamp,

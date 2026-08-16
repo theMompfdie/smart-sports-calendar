@@ -19,6 +19,11 @@ from app.database.fixture_import_repository import (
 )
 from app.database.source_mappings_repository import SourceMappingsRepository
 from app.database.sports_events_repository import SportsEventsRepository
+from app.domain.competition_lifecycle import (
+    CompetitionFormat,
+    CompetitionLifecycleScope,
+    FixtureObservationScopeKind,
+)
 from app.providers.api_football.exceptions import ProviderIntegrityError
 
 from tests.application.test_api_football_fixture_normalization_service import (
@@ -41,11 +46,24 @@ def scope(
     observation_id: str = "observation-1",
     authoritative: bool = False,
 ) -> FixtureImportScope:
+    lifecycle = CompetitionLifecycleScope(
+        competition_format=CompetitionFormat.LEAGUE,
+        scope_kind=(
+            FixtureObservationScopeKind.COMPLETE_SEASON
+            if authoritative
+            else FixtureObservationScopeKind.PARTIAL
+        ),
+    )
     return FixtureImportScope(
         competition_id=competition_id,
         season_id=season_id,
         observation_id=observation_id,
         observed_at_utc=OBSERVED_AT,
+        lifecycle=lifecycle,
+        window_start_utc=(datetime(2026, 7, 1, tzinfo=UTC) if authoritative else None),
+        window_end_utc=(
+            datetime(2027, 6, 30, 23, 59, tzinfo=UTC) if authoritative else None
+        ),
         authoritative=authoritative,
     )
 
@@ -364,7 +382,12 @@ def test_partial_or_filtered_observations_cannot_remove_events(tmp_path: Path) -
             season_id=context.season_id,
             observation_id="partial",
             observed_at_utc=OBSERVED_AT,
-            complete=False,
+            lifecycle=CompetitionLifecycleScope(
+                competition_format=CompetitionFormat.LEAGUE,
+                scope_kind=FixtureObservationScopeKind.PARTIAL,
+            ),
+            authoritative=True,
+            filtered=True,
         ),
     )
     with sqlite3.connect(context.database_path) as connection:
@@ -375,12 +398,18 @@ def test_partial_or_filtered_observations_cannot_remove_events(tmp_path: Path) -
             == 0
         )
 
-    with pytest.raises(ValueError, match="complete, unfiltered"):
+    with pytest.raises(ValueError, match="filtered.*complete"):
         FixtureImportScope(
             competition_id=context.competition_id,
             season_id=context.season_id,
             observation_id="unsafe",
             observed_at_utc=OBSERVED_AT,
+            lifecycle=CompetitionLifecycleScope(
+                competition_format=CompetitionFormat.LEAGUE,
+                scope_kind=FixtureObservationScopeKind.COMPLETE_SEASON,
+            ),
+            window_start_utc=datetime(2026, 7, 1, tzinfo=UTC),
+            window_end_utc=datetime(2027, 6, 30, tzinfo=UTC),
             authoritative=True,
             filtered=True,
         )
@@ -395,8 +424,103 @@ def test_partial_or_filtered_observations_cannot_remove_events(tmp_path: Path) -
                 season_id=context.season_id,
                 observation_id="outside-window",
                 observed_at_utc=OBSERVED_AT,
+                lifecycle=CompetitionLifecycleScope(
+                    competition_format=CompetitionFormat.LEAGUE,
+                    scope_kind=FixtureObservationScopeKind.PARTIAL,
+                ),
                 window_start_utc=kickoff.replace(year=kickoff.year + 1),
             ),
+        )
+
+
+def test_complete_round_scope_is_typed_but_cannot_remove_events_yet(
+    tmp_path: Path,
+) -> None:
+    context = create_context(tmp_path)
+    fixtures = tuple(
+        fixture
+        for fixture in context.service.normalize_current_premier_league()
+        if fixture.kickoff_confirmed
+    )
+    with sqlite3.connect(context.database_path) as connection:
+        connection.execute(
+            "UPDATE competitions SET competition_type = ? WHERE id = ?",
+            (CompetitionFormat.KNOCKOUT_CUP.value, context.competition_id),
+        )
+    importer = create_importer(context.database_path)
+    partial_scope = FixtureImportScope(
+        competition_id=context.competition_id,
+        season_id=context.season_id,
+        observation_id="cup-initial",
+        observed_at_utc=OBSERVED_AT,
+        lifecycle=CompetitionLifecycleScope(
+            competition_format=CompetitionFormat.KNOCKOUT_CUP,
+            scope_kind=FixtureObservationScopeKind.PARTIAL,
+        ),
+        authoritative=True,
+    )
+    importer.import_fixtures(fixtures, partial_scope)
+    missing = fixtures[0]
+    complete_round_scope = FixtureImportScope(
+        competition_id=context.competition_id,
+        season_id=context.season_id,
+        observation_id="cup-round-1",
+        observed_at_utc=OBSERVED_AT.replace(hour=13),
+        lifecycle=CompetitionLifecycleScope(
+            competition_format=CompetitionFormat.KNOCKOUT_CUP,
+            scope_kind=FixtureObservationScopeKind.COMPLETE_ROUND,
+            stage="knockout",
+            round_name="round_of_16",
+        ),
+        authoritative=True,
+    )
+
+    importer.import_fixtures(fixtures[1:], complete_round_scope)
+    importer.import_fixtures(
+        fixtures[1:],
+        replace(
+            complete_round_scope,
+            observation_id="cup-round-2",
+            observed_at_utc=OBSERVED_AT.replace(hour=14),
+        ),
+    )
+
+    mapping = SourceMappingsRepository(context.database_path).get_by_external_id(
+        context.source_id,
+        "event",
+        missing.external_id,
+    )
+    assert mapping is not None
+    event = SportsEventsRepository(context.database_path).get_by_id(mapping.internal_id)
+    assert event is not None
+    assert event.deleted_at is None
+    with sqlite3.connect(context.database_path) as connection:
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM fixture_reconciliation_state"
+            ).fetchone()[0]
+            == 0
+        )
+
+
+def test_import_scope_format_must_match_canonical_competition(tmp_path: Path) -> None:
+    context = create_context(tmp_path)
+    fixture = context.service.normalize_current_premier_league()[0]
+    import_scope = FixtureImportScope(
+        competition_id=context.competition_id,
+        season_id=context.season_id,
+        observation_id="wrong-format",
+        observed_at_utc=OBSERVED_AT,
+        lifecycle=CompetitionLifecycleScope(
+            competition_format=CompetitionFormat.KNOCKOUT_CUP,
+            scope_kind=FixtureObservationScopeKind.PARTIAL,
+        ),
+    )
+
+    with pytest.raises(ProviderIntegrityError, match="lifecycle format conflicts"):
+        create_importer(context.database_path).import_fixtures(
+            (fixture,),
+            import_scope,
         )
 
 

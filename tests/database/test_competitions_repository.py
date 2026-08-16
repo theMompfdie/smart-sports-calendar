@@ -5,6 +5,7 @@ import pytest
 from app.database.competitions_repository import CompetitionsRepository
 from app.database.database import Database
 from app.database.sports_repository import SportsRepository
+from app.domain.competition_lifecycle import CompetitionFormat
 
 
 def create_repository(
@@ -60,6 +61,7 @@ def test_upsert_creates_competition(
     assert competition.short_name == "PL"
     assert competition.country_code == "GB-ENG"
     assert competition.competition_type == "league"
+    assert competition.competition_type is CompetitionFormat.LEAGUE
     assert competition.metadata is None
     assert competition.created_at
     assert competition.updated_at
@@ -157,3 +159,39 @@ def test_upsert_rejects_unknown_sport(
             competition_key="premier_league",
             name="Premier League",
         )
+
+
+def test_upsert_rejects_unknown_competition_format(tmp_path: Path) -> None:
+    _, football_id, repository = create_repository(tmp_path)
+
+    with pytest.raises(ValueError, match="provider-specific"):
+        repository.upsert(
+            sport_id=football_id,
+            competition_key="unknown_format",
+            name="Unknown Format",
+            competition_type="provider-specific",
+        )
+
+
+def test_loading_unknown_persisted_competition_format_fails_closed(
+    tmp_path: Path,
+) -> None:
+    database_path, football_id, repository = create_repository(tmp_path)
+    repository.upsert(
+        sport_id=football_id,
+        competition_key="unknown_format",
+        name="Unknown Format",
+        competition_type=CompetitionFormat.LEAGUE,
+    )
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """
+            UPDATE competitions
+            SET competition_type = 'provider-specific'
+            WHERE sport_id = ? AND competition_key = 'unknown_format'
+            """,
+            (football_id,),
+        )
+
+    with pytest.raises(ValueError, match="provider-specific"):
+        repository.get_by_key(football_id, "unknown_format")

@@ -7,6 +7,7 @@ from app.database.participants_repository import ParticipantsRepository
 from app.database.seasons_repository import SeasonsRepository
 from app.database.source_mappings_repository import SourceMappingsRepository
 from app.database.sports_repository import SportsRepository
+from app.domain.competition_lifecycle import CompetitionFormat
 from app.providers.api_football.catalog_adapter import PREMIER_LEAGUE_ID
 from app.providers.api_football.exceptions import ProviderResolutionError
 from app.providers.api_football.fixture_adapter import ApiFootballFixtureAdapter
@@ -53,6 +54,7 @@ class ApiFootballFixtureNormalizationService:
                 self._normalize(fixture, context) for fixture in batch.fixtures
             ),
             competition_id=context.competition_id,
+            competition_format=context.competition_format,
             season_id=context.season_id,
             season_start_date=context.season_start_date,
             season_end_date=context.season_end_date,
@@ -80,6 +82,10 @@ class ApiFootballFixtureNormalizationService:
         if competition is None:
             raise ProviderResolutionError(
                 "Canonical Premier League must exist before fixture normalization."
+            )
+        if competition.competition_type is None:
+            raise ProviderResolutionError(
+                "Canonical Premier League competition format is missing."
             )
         seasons = self._seasons_repository.get_current_for_competition(competition.id)
         if len(seasons) != 1:
@@ -124,6 +130,7 @@ class ApiFootballFixtureNormalizationService:
             source_id=source.id,
             sport_id=football.id,
             competition_id=competition.id,
+            competition_format=competition.competition_type,
             season_id=season.id,
             season_year=season_year,
             season_start_date=season_start_date,
@@ -227,6 +234,7 @@ class _NormalizationContext:
     source_id: int
     sport_id: int
     competition_id: int
+    competition_format: CompetitionFormat
     season_id: int
     season_year: int
     season_start_date: date

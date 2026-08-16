@@ -19,6 +19,10 @@ from app.database.fixture_import_repository import (
     FixtureImportResult,
 )
 from app.database.sync_runs_repository import SyncRun, SyncRunsRepository
+from app.domain.competition_lifecycle import (
+    CompetitionLifecycleScope,
+    FixtureObservationScopeKind,
+)
 from app.providers.contracts import (
     NormalizedFixtureBatch,
     SourceJobDefinition,
@@ -133,6 +137,10 @@ class FootballDataImportOrchestrator:
             season_id=batch.season_id,
             observation_id=f"football-data-{sha256(identity.encode()).hexdigest()[:24]}",
             observed_at_utc=observed_at,
+            lifecycle=CompetitionLifecycleScope(
+                competition_format=batch.competition_format,
+                scope_kind=FixtureObservationScopeKind.COMPLETE_SEASON,
+            ),
             window_start_utc=datetime.combine(
                 batch.season_start_date, time.min, tzinfo=UTC
             ),
@@ -140,7 +148,6 @@ class FootballDataImportOrchestrator:
                 batch.season_end_date, time.max, tzinfo=UTC
             ),
             authoritative=True,
-            complete=True,
             filtered=False,
         )
 
@@ -160,6 +167,11 @@ class FootballDataImportOrchestrator:
                 else None,
                 "observation_id": scope.observation_id,
                 "observed_at_utc": scope.observed_at_utc.isoformat(),
+                "competition_format": scope.lifecycle.competition_format.value,
+                "scope_kind": scope.lifecycle.scope_kind.value,
+                "scope_stage": scope.lifecycle.stage,
+                "scope_round": scope.lifecycle.round_name,
+                "removal_eligible": scope.removal_eligible,
                 "page_count": batch.page_count,
                 "request_attempts": batch.request_attempts,
                 "rate_limits": {
