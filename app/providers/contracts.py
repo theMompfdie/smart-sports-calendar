@@ -3,6 +3,8 @@ from datetime import date, datetime
 from enum import StrEnum
 from typing import Protocol
 
+from app.domain.competition_lifecycle import CompetitionFormat
+
 
 class SourceConfigurationError(ValueError):
     """Source orchestration configuration is invalid or ambiguous."""
@@ -85,6 +87,7 @@ class NormalizedFixture:
 class NormalizedFixtureBatch:
     fixtures: tuple[NormalizedFixture, ...]
     competition_id: int
+    competition_format: CompetitionFormat
     season_id: int
     season_start_date: date
     season_end_date: date

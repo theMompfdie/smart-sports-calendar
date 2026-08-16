@@ -16,6 +16,10 @@ from app.database.fixture_import_repository import (
     FixtureImportResult,
 )
 from app.database.sync_runs_repository import SyncRun, SyncRunsRepository
+from app.domain.competition_lifecycle import (
+    CompetitionLifecycleScope,
+    FixtureObservationScopeKind,
+)
 from app.providers.api_football.exceptions import ProviderResolutionError
 from app.providers.contracts import (
     NormalizedFixtureBatch,
@@ -87,7 +91,7 @@ class ApiFootballImportOrchestrator:
                 if self._job_definition is not None
                 else "current"
             ),
-            "complete": True,
+            "complete": False,
             "filtered": False,
             "authoritative": self._role is SourceRole.AUTHORITATIVE,
         }
@@ -183,6 +187,10 @@ class ApiFootballImportOrchestrator:
             season_id=batch.season_id,
             observation_id=observation_id,
             observed_at_utc=observed_at,
+            lifecycle=CompetitionLifecycleScope(
+                competition_format=batch.competition_format,
+                scope_kind=FixtureObservationScopeKind.COMPLETE_SEASON,
+            ),
             window_start_utc=datetime.combine(
                 batch.season_start_date,
                 time.min,
@@ -194,7 +202,6 @@ class ApiFootballImportOrchestrator:
                 tzinfo=UTC,
             ),
             authoritative=authoritative,
-            complete=True,
             filtered=False,
         )
 
@@ -253,6 +260,11 @@ class ApiFootballImportOrchestrator:
             "authoritative": scope.authoritative,
             "complete": scope.complete,
             "filtered": scope.filtered,
+            "competition_format": scope.lifecycle.competition_format.value,
+            "scope_kind": scope.lifecycle.scope_kind.value,
+            "scope_stage": scope.lifecycle.stage,
+            "scope_round": scope.lifecycle.round_name,
+            "removal_eligible": scope.removal_eligible,
             "observation_id": scope.observation_id,
             "observed_at_utc": scope.observed_at_utc.isoformat(),
             "page_count": batch.page_count,

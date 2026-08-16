@@ -3,6 +3,7 @@ from app.database.competitions_repository import (
     CompetitionsRepository,
 )
 from app.database.sports_repository import SportsRepository
+from app.domain.competition_lifecycle import CompetitionFormat
 
 
 def initialize_competitions_catalog(
@@ -23,7 +24,7 @@ def initialize_competitions_catalog(
             name="Premier League",
             short_name="PL",
             country_code="GB-ENG",
-            competition_type="league",
+            competition_type=CompetitionFormat.LEAGUE,
             metadata={
                 "region": "England",
                 "calendar_category": "SMART | England",

@@ -10,6 +10,10 @@ from app.database.fixture_import_repository import (
     FixtureImportScopeRecord,
     FixtureParticipantRecord,
 )
+from app.domain.competition_lifecycle import (
+    CompetitionLifecycleScope,
+    FixtureObservationScopeKind,
+)
 from app.providers.api_football.exceptions import (
     ProviderIntegrityError,
     ProviderResolutionError,
@@ -23,10 +27,10 @@ class FixtureImportScope:
     season_id: int
     observation_id: str
     observed_at_utc: datetime
+    lifecycle: CompetitionLifecycleScope
     window_start_utc: datetime | None = None
     window_end_utc: datetime | None = None
     authoritative: bool = False
-    complete: bool = True
     filtered: bool = False
 
     def __post_init__(self) -> None:
@@ -45,10 +49,29 @@ class FixtureImportScope:
             and self.window_start_utc > self.window_end_utc
         ):
             raise ValueError("Fixture import window start must not follow its end.")
-        if self.authoritative and (not self.complete or self.filtered):
+        if self.filtered and self.lifecycle.complete:
             raise ValueError(
-                "Only complete, unfiltered fixture observations may be authoritative."
+                "A filtered fixture observation cannot declare a complete scope."
             )
+        if (
+            self.lifecycle.scope_kind is FixtureObservationScopeKind.COMPLETE_SEASON
+            and (self.window_start_utc is None or self.window_end_utc is None)
+        ):
+            raise ValueError(
+                "A complete-season fixture observation requires a bounded UTC window."
+            )
+
+    @property
+    def complete(self) -> bool:
+        return self.lifecycle.complete
+
+    @property
+    def removal_eligible(self) -> bool:
+        return (
+            self.authoritative
+            and not self.filtered
+            and self.lifecycle.removal_reconciliation_supported
+        )
 
     @staticmethod
     def _require_utc(value: datetime, field_name: str) -> None:
@@ -87,6 +110,8 @@ class ApiFootballFixtureImportService:
             window_start_utc=scope.window_start_utc,
             window_end_utc=scope.window_end_utc,
             authoritative=scope.authoritative,
+            lifecycle=scope.lifecycle,
+            filtered=scope.filtered,
             observation_id=scope.observation_id.strip(),
             observed_at_utc=scope.observed_at_utc,
         )

@@ -12,6 +12,7 @@ from app.database.source_mappings_repository import (
     SourceMappingsRepository,
 )
 from app.database.sports_repository import SportsRepository
+from app.domain.competition_lifecycle import CompetitionFormat
 from app.providers.contracts import (
     NormalizedFixture,
     NormalizedFixtureBatch,
@@ -54,6 +55,7 @@ class _CanonicalContext:
     source_id: int
     sport_id: int
     competition_id: int
+    competition_format: CompetitionFormat
     season_id: int
     season_start_date: date
     season_end_date: date
@@ -100,6 +102,7 @@ class FootballDataPremierLeagueService:
                 self._normalize_match(match, context) for match in snapshot.matches
             ),
             competition_id=context.competition_id,
+            competition_format=context.competition_format,
             season_id=context.season_id,
             season_start_date=context.season_start_date,
             season_end_date=context.season_end_date,
@@ -118,6 +121,10 @@ class FootballDataPremierLeagueService:
         )
         if competition is None:
             raise FootballDataResolutionError("Canonical Premier League is missing.")
+        if competition.competition_type is None:
+            raise FootballDataResolutionError(
+                "Canonical Premier League competition format is missing."
+            )
         seasons = self._seasons_repository.get_current_for_competition(competition.id)
         if len(seasons) != 1:
             raise FootballDataResolutionError(
@@ -224,6 +231,7 @@ class FootballDataPremierLeagueService:
             source_id=source.id,
             sport_id=football.id,
             competition_id=competition.id,
+            competition_format=competition.competition_type,
             season_id=season.id,
             season_start_date=start_date,
             season_end_date=end_date,

@@ -39,6 +39,10 @@ from app.database.sync_runs_repository import SyncRunsRepository
 from app.database.synchronization_query_repository import (
     SynchronizationQueryRepository,
 )
+from app.domain.competition_lifecycle import (
+    CompetitionLifecycleScope,
+    FixtureObservationScopeKind,
+)
 from app.providers.contracts import SourceJobDefinition, SourceRole, SourceScope
 from app.synchronization.event_synchronizer import EventSynchronizer
 from app.synchronization.outlook_event_payload_builder import OutlookEventPayloadBuilder
@@ -128,6 +132,10 @@ def create_harness(database_path, *, persist_source_assignment: bool = True):
                 season_id=batch.season_id,
                 observation_id="existing-api-football-event",
                 observed_at_utc=batch.fetched_at_utc,
+                lifecycle=CompetitionLifecycleScope(
+                    competition_format=batch.competition_format,
+                    scope_kind=FixtureObservationScopeKind.PARTIAL,
+                ),
                 authoritative=False,
             ),
         )
