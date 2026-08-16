@@ -55,8 +55,9 @@ future source to be documented without making it executable.
 
 ## Roles and write safety
 
-- `authoritative` may write canonical fields and contribute complete-snapshot
-  removal evidence.
+- `authoritative` may write canonical fields. It contributes absence/removal
+  evidence only when the individual observation declares a validated supported
+  complete lifecycle scope.
 - `bootstrap` may seed explicit mappings only through a runner designed for
   that role.
 - `verification` may compare or report but cannot write canonical fields,
@@ -85,9 +86,17 @@ job does not prevent later synchronization of already committed canonical
 events.
 
 Provider import run metadata records the safe job key, source key, role,
-competition key, season key, canonical IDs, authoritative flag, completeness,
-observation ID, UTC window, attempts, and sanitized quota aggregates. A failed
-or overlapping import makes no canonical changes.
+competition key, season key, canonical IDs, authoritative flag, competition
+format, lifecycle scope kind, optional stage/round, completeness, removal
+eligibility, observation ID, UTC window, attempts, and sanitized quota
+aggregates. A failed or overlapping import makes no canonical changes.
+
+Source role and observation completeness are intentionally separate. An
+authoritative job may produce a partial observation that safely creates or
+updates fixtures without creating removal evidence. Phase 5.1 supports removal
+reconciliation only for an unfiltered complete-season league scope. Complete
+stage and round scopes are typed and validated but remain non-destructive until
+the dedicated knockout/cup lifecycle slice.
 
 Public attribution is owned by the selected source catalog entry. The
 synchronization query resolves the optional attribution only from the enabled
@@ -103,3 +112,9 @@ canonical competition and season. Startup synchronizes configured jobs
 transactionally: removed jobs are disabled rather than deleted, and existing
 data sources, source mappings, canonical events, and Outlook mappings are not
 rewritten.
+
+Phase 5.1 adds no schema migration. The existing
+`competitions.competition_type` column is the canonical typed competition
+format, while observation lifecycle scope is persisted in existing provider
+import-run metadata. Unknown persisted formats fail closed at repository
+mapping boundaries.
