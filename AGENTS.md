@@ -130,6 +130,28 @@ to run. Resume with signature verification, push, PR maintenance, and CI only
 after the signed commit exists. Never fall back to `--no-gpg-sign` unless the
 user explicitly authorizes that specific unsigned commit.
 
+### Phase 5 operator-controlled Git workflow
+
+For all Phase 5 (`v0.5.x`) work, the user performs every commit. The assistant
+must never run `git commit` or create a commit through another interface, even
+when commit creation would otherwise be authorized.
+
+Before every commit, inspect the actual branch, working-tree status, staged and
+unstaged diffs, and relevant untracked files. State exactly which files belong
+in the next logical commit, which changed files must remain outside it, and why
+the proposed scope is consistent with the active issue. Then provide the final
+English Conventional Commit message for the user to execute.
+
+Every Phase 5 commit must be GPG-signed. If signing is interactive, explicitly
+hand the operation to the user and provide the exact signed commit command.
+Never bypass signing or recommend an unsigned fallback. After the user creates
+the commit, verify the resulting commit and its GPG signature before treating
+it as complete or proceeding with push-related work.
+
+The user performs every merge. The assistant must never merge locally or on
+GitHub. It may instruct the user to merge only after the pull request is fully
+verified and merge-ready.
+
 ## PRs and Issues
 
 PRs should state what changed, why, key decisions, tests, related issue, and limitations if applicable.
@@ -142,6 +164,18 @@ issue/PR relationships, target branch, draft/readiness state, and description
 when any item is missing, stale, or inconsistent with the active delivery
 track. Recheck metadata after retargeting, stacking, or merging related PRs.
 Do not leave metadata cleanup for the user unless permissions prevent it.
+
+For Phase 5, use master issues, sub-issues and parent/child relationships, plus
+`blocked by` and `related to` relationships, assignees, labels, and milestones
+where technically available. After the user pushes, inspect the actual GitHub
+branch, pushed commits, pull-request diff, and available CI state before
+creating a pull request. The assistant may then create the complete pull
+request with its English title and description, issue references, tests,
+limitations, base branch, readiness state, and all available metadata.
+
+If the available GitHub interface cannot set a required field or relationship,
+do not imply that it was set. Explicitly tell the user exactly which metadata
+must be added manually and identify the affected issue or pull request.
 
 Before recommending merge verify CI, Ruff, pytest, acceptance criteria, conflicts, unresolved review comments, and documentation impact.
 
