@@ -13,6 +13,14 @@ The initial use case is deliberately narrow: import current English Premier
 League competition, season, team, and fixture data into the existing canonical
 SQLite model. Live scores, statistics, odds, and media assets are not required.
 
+This document preserves the historical Phase 4 comparison. The current Phase
+5 competition-by-competition reassessment, reviewed on 2026-08-16, is recorded
+in the
+[`Phase 5 source and authority matrix`](phase-5-source-authority-matrix.md).
+That later review supersedes any implication here that API-Football is approved
+as a new authority or that football-data.org or Sportmonks is universally
+suitable.
+
 ## Mandatory requirements
 
 A candidate must provide all of the following:
@@ -98,10 +106,10 @@ identity across two fingerprint-bearing observations.
 | Filtering and pagination | Meets; league, season, date range, status, team, and page metadata | Meets for fixture scope; limit/offset support is documented | Meets; page/limit and response metadata are documented |
 | Rate-limit visibility | Meets; daily and per-minute limit/remaining headers | Partial; published per-minute plan limits, but less detailed reset telemetry is documented | Meets; remaining/reset metadata and headers are documented per entity |
 | Entry cost for Premier League | Meets; Pro is listed as 19.00/month with 7,500 requests/day; the public page text does not expose the currency symbol, so checkout currency must be confirmed; free tier is 100/day but available data may be restricted | Meets; Premier League fixtures are in the EUR 0/month free tier at 10 calls/minute, with delayed scores/schedules | Partial; Premier League is excluded from the permanent free plan; Starter begins at EUR 29/month |
-| Terms and redistribution clarity | Meets with constraints; apps are allowed, raw resale is forbidden, and image/logo rights remain the user's responsibility | Partial; pricing and coverage are public, but no equally explicit public usage/redistribution terms were found during this review | Meets with constraints; derived apps may earn revenue, raw resale is forbidden, and logo/image rights remain the user's responsibility |
+| Terms and redistribution clarity | Does not meet for new Phase 5 authority without separate rights clearance; current terms say API-Sports grants no license to use or publish the data | Meets with constraints; one-application scope, visible attribution, credential secrecy, cancellation cleanup, and separate logo rights apply | Meets with constraints; derived apps may earn revenue, raw resale is forbidden, use is domain-scoped, and logo/image rights remain the user's responsibility |
 | Deterministic offline testing | Meets; documented JSON envelope and examples can be sanitized | Meets; documented resource examples can be sanitized | Meets; documented response examples can be sanitized |
 | API stability and documentation | Meets; versioned v3 reference, consistent envelope, status table, and current operational guidance | Meets; versioned v4 reference with focused resource and error documentation | Meets; versioned v3 reference with typed entities, includes, pagination, and errors |
-| Operational risk | Moderate; quota is daily and per-minute, shared outbound IPs can reduce effective capacity, and coverage is not guaranteed | Moderate; smallest operational surface, but delayed free-tier data and unclear public licensing terms require confirmation | Moderate; strong quota telemetry and coverage, but higher recurring cost and a richer schema increase adapter complexity |
+| Operational risk | High for new authority until separate rights clearance exists; quota is daily and per-minute, shared outbound IPs can reduce effective capacity, and coverage is not guaranteed | Moderate; smallest operational surface, but delayed free-tier data, attribution, and cancellation cleanup require explicit operation | Moderate; strong quota telemetry and coverage, but recurring cost and a richer schema increase adapter complexity |
 
 ## Candidate details
 
@@ -122,13 +130,18 @@ dashboard before purchase. The current rate-limit guidance also lists
 Pro. Limit and remaining values are returned in daily and per-minute response
 headers. Dashboard subscriptions reset daily quota at 00:00 UTC.
 
-The terms allow applications, websites, and similar derived projects, but
-forbid reselling the raw data. They disclaim guaranteed availability and data
-accuracy. Logos and images may require separate rights from their owners and
-are therefore outside the Phase 4 fixture import.
+The current terms describe applications, websites, and similar derived
+projects and forbid reselling raw data, but explicitly state that API-Sports
+does not grant a license to use or publish supplied data. The customer must
+obtain permission from competent rights holders. No such competition-specific
+rights clearance is recorded for new Phase 5 authorities. The terms also
+disclaim guaranteed availability and accuracy. Logos and images require
+separate rights and remain outside fixture imports.
 
 Key risks:
 
+- New Phase 5 authoritative use is blocked until the operator records permission
+  from the competent competition rights holder.
 - The free plan's available dataset can change and is not guaranteed to include
   all Premier League data needed by production.
 - A production deployment should budget for Pro unless a pre-deployment check
@@ -180,14 +193,25 @@ and include model do not provide material value for the narrow fixture-calendar
 scope. It is a strong alternative if later phases require richer live data or
 much broader competition coverage.
 
-## Decision summary
+The Phase 5 reassessment identifies Sportmonks as the preferred qualification
+candidate for the Austrian competitions and domestic cups because its current
+coverage publishes schedules plus stage, round, placeholder, and lifecycle
+resources. This is not a provider selection: live evidence, an operator plan
+decision, and competition-specific ADRs remain mandatory.
 
-API-Football is selected for the initial Premier League integration. It meets
-all mandatory technical requirements, provides the most explicit fixture
-lifecycle vocabulary of the evaluated candidates, and publishes sufficiently
-clear quota and usage terms. The expected production baseline is the Pro plan;
-the free plan may be used only for development after confirming that the needed
-Premier League dataset is available.
+## Historical Phase 4 decision summary
+
+API-Football was selected for the initial Phase 4 Premier League integration on
+the evidence available on 2026-08-08. It provided the most explicit fixture
+lifecycle vocabulary of the evaluated candidates and sufficiently clear quota
+guidance. That historical selection created the existing opt-in adapter and
+source mappings; it is not approval for new Phase 5 authoritative use.
+
+ADR 0003 later selected football-data.org as the sole 2026/27 Premier League
+authority after live qualification. The 2026-08-16 terms revalidation also
+found API-Sports' explicit no-license statement, so API-Football does not meet
+the rights requirement for any new authoritative competition without separate
+written clearance.
 
 The selection does not authorize credentials, live calls, or provider code in
 Phase 4.1. Those belong to later Phase 4 child issues.
@@ -196,7 +220,7 @@ Phase 4.1. Those belong to later Phase 4 child issues.
 
 Sources were accessed on 2026-08-08.
 
-### API-Football
+### API-Football sources
 
 - [Football API documentation](https://www.api-football.com/documentation)
 - [Football API coverage and pricing](https://api-sports.io/sports/football)
@@ -204,7 +228,7 @@ Sources were accessed on 2026-08-08.
 - [API-Sports terms of use](https://api-sports.io/terms)
 - [Getting-started guide and pagination](https://www.api-football.com/news/post/how-to-get-started-with-api-football-the-complete-beginners-guide)
 
-### football-data.org
+### football-data.org sources
 
 - [Coverage](https://www.football-data.org/coverage)
 - [Pricing](https://www.football-data.org/pricing)

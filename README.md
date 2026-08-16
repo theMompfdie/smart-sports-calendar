@@ -10,11 +10,11 @@
 
 **Completed phases:** Phase 1, Phase 2, Phase 3, and Phase 4
 
-**Active delivery track:** release qualification and controlled production
-promotion for `v0.4.5-beta.1`
-([tracker #64](https://github.com/theMompfdie/smart-sports-calendar/issues/64))
+**Active delivery track:** Phase 5 multi-competition football expansion for
+`v0.5.0-beta.1`
+([tracker #104](https://github.com/theMompfdie/smart-sports-calendar/issues/104))
 
-**Automated tests:** 566 passing tests
+**Automated tests:** 579 passing tests
 
 The application foundation, persistent domain model, repository layer, Microsoft Graph integration, Outlook synchronization engine, and the scheduled, reported API-Football Premier League import runtime are implemented.
 
@@ -131,6 +131,12 @@ Phase 4 documentation:
 - [manual live validation](docs/phase-4-live-validation.md)
 - [Phase 4 release checklist](docs/phase-4-release-checklist.md)
 - [v0.4 stabilization roadmap](docs/v0.4-stabilization-roadmap.md)
+
+Phase 5 decision records:
+
+- [competition lifecycle model](docs/adr/0004-model-competition-lifecycle-scopes.md)
+- [source and authority matrix](docs/phase-5-source-authority-matrix.md)
+- [source qualification boundary ADR](docs/adr/0005-bound-phase-5-source-qualification.md)
 
 ### Database and Persistence
 
@@ -473,11 +479,13 @@ delivery order and operational boundaries.
 
 ### Phase 5 – Additional Domestic Competitions
 
-**Status:** _Planned_
+**Status:** _In progress_
 
-- Austrian competitions
-- German competitions
-- additional English competitions
+- source qualification and competition-specific authority decisions
+- German Bundesliga as the first conditional implementation candidate
+- Austrian, German, and additional English competitions remain evaluated or
+  conditional until their documented qualification and implementation gates
+  pass
 
 ### Phase 6 – UEFA Competitions
 
@@ -488,6 +496,11 @@ delivery order and operational boundaries.
 - Conference League
 - Nations League
 - European Championship Qualification
+
+The Champions League, Europa League, and Conference League were evaluated for
+Phase 5 and deferred because their hybrid qualifying, league, and knockout
+lifecycle requires a dedicated capability model. They are not part of the
+`v0.5.0-beta.1` implementation scope.
 
 ### Phase 7 – NFL Provider
 
