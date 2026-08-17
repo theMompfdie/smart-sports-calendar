@@ -1,6 +1,6 @@
-# football-data.org Premier League Qualification
+# football-data.org Source Qualification
 
-## Status
+## Premier League status
 
 **Approved with mandatory operating conditions.** `football-data.org` API v4
 is the selected authoritative Premier League source for the 2026/27 season.
@@ -35,7 +35,7 @@ individual match ID. The source-update time predates qualification by about one
 month, but the season had not started and both complete snapshots were
 identical; production freshness must still be monitored per run.
 
-## Public evidence reviewed on 2026-08-09
+## Premier League public evidence reviewed on 2026-08-09
 
 - The free plan is EUR 0/month, includes fixtures, delayed schedules, and 10
   calls per minute.
@@ -69,39 +69,108 @@ football-data.org-derived events from the Outlook calendar. Provider mappings
 and any retained provider-derived data must then be removed through an
 explicit, scoped, backed-up operation. No automatic purge is authorized.
 
-## Secret-safe live qualification command
+## Bundesliga status
 
-The repository includes a read-only command that performs exactly three HTTPS
-requests: competition, teams, and matches. It emits only aggregate identifiers,
-counts, UTC boundaries, status counts, API version, a SHA-256 fingerprint of
-the sorted match IDs, the latest source-update timestamp, and the minimum
-remaining request count. It never emits the API token, raw body, authorization
-header, account identifier, team names, match IDs, or fixture details.
+**Conditional -- qualification tooling ready, live evidence pending.** The
+curated Bundesliga profile targets competition code `BL1`, competition ID
+`2002`, and the 2026/27 season. It must observe exactly 18 teams, 306 matches,
+and 34 complete regular-season matchdays.
+
+The profile does not approve football-data.org as the Bundesliga authority by
+itself. Approval requires two complete live observations at a meaningful
+interval, manual review of the secret-safe output, and a recorded authority
+decision in issue #110 and the Phase 5 source documentation. Until then, the
+Bundesliga source remains disabled outside qualification.
+
+## Bundesliga public evidence reviewed on 2026-08-17
+
+- Bundesliga is explicitly included in football-data.org's free-tier coverage.
+- API v4 identifies the competition as code `BL1` and numeric ID `2002`.
+- The official 2026/27 Bundesliga fixture announcement confirms 18 clubs, 34
+  matchdays, and 306 fixtures.
+- The documented match collection limit is 500, so a complete 306-match season
+  fits in one response. The qualifier nevertheless supports and validates
+  pagination rather than relying on that assumption.
+- The public pricing page lists 10 requests per minute for the free plan. Where
+  public provider pages disagree about a paid-plan limit, operation must use
+  the lower documented limit until the provider clarifies it.
+- The credential, attribution, fair-use, cancellation, and media-rights
+  conditions documented for Premier League use apply unchanged.
+
+The proposed initial Bundesliga polling interval is six hours. At four
+snapshots per day and normally three requests per complete snapshot, that is
+12 requests per day with a three-request burst. Against the documented free
+plan limit of 10 requests per minute, one immediate complete retry would still
+leave four requests of per-minute headroom. The live observations must confirm
+the actual `request_count` and available-quota evidence before this budget is
+approved. If the quota header is absent, the operator must verify the active
+plan independently and record only the sanitized plan limit.
+
+## Secret-safe live qualification commands
+
+The repository includes a read-only command with curated profiles for Premier
+League and Bundesliga. It makes two metadata requests plus one or more paged
+match requests. With the current expected season sizes, each profile normally
+makes exactly three requests. Free-form competition IDs and expected counts
+are deliberately unsupported.
+
+The command emits only the qualification profile, observation time, aggregate
+identifiers, counts, pagination/request counts, UTC boundaries, status counts,
+API version, a SHA-256 fingerprint of the sorted match IDs, the latest
+source-update timestamp, and the minimum remaining request count. It never
+emits the API token, raw body, authorization header, account identifier, team
+names, individual match IDs, or fixture details.
 
 In PowerShell, enter the token without echoing it or storing it in shell
-history:
+history. For the already approved Premier League profile:
 
 ```powershell
 $env:FOOTBALL_DATA_API_KEY = Read-Host -MaskInput "football-data.org API token"
-python -m app.operations.football_data_qualification --season 2026
+python -m app.operations.football_data_qualification --competition premier-league --season 2026
+Remove-Item Env:FOOTBALL_DATA_API_KEY
+```
+
+For Bundesliga qualification, run the following sequence once, review the
+output locally, wait at least 60 seconds, and repeat the qualification command.
+Remove the token immediately after the second observation:
+
+```powershell
+$env:FOOTBALL_DATA_API_KEY = Read-Host -MaskInput "football-data.org API token"
+python -m app.operations.football_data_qualification --competition bundesliga --season 2026
+# Wait at least 60 seconds, then run the same qualification command again.
+python -m app.operations.football_data_qualification --competition bundesliga --season 2026
 Remove-Item Env:FOOTBALL_DATA_API_KEY
 ```
 
 The command fails closed unless it observes:
 
-- API version `v4` on all three responses;
-- competition code `PL` and a current season starting in 2026;
-- exactly 20 distinct team IDs;
-- exactly 380 matches and 380 distinct positive match IDs;
+- API version `v4` on every response;
+- the selected profile's exact competition code and ID;
+- a current season starting in 2026 with valid start and end dates;
+- the selected profile's exact distinct-team and match counts;
+- complete offset-based pagination without overlaps or gaps;
+- distinct positive match IDs;
 - a deterministic SHA-256 fingerprint over the sorted match IDs;
 - the same competition and season identity on every match;
 - two distinct known participants on every match;
+- a complete double round-robin schedule with one appearance per team per
+  matchday and exactly one match in each directed pairing;
+- stage `REGULAR_SEASON` and the selected profile's exact matchday range;
 - UTC `utcDate` and `lastUpdated` values; and
-- only the documented supported status vocabulary.
+- only the documented supported status vocabulary; and
+- a source-update age within the profile-independent freshness policy.
 
-The output may be attached to issue #79 only after manual review. The token,
-raw response, request headers, account dashboard, and `.env` contents must never
-be copied into GitHub.
+The curated invariants are:
+
+| Profile | Code | ID | Teams | Matches | Matchdays |
+| --- | --- | ---: | ---: | ---: | ---: |
+| `premier-league` | `PL` | 2021 | 20 | 380 | 38 |
+| `bundesliga` | `BL1` | 2002 | 18 | 306 | 34 |
+
+Premier League output belongs to issue #79 and Bundesliga output belongs to
+issue #110, in both cases only after manual review. The token, raw response,
+request headers, account dashboard, and `.env` contents must never be copied
+into GitHub.
 
 ## Approved operating conditions
 
@@ -120,6 +189,10 @@ be copied into GitHub.
 - Cancellation requires the scoped re-source-or-remove procedure above before
   provider-derived data may continue to be served.
 
+These operating conditions currently approve only the Premier League profile.
+Bundesliga must not become an enabled authority until issue #110 records the
+required live observations and the decision documentation is updated.
+
 ## Sources
 
 - [Pricing](https://www.football-data.org/pricing)
@@ -131,3 +204,4 @@ be copied into GitHub.
 - [API policies and throttling](https://docs.football-data.org/general/v4/policies.html)
 - [Lookup tables and response headers](https://docs.football-data.org/general/v4/lookup_tables.html)
 - [Errors](https://docs.football-data.org/general/v4/errors.html)
+- [Official 2026/27 Bundesliga fixture announcement](https://www.bundesliga.com/en/bundesliga/news/2026-27-fixture-lists-now-available-38068)
