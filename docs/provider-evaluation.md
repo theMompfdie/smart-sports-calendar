@@ -176,6 +176,10 @@ remove the earlier discovery ambiguity. The operator accepted the required
 attribution and scoped re-source-or-remove cancellation workflow. The source
 is approved under ADR 0003 with fail-closed complete-snapshot rules.
 
+The Phase 5 qualification on 2026-08-17 also selected football-data.org
+`BL1` / 2002 as the sole proposed 2026/27 German Bundesliga authority under
+ADR 0006. That decision is qualified but not implemented, staged, or released.
+
 ### Sportmonks Football API
 
 Sportmonks v3 provides broad coverage, stable resource identifiers, explicit
@@ -212,6 +216,10 @@ authority after live qualification. The 2026-08-16 terms revalidation also
 found API-Sports' explicit no-license statement, so API-Football does not meet
 the rights requirement for any new authoritative competition without separate
 written clearance.
+
+ADR 0006 later qualified football-data.org as the sole proposed 2026/27 German
+Bundesliga authority after two stable live observations and Free-plan
+confirmation. A separate implementation issue remains mandatory.
 
 The selection does not authorize credentials, live calls, or provider code in
 Phase 4.1. Those belong to later Phase 4 child issues.

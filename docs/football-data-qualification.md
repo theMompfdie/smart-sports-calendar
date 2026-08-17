@@ -71,16 +71,38 @@ explicit, scoped, backed-up operation. No automatic purge is authorized.
 
 ## Bundesliga status
 
-**Conditional -- qualification tooling ready, live evidence pending.** The
-curated Bundesliga profile targets competition code `BL1`, competition ID
-`2002`, and the 2026/27 season. It must observe exactly 18 teams, 306 matches,
-and 34 complete regular-season matchdays.
+**Qualified with mandatory operating conditions; not implemented or
+released.** football-data.org API v4 is the selected sole proposed authority
+for the 2026/27 German Bundesliga. The live qualification passed on
+2026-08-17, authorizing a separate implementation slice but not enabling a
+source assignment, import, scheduler, database write, or Outlook operation.
 
-The profile does not approve football-data.org as the Bundesliga authority by
-itself. Approval requires two complete live observations at a meaningful
-interval, manual review of the secret-safe output, and a recorded authority
-decision in issue #110 and the Phase 5 source documentation. Until then, the
-Bundesliga source remains disabled outside qualification.
+Two complete secret-safe observations at
+`2026-08-17T19:58:26.583334+00:00` and
+`2026-08-17T20:22:07.312859+00:00`, separated by about 23 minutes and 41
+seconds, both reported:
+
+- API version `v4`, competition code `BL1`, and competition ID `2002`;
+- season ID `2522`, from 2026-08-28 through 2027-05-22;
+- 18 distinct teams;
+- 306 matches with 306 distinct positive match IDs;
+- 261 `SCHEDULED` and 45 `TIMED` matches;
+- kickoff coverage from 2026-08-28T18:30:00Z through
+  2027-05-22T13:30:00Z;
+- latest source update `2026-08-17T05:20:33Z`;
+- one complete match page and three read-only requests; and
+- `match_ids_sha256` =
+  `034542c2c3c5df368547f2e54108ca4810a68eed44b06860204be0e945c116a9`.
+
+The provider omitted both the optional match-limit echo and remaining-quota
+header. Missing limit metadata is accepted only because the request is fixed
+to 500 and the qualifier independently proves page size, response count,
+total count, unique identities, participants, matchdays, and the complete
+double round robin. A present wrong limit still fails closed.
+
+The operator confirmed the active Free plan with its documented limit of 10
+requests per minute. No token, account identifier, header, team name, fixture
+detail, individual match ID, raw payload, or secret-bearing URL was retained.
 
 ## Bundesliga public evidence reviewed on 2026-08-17
 
@@ -97,14 +119,13 @@ Bundesliga source remains disabled outside qualification.
 - The credential, attribution, fair-use, cancellation, and media-rights
   conditions documented for Premier League use apply unchanged.
 
-The proposed initial Bundesliga polling interval is six hours. At four
+The approved initial Bundesliga polling interval is six hours. At four
 snapshots per day and normally three requests per complete snapshot, that is
 12 requests per day with a three-request burst. Against the documented free
 plan limit of 10 requests per minute, one immediate complete retry would still
-leave four requests of per-minute headroom. The live observations must confirm
-the actual `request_count` and available-quota evidence before this budget is
-approved. If the quota header is absent, the operator must verify the active
-plan independently and record only the sanitized plan limit.
+leave four requests of per-minute headroom. Both live observations confirmed
+three requests. The quota header was absent, so the operator separately
+confirmed only the sanitized Free-plan name and 10-request-per-minute limit.
 
 ## Secret-safe live qualification commands
 
@@ -130,16 +151,18 @@ python -m app.operations.football_data_qualification --competition premier-leagu
 Remove-Item Env:FOOTBALL_DATA_API_KEY
 ```
 
-For Bundesliga qualification, run the following sequence once, review the
-output locally, wait at least 60 seconds, and repeat the qualification command.
-Remove the token immediately after the second observation:
+For Bundesliga requalification, run the following command once, review the
+output locally, wait at least 60 seconds, and repeat the complete command. The
+`finally` block removes the token after each observation, including failures:
 
 ```powershell
 $env:FOOTBALL_DATA_API_KEY = Read-Host -MaskInput "football-data.org API token"
-python -m app.operations.football_data_qualification --competition bundesliga --season 2026
-# Wait at least 60 seconds, then run the same qualification command again.
-python -m app.operations.football_data_qualification --competition bundesliga --season 2026
-Remove-Item Env:FOOTBALL_DATA_API_KEY
+try {
+    python -m app.operations.football_data_qualification --competition bundesliga --season 2026
+}
+finally {
+    Remove-Item Env:FOOTBALL_DATA_API_KEY -ErrorAction SilentlyContinue
+}
 ```
 
 The command fails closed unless it observes:
@@ -175,7 +198,8 @@ into GitHub.
 ## Approved operating conditions
 
 - Absence becomes removal evidence only after two complete, successful
-  380-match authoritative snapshots. A filtered, short, stale, empty,
+  authoritative snapshots for the selected profile: 380 Premier League
+  matches or 306 Bundesliga matches. A filtered, short, stale, empty,
   malformed, failed, or wrong-scope response is never authoritative.
 - Visible attribution is mandatory while provider-derived data is served.
 - Credentials remain in the operator secret store and never enter GitHub,
@@ -189,9 +213,10 @@ into GitHub.
 - Cancellation requires the scoped re-source-or-remove procedure above before
   provider-derived data may continue to be served.
 
-These operating conditions currently approve only the Premier League profile.
-Bundesliga must not become an enabled authority until issue #110 records the
-required live observations and the decision documentation is updated.
+These conditions qualify both curated profiles. Qualification is not
+implementation: Bundesliga must remain disabled until a separate issue adds
+and validates its catalog, mappings, adapter path, scheduler isolation,
+SQLite-to-Graph behavior, attribution, and staging evidence.
 
 ## Sources
 
