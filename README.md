@@ -223,6 +223,12 @@ events, event participants, results, statistics, calendar event mappings, and
 synchronization runs. It supports team-based competitions and
 participant-based sports that may be added later.
 
+The [multi-competition catalog foundation](docs/multi-competition-catalog.md)
+records the qualified Bundesliga competition and 2026/27 season alongside the
+existing Premier League catalog. This is catalog metadata only: Bundesliga
+participants, fixture import, scheduling, staging, and release remain separate
+Phase 5 work.
+
 ## Design Principles
 
 - **Separation of responsibilities:** configuration, lifecycle, providers, persistence, synchronization, Graph, scheduling, and logging remain independent.
