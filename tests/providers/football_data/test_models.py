@@ -49,7 +49,7 @@ def test_complete_snapshot_is_sorted_and_typed() -> None:
 def test_reviewed_team_name_variants_resolve_deterministically(
     provider_name: str, expected: str
 ) -> None:
-    assert resolve_team_key(provider_name) == expected
+    assert resolve_team_key("premier_league", provider_name) == expected
 
 
 @pytest.mark.parametrize(

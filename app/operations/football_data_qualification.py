@@ -9,6 +9,11 @@ from datetime import UTC, date, datetime, timedelta
 from http.client import HTTPException, HTTPSConnection
 from typing import Any, Protocol
 
+from app.providers.football_data.competition_mappings import (
+    BUNDESLIGA_MAPPING,
+    PREMIER_LEAGUE_MAPPING,
+)
+
 API_HOST = "api.football-data.org"
 MAX_RESPONSE_BYTES = 4 * 1024 * 1024
 MATCH_PAGE_LIMIT = 500
@@ -59,8 +64,8 @@ class FootballDataQualificationProfile:
 PREMIER_LEAGUE_PROFILE = FootballDataQualificationProfile(
     key="premier-league",
     competition_name="Premier League",
-    competition_code="PL",
-    competition_id=2021,
+    competition_code=PREMIER_LEAGUE_MAPPING.external_code,
+    competition_id=PREMIER_LEAGUE_MAPPING.external_id,
     expected_team_count=20,
     expected_match_count=380,
     expected_matchdays=38,
@@ -68,8 +73,8 @@ PREMIER_LEAGUE_PROFILE = FootballDataQualificationProfile(
 BUNDESLIGA_PROFILE = FootballDataQualificationProfile(
     key="bundesliga",
     competition_name="Bundesliga",
-    competition_code="BL1",
-    competition_id=2002,
+    competition_code=BUNDESLIGA_MAPPING.external_code,
+    competition_id=BUNDESLIGA_MAPPING.external_id,
     expected_team_count=18,
     expected_match_count=306,
     expected_matchdays=34,

@@ -42,7 +42,7 @@ def create_repositories(
     )
 
 
-def test_initialize_seasons_catalog_creates_premier_league_season(
+def test_initialize_seasons_catalog_creates_reviewed_seasons(
     tmp_path: Path,
 ) -> None:
     (
@@ -58,9 +58,7 @@ def test_initialize_seasons_catalog_creates_premier_league_season(
         sports_repository=sports_repository,
     )
 
-    assert len(seasons) == 1
-
-    season = seasons[0]
+    assert len(seasons) == 2
     football = sports_repository.get_by_key("football")
 
     assert football is not None
@@ -71,13 +69,28 @@ def test_initialize_seasons_catalog_creates_premier_league_season(
     )
 
     assert premier_league is not None
-    assert season.competition_id == premier_league.id
-    assert season.season_key == "2026_27"
-    assert season.name == "2026/27"
-    assert season.start_date == "2026-08-21"
-    assert season.end_date == "2027-05-30"
-    assert season.is_current is True
-    assert season.metadata is None
+    bundesliga = competitions_repository.get_by_key(
+        sport_id=football.id,
+        competition_key="bundesliga",
+    )
+    assert bundesliga is not None
+    by_competition = {season.competition_id: season for season in seasons}
+
+    premier_league_season = by_competition[premier_league.id]
+    assert premier_league_season.season_key == "2026_27"
+    assert premier_league_season.name == "2026/27"
+    assert premier_league_season.start_date == "2026-08-21"
+    assert premier_league_season.end_date == "2027-05-30"
+    assert premier_league_season.is_current is True
+    assert premier_league_season.metadata is None
+
+    bundesliga_season = by_competition[bundesliga.id]
+    assert bundesliga_season.season_key == "2026_27"
+    assert bundesliga_season.name == "2026/27"
+    assert bundesliga_season.start_date == "2026-08-28"
+    assert bundesliga_season.end_date == "2027-05-22"
+    assert bundesliga_season.is_current is True
+    assert bundesliga_season.metadata is None
 
 
 def test_initialize_seasons_catalog_can_run_repeatedly(
@@ -116,8 +129,10 @@ def test_initialize_seasons_catalog_can_run_repeatedly(
         ).fetchone()
 
     assert season_count == (1,)
-    assert second_result[0].id == first_result[0].id
-    assert second_result[0].created_at == first_result[0].created_at
+    assert [item.id for item in second_result] == [item.id for item in first_result]
+    assert [item.created_at for item in second_result] == [
+        item.created_at for item in first_result
+    ]
 
 
 def test_initialize_seasons_catalog_restores_master_data(
@@ -188,3 +203,21 @@ def test_initialize_seasons_catalog_requires_premier_league(
             competitions_repository=CompetitionsRepository(database_path),
             sports_repository=sports_repository,
         )
+
+
+def test_initialize_seasons_catalog_identifies_missing_bundesliga(
+    tmp_path: Path,
+) -> None:
+    database_path, sports, competitions, seasons = create_repositories(tmp_path)
+    football = sports.get_by_key("football")
+    assert football is not None
+    bundesliga = competitions.get_by_key(football.id, "bundesliga")
+    assert bundesliga is not None
+    with sqlite3.connect(database_path) as connection:
+        connection.execute("DELETE FROM competitions WHERE id = ?", (bundesliga.id,))
+
+    with pytest.raises(
+        RuntimeError,
+        match="Required competition not found.*bundesliga",
+    ):
+        initialize_seasons_catalog(seasons, competitions, sports)

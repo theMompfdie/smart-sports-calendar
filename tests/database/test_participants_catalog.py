@@ -38,7 +38,8 @@ def initialize(tmp_path: Path):
 
 
 def test_catalog_creates_and_assigns_twenty_teams(tmp_path: Path) -> None:
-    _, result = initialize(tmp_path)
+    repositories, result = initialize(tmp_path)
+    database_path = repositories[0]
     assert len(result.participants) == 20
     assert len(result.season_participants) == 20
     assert {item.participant_key for item in result.participants} >= {
@@ -49,6 +50,17 @@ def test_catalog_creates_and_assigns_twenty_teams(tmp_path: Path) -> None:
     }
     assert all(item.participant_type == "team" for item in result.participants)
     assert all(item.country_code == "GB-ENG" for item in result.participants)
+    with sqlite3.connect(database_path) as connection:
+        bundesliga_memberships = connection.execute(
+            """
+            SELECT COUNT(*)
+            FROM season_participants AS membership
+            JOIN seasons AS season ON season.id = membership.season_id
+            JOIN competitions AS competition ON competition.id = season.competition_id
+            WHERE competition.competition_key = 'bundesliga'
+            """
+        ).fetchone()
+    assert bundesliga_memberships == (0,)
 
 
 def test_catalog_excludes_relegated_teams(tmp_path: Path) -> None:
