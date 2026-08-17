@@ -361,14 +361,9 @@ def _validate_match_filters(
     response_season = filters.get("season")
     if isinstance(response_season, bool) or str(response_season) != str(season):
         raise QualificationError("Provider returned the wrong match season filter.")
-    if _positive_int(filters, "limit") != limit:
+    if _filter_int(filters, "limit", default=limit) != limit:
         raise QualificationError("Provider returned the wrong match limit filter.")
-    response_offset = filters.get("offset", 0)
-    if (
-        isinstance(response_offset, bool)
-        or not isinstance(response_offset, int)
-        or response_offset != offset
-    ):
+    if _filter_int(filters, "offset", default=0) != offset:
         raise QualificationError("Provider returned the wrong match offset filter.")
 
 
@@ -460,15 +455,35 @@ def _list(payload: Mapping[str, Any], key: str) -> list[Any]:
 def _positive_int(payload: Mapping[str, Any], key: str) -> int:
     value = payload.get(key)
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
-        raise QualificationError("Provider response has an invalid integer field.")
+        raise QualificationError(
+            f"Provider response has an invalid integer field: {key}."
+        )
     return value
 
 
 def _non_negative_int(payload: Mapping[str, Any], key: str) -> int:
     value = payload.get(key)
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
-        raise QualificationError("Provider response has an invalid integer field.")
+        raise QualificationError(
+            f"Provider response has an invalid integer field: {key}."
+        )
     return value
+
+
+def _filter_int(
+    payload: Mapping[str, Any],
+    key: str,
+    *,
+    default: int | None = None,
+) -> int:
+    value = payload.get(key, default)
+    if isinstance(value, bool):
+        raise QualificationError(f"Provider returned an invalid {key} match filter.")
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and value.isascii() and value.isdecimal():
+        return int(value)
+    raise QualificationError(f"Provider returned an invalid {key} match filter.")
 
 
 def _string(payload: Mapping[str, Any], key: str) -> str:

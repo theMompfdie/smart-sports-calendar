@@ -114,9 +114,12 @@ def valid_responses(
     pages = []
     for offset in range(0, len(matches), page_limit):
         page = matches[offset : offset + page_limit]
-        filters: dict[str, object] = {"season": "2026", "limit": page_limit}
+        filters: dict[str, object] = {
+            "season": "2026",
+            "limit": str(page_limit),
+        }
         if offset:
-            filters["offset"] = offset
+            filters["offset"] = str(offset)
         pages.append(
             response(
                 {
@@ -260,6 +263,18 @@ def test_qualification_rejects_inconsistent_result_count() -> None:
         run_qualification(responses)
 
 
+def test_qualification_accepts_missing_optional_limit_echo() -> None:
+    responses = valid_responses(BUNDESLIGA_PROFILE)
+    matches_payload = payload(responses[2])
+    matches_payload["filters"].pop("limit")
+    responses[2] = with_payload(responses[2], matches_payload)
+
+    evidence = run_qualification(responses, profile=BUNDESLIGA_PROFILE)
+
+    assert evidence.match_count == 306
+    assert evidence.match_page_count == 1
+
+
 def test_qualification_rejects_incomplete_season() -> None:
     responses = valid_responses()
     matches_payload = payload(responses[2])
@@ -336,6 +351,8 @@ def test_qualification_rejects_wrong_match_identity(
     [
         ("season", "2025", "season filter"),
         ("limit", 499, "limit filter"),
+        ("limit", "five hundred", "invalid limit"),
+        ("offset", True, "invalid offset"),
     ],
 )
 def test_qualification_rejects_wrong_match_filter(
