@@ -16,6 +16,21 @@ class ParticipantsCatalogResult:
     season_participants: list[SeasonParticipant]
 
 
+@dataclass(frozen=True)
+class ParticipantCatalogEntry:
+    participant_key: str
+    name: str
+    short_name: str
+
+
+@dataclass(frozen=True)
+class SeasonParticipantsCatalogEntry:
+    competition_key: str
+    season_key: str
+    country_code: str
+    participants: tuple[ParticipantCatalogEntry, ...]
+
+
 PREMIER_LEAGUE_2026_27_TEAMS = (
     ("arsenal", "Arsenal", "Arsenal"),
     ("aston_villa", "Aston Villa", "Aston Villa"),
@@ -39,6 +54,22 @@ PREMIER_LEAGUE_2026_27_TEAMS = (
     ("tottenham_hotspur", "Tottenham Hotspur", "Spurs"),
 )
 
+SEASON_PARTICIPANTS_CATALOG = (
+    SeasonParticipantsCatalogEntry(
+        competition_key="premier_league",
+        season_key="2026_27",
+        country_code="GB-ENG",
+        participants=tuple(
+            ParticipantCatalogEntry(
+                participant_key=participant_key,
+                name=name,
+                short_name=short_name,
+            )
+            for participant_key, name, short_name in PREMIER_LEAGUE_2026_27_TEAMS
+        ),
+    ),
+)
+
 
 def initialize_participants_catalog(
     repository: ParticipantsRepository,
@@ -53,42 +84,46 @@ def initialize_participants_catalog(
             "Required sport not found for participants catalog: football"
         )
 
-    premier_league = competitions_repository.get_by_key(
-        sport_id=football.id,
-        competition_key="premier_league",
-    )
-    if premier_league is None:
-        raise RuntimeError(
-            "Required competition not found for participants catalog: premier_league"
-        )
-
-    season = seasons_repository.get_by_key(
-        competition_id=premier_league.id,
-        season_key="2026_27",
-    )
-    if season is None:
-        raise RuntimeError(
-            "Required season not found for participants catalog: 2026_27"
-        )
-
-    participants = [
-        repository.upsert(
+    participants: list[Participant] = []
+    memberships: list[SeasonParticipant] = []
+    for catalog_entry in SEASON_PARTICIPANTS_CATALOG:
+        competition = competitions_repository.get_by_key(
             sport_id=football.id,
-            participant_key=participant_key,
-            participant_type="team",
-            name=name,
-            short_name=short_name,
-            country_code="GB-ENG",
+            competition_key=catalog_entry.competition_key,
         )
-        for participant_key, name, short_name in PREMIER_LEAGUE_2026_27_TEAMS
-    ]
-    memberships = [
-        season_participants_repository.upsert(
-            season_id=season.id,
-            participant_id=participant.id,
+        if competition is None:
+            raise RuntimeError(
+                "Required competition not found for participants catalog: "
+                f"{catalog_entry.competition_key}"
+            )
+        season = seasons_repository.get_by_key(
+            competition_id=competition.id,
+            season_key=catalog_entry.season_key,
         )
-        for participant in participants
-    ]
+        if season is None:
+            raise RuntimeError(
+                "Required season not found for participants catalog: "
+                f"{catalog_entry.competition_key}/{catalog_entry.season_key}"
+            )
+        catalog_participants = [
+            repository.upsert(
+                sport_id=football.id,
+                participant_key=entry.participant_key,
+                participant_type="team",
+                name=entry.name,
+                short_name=entry.short_name,
+                country_code=catalog_entry.country_code,
+            )
+            for entry in catalog_entry.participants
+        ]
+        participants.extend(catalog_participants)
+        memberships.extend(
+            season_participants_repository.upsert(
+                season_id=season.id,
+                participant_id=participant.id,
+            )
+            for participant in catalog_participants
+        )
 
     return ParticipantsCatalogResult(
         participants=participants,

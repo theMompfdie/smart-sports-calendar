@@ -29,7 +29,7 @@ def create_repositories(
     )
 
 
-def test_initialize_competitions_catalog_creates_premier_league(
+def test_initialize_competitions_catalog_creates_reviewed_competitions(
     tmp_path: Path,
 ) -> None:
     _, sports_repository, competitions_repository = create_repositories(tmp_path)
@@ -39,9 +39,11 @@ def test_initialize_competitions_catalog_creates_premier_league(
         sports_repository=sports_repository,
     )
 
-    assert len(competitions) == 1
+    assert len(competitions) == 2
 
-    premier_league = competitions[0]
+    by_key = {competition.competition_key: competition for competition in competitions}
+    premier_league = by_key["premier_league"]
+    bundesliga = by_key["bundesliga"]
     football = sports_repository.get_by_key("football")
 
     assert football is not None
@@ -54,6 +56,15 @@ def test_initialize_competitions_catalog_creates_premier_league(
     assert premier_league.metadata == {
         "region": "England",
         "calendar_category": "SMART | England",
+    }
+    assert bundesliga.sport_id == football.id
+    assert bundesliga.name == "Bundesliga"
+    assert bundesliga.short_name == "BL"
+    assert bundesliga.country_code == "DE"
+    assert bundesliga.competition_type == "league"
+    assert bundesliga.metadata == {
+        "region": "Germany",
+        "calendar_category": "SMART | Germany",
     }
 
 
@@ -84,8 +95,10 @@ def test_initialize_competitions_catalog_can_run_repeatedly(
         ).fetchone()
 
     assert competition_count == (1,)
-    assert second_result[0].id == first_result[0].id
-    assert second_result[0].created_at == first_result[0].created_at
+    assert [item.id for item in second_result] == [item.id for item in first_result]
+    assert [item.created_at for item in second_result] == [
+        item.created_at for item in first_result
+    ]
 
 
 def test_initialize_competitions_catalog_restores_master_data(
@@ -125,6 +138,41 @@ def test_initialize_competitions_catalog_restores_master_data(
     assert premier_league.metadata == {
         "region": "England",
         "calendar_category": "SMART | England",
+    }
+
+    bundesliga = competitions_repository.get_by_key(
+        sport_id=football.id,
+        competition_key="bundesliga",
+    )
+    assert bundesliga is not None
+    competitions_repository.upsert(
+        sport_id=football.id,
+        competition_key="bundesliga",
+        name="Incorrect name",
+        short_name=None,
+        country_code=None,
+        competition_type=None,
+        metadata=None,
+    )
+
+    initialize_competitions_catalog(
+        repository=competitions_repository,
+        sports_repository=sports_repository,
+    )
+
+    restored_bundesliga = competitions_repository.get_by_key(
+        sport_id=football.id,
+        competition_key="bundesliga",
+    )
+    assert restored_bundesliga is not None
+    assert restored_bundesliga.id == bundesliga.id
+    assert restored_bundesliga.name == "Bundesliga"
+    assert restored_bundesliga.short_name == "BL"
+    assert restored_bundesliga.country_code == "DE"
+    assert restored_bundesliga.competition_type == "league"
+    assert restored_bundesliga.metadata == {
+        "region": "Germany",
+        "calendar_category": "SMART | Germany",
     }
 
 

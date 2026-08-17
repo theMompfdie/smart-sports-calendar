@@ -54,12 +54,20 @@ _NORMALIZED_TEAM_MAPPING.update(
     }
 )
 
+TEAM_NAME_MAPPINGS: dict[str, dict[str, str]] = {
+    "premier_league": _NORMALIZED_TEAM_MAPPING,
+    "bundesliga": {},
+}
 
-def resolve_team_key(provider_name: str) -> str | None:
+
+def resolve_team_key(competition_key: str, provider_name: str) -> str | None:
+    mapping = TEAM_NAME_MAPPINGS.get(competition_key)
+    if mapping is None:
+        return None
     normalized = re.sub(r"[^a-z0-9]", "", provider_name.casefold())
-    exact = _NORMALIZED_TEAM_MAPPING.get(normalized)
+    exact = mapping.get(normalized)
     if exact is not None:
         return exact
     for affix in ("footballclub", "afc", "fc"):
         normalized = normalized.removeprefix(affix).removesuffix(affix)
-    return _NORMALIZED_TEAM_MAPPING.get(normalized)
+    return mapping.get(normalized)

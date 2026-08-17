@@ -5,13 +5,14 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from app.providers.contracts import RateLimitSnapshot
+from app.providers.football_data.competition_mappings import PREMIER_LEAGUE_MAPPING
 from app.providers.football_data.exceptions import (
     FootballDataIntegrityError,
     FootballDataSchemaError,
 )
 
-PREMIER_LEAGUE_CODE = "PL"
-PREMIER_LEAGUE_ID = 2021
+PREMIER_LEAGUE_CODE = PREMIER_LEAGUE_MAPPING.external_code
+PREMIER_LEAGUE_ID = PREMIER_LEAGUE_MAPPING.external_id
 EXPECTED_TEAM_COUNT = 20
 EXPECTED_MATCH_COUNT = 380
 

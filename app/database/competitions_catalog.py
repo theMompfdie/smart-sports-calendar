@@ -1,9 +1,44 @@
+from dataclasses import dataclass
+
 from app.database.competitions_repository import (
     Competition,
     CompetitionsRepository,
 )
 from app.database.sports_repository import SportsRepository
 from app.domain.competition_lifecycle import CompetitionFormat
+
+
+@dataclass(frozen=True)
+class CompetitionCatalogEntry:
+    competition_key: str
+    name: str
+    short_name: str
+    country_code: str
+    competition_format: CompetitionFormat
+    region: str
+    calendar_category: str
+
+
+COMPETITION_CATALOG = (
+    CompetitionCatalogEntry(
+        competition_key="premier_league",
+        name="Premier League",
+        short_name="PL",
+        country_code="GB-ENG",
+        competition_format=CompetitionFormat.LEAGUE,
+        region="England",
+        calendar_category="SMART | England",
+    ),
+    CompetitionCatalogEntry(
+        competition_key="bundesliga",
+        name="Bundesliga",
+        short_name="BL",
+        country_code="DE",
+        competition_format=CompetitionFormat.LEAGUE,
+        region="Germany",
+        calendar_category="SMART | Germany",
+    ),
+)
 
 
 def initialize_competitions_catalog(
@@ -20,14 +55,15 @@ def initialize_competitions_catalog(
     return [
         repository.upsert(
             sport_id=football.id,
-            competition_key="premier_league",
-            name="Premier League",
-            short_name="PL",
-            country_code="GB-ENG",
-            competition_type=CompetitionFormat.LEAGUE,
+            competition_key=entry.competition_key,
+            name=entry.name,
+            short_name=entry.short_name,
+            country_code=entry.country_code,
+            competition_type=entry.competition_format,
             metadata={
-                "region": "England",
-                "calendar_category": "SMART | England",
+                "region": entry.region,
+                "calendar_category": entry.calendar_category,
             },
         )
+        for entry in COMPETITION_CATALOG
     ]

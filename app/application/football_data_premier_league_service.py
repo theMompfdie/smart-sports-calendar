@@ -167,7 +167,7 @@ class FootballDataPremierLeagueService:
         participants_by_provider_id: dict[int, Participant] = {}
         resolved_team_keys: set[str] = set()
         for team in snapshot.teams:
-            participant_key = resolve_team_key(team.name)
+            participant_key = resolve_team_key("premier_league", team.name)
             if participant_key is None:
                 raise FootballDataIntegrityError(
                     "Provider team name does not match the reviewed 2026/27 mapping."
