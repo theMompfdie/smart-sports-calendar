@@ -137,6 +137,7 @@ Phase 5 decision records:
 - [competition lifecycle model](docs/adr/0004-model-competition-lifecycle-scopes.md)
 - [source and authority matrix](docs/phase-5-source-authority-matrix.md)
 - [source qualification boundary ADR](docs/adr/0005-bound-phase-5-source-qualification.md)
+- [football-data.org Bundesliga selection ADR](docs/adr/0006-select-football-data-for-bundesliga.md)
 
 ### Database and Persistence
 

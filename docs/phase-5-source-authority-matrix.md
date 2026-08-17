@@ -3,9 +3,11 @@
 ## Status and decision boundary
 
 This record implements the source-qualification decision for GitHub issue #108.
-Evidence was reviewed on 2026-08-16. Provider coverage, prices, terms,
-competition formats, and season data can change and must be revalidated before
-an operator accepts a subscription or enables a source.
+Initial evidence was reviewed on 2026-08-16. The Bundesliga decision was
+updated from two live observations and operator plan confirmation on
+2026-08-17. Provider coverage, prices, terms, competition formats, and season
+data can change and must be revalidated before an operator accepts a
+subscription or enables a source.
 
 The matrix evaluates the released Premier League baseline and all eleven Phase
 5 candidates. It does not enable a source, add catalog data, authorize a paid
@@ -133,7 +135,7 @@ non-authoritative and cannot advance removal evidence.
 | --- | --- | --- | --- | --- | --- |
 | English Premier League | 2026/27 | `league`; authoritative unfiltered `complete_season` | football-data.org `PL` / 2021 | **Qualified** | Existing ADR 0003 and two-observation live evidence apply; 20 teams and 380 unique fixtures; visible attribution and cancellation cleanup remain mandatory. |
 | EFL Championship | 2026/27 | `league`; `partial` until regular season and revised play-off boundary are proved complete | football-data.org `ELC` / 2016 | **Conditional** | Live evidence must prove pagination beyond 500, stable identity, and whether the 46-match regular season plus seven-match play-off structure is one safe season scope. No removals while partial. |
-| German Bundesliga | 2026/27 | `league`; candidate `complete_season` | football-data.org `BL1` / 2002 | **Conditional** | Two secret-safe live observations must prove 18 teams, 306 unique fixtures, stable IDs, UTC fields, supported states, complete pagination, and current data. This is the first implementation candidate after qualification. |
+| German Bundesliga | 2026/27 | `league`; authoritative unfiltered `complete_season` | football-data.org `BL1` / 2002 | **Qualified** | ADR 0006 and two stable live observations apply; season 2522, 18 teams, 306 unique fixtures, one page, three requests, and a confirmed Free plan at 10 requests/minute. Qualification is not implementation or release. |
 | German 2. Bundesliga | 2026/27 | `league`; candidate `complete_season` | football-data.org `BL2` / 2004 | **Conditional** | The operator must accept the Standard-tier cost and live evidence must prove 18 teams, 306 fixtures, identity, lifecycle, and completeness. |
 | Austrian Bundesliga | 2026/27 | `league`; `partial` for the 22-round ground phase, then explicit stage scopes | Sportmonks league 181 | **Conditional** | A paid selection and new adapter are required. Live evidence must prove the split into championship/relegation groups, placeholder behavior, stable IDs across the split, and a safe stage-completeness boundary. football-data.org exposes only ground-round dates publicly and is not removal-capable for the full season. |
 | FA Cup | 2026/27 | `knockout_cup`; `partial` until a specific round is complete | Sportmonks league 24, subject to live lookup | **Conditional** | Current-season coverage, round/leg identifiers, placeholders, replay policy, identity across draws/reschedules, and complete-round evidence require live proof. Cup removal remains disabled. |
@@ -190,8 +192,9 @@ qualification can complete.
 
 The approved first implementation candidate is the **2026/27 German
 Bundesliga only**, using football-data.org `BL1` / 2002. Catalog, mapping,
-adapter-generalization, scheduler, and staging issues remain blocked until the
-conditional live gate below passes and the matrix is updated to `Qualified`.
+adapter-generalization, scheduler, and staging work may now proceed only in a
+separate implementation issue. Qualification does not enable a source or make
+a release claim.
 
 The EFL Championship is next in the qualification queue, not part of the first
 implementation issue. Keeping it separate prevents its pagination and revised
@@ -229,11 +232,11 @@ the outcome can change to `Qualified`:
    changed terms.
 8. Update this decision record and add a focused ADR before implementation.
 
-The existing Premier League qualification command is intentionally strict for
-`PL` and 380 matches. It must not be reused for another competition by merely
-changing a URL or expected count. Generic qualification tooling, if needed,
-belongs in the competition's implementation-preparation issue and requires
-offline tests. Normal CI remains credential-free and network-free.
+The qualification command exposes only reviewed, immutable competition
+profiles. Premier League remains strict at `PL` / 2021, 20 teams, and 380
+matches; Bundesliga is strict at `BL1` / 2002, 18 teams, and 306 matches.
+Competition identities and expected counts are not free-form operator input.
+Normal CI remains credential-free and network-free.
 
 ## Polling and operational budget
 
@@ -246,6 +249,10 @@ a job.
   pagination, retries, qualification, catalog lookups, and monitoring.
 - The Bundesliga fits within one football-data.org match page at 306 fixtures;
   the Championship requires at least two pages if play-offs are included.
+- Bundesliga qualification observed exactly three requests per snapshot. The
+  operator confirmed the Free plan at 10 requests per minute after the optional
+  quota header was absent in both observations. One immediate complete retry
+  therefore uses six requests and retains four requests of headroom.
 - Each implementation issue must calculate its exact calls/cycle from the live
   pagination result, reserve retry headroom, and stay below the lower of the
   documented and dashboard limits.
@@ -261,7 +268,7 @@ a job.
 
 | Outcome group | Required work before release |
 | --- | --- |
-| Bundesliga | Complete live gate; add focused selection ADR; catalog and mappings; generalize the existing football-data adapter without weakening PL validation; offline fixtures/tests; SQLite-to-mocked-Graph integration; isolated staging proof; docs and attribution. |
+| Bundesliga | Create a separate implementation issue; add catalog and mappings; generalize the existing football-data adapter without weakening PL validation; add offline fixtures/tests, SQLite-to-mocked-Graph integration, isolated staging proof, docs, and attribution. |
 | Championship and 2. Bundesliga | Separate qualification and implementation issues after Bundesliga; prove competition-specific counts, pagination, and play-off/relegation semantics. |
 | Austrian Bundesliga and domestic cups | Operator provider/plan decision; Sportmonks adapter qualification; stage/round and placeholder policy; non-destructive import first; later destructive reconciliation only under a new ADR. |
 | UEFA competitions | Hybrid competition-capability ADR and model implementation; then repeat source and live qualification. |
