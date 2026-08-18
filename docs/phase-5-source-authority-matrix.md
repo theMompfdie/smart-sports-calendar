@@ -18,6 +18,9 @@ writer.
 Implementation status update, 2026-08-18: issue #114 implements the qualified
 Bundesliga adapter and runtime boundary with credential-free tests. Bundesliga
 is not yet live-staged or released; those operator gates remain outstanding.
+Issue #118 qualifies OpenLigaDB rather than the rejected paid Sportmonks
+candidate for the DFB-Pokal. ADR 0007 permanently limits that authority to
+non-destructive `partial` observations.
 
 Decision meanings:
 
@@ -106,6 +109,25 @@ guaranteed. Cancellation stops renewal but preserves access only through the
 paid billing period. A source replacement and retained-data decision is
 therefore required before access ends.
 
+### OpenLigaDB API v1
+
+OpenLigaDB is a free community-maintained sports database intended for
+automated use through an unauthenticated JSON API. Its 2026 directory exposes
+the DFB-Pokal as league `4945`, shortcut `dfb`, season `2026`, with six ordered
+groups. Matches expose fixture, participant, league, season, and group IDs plus
+UTC kickoffs and provider-local update timestamps.
+
+The API data is offered under ODbL 1.0. Public produced works require
+attribution, and public adapted databases can trigger share-alike and
+machine-readable-access obligations. Linked club logos and icons have separate
+rights and are excluded from retrieval and persistence.
+
+Community editing, the lack of a documented completeness marker, and the
+absence of explicit placeholder, cancellation, postponement, pagination,
+quota, and rate-limit semantics prevent removal-capable observations. The
+DFB-Pokal source must stay `partial`; the official DFB schedule is used only
+for manual verification.
+
 ### API-Football v3
 
 API-Football has broad technical coverage, stable fixture IDs, detailed states,
@@ -123,7 +145,8 @@ decision.
 | Provider | Authentication and secret handling | Caching, persistence, derived use, and exit condition |
 | --- | --- | --- |
 | football-data.org | Send the application token only in `X-Auth-Token`; never log the header, client/account headers, raw errors, or a secret-bearing URL. | No separate public cache TTL was found. Persist only the fixture fields required by the calendar under the one-application and attribution conditions. Before cancellation, disable retrieval and either qualify a replacement source or remove provider-derived events, mappings, and retained data through a scoped, backed-up operator procedure. |
-| Sportmonks | Keep the API token in environment/secret-store configuration. Documentation examples place it in a query parameter, so request URLs and transport errors require explicit redaction. | Terms allow storage/distribution of returned data and derived applications but not resale of the service or raw product. Use is domain-scoped. Before subscription access ends, decide and document replacement, retained-data, and source-mapping handling. |
+| Sportmonks | Keep the API token in environment/secret-store configuration and send it only in the supported `Authorization` header. Never place `api_token` in request URLs; sanitize transport failures. | Terms allow storage/distribution of returned data and derived applications but not resale of the service or raw product. Use is domain-scoped. Before subscription access ends, decide and document replacement, retained-data, and source-mapping handling. |
+| OpenLigaDB | Public read access requires no account or token. Use only fixed HTTPS API paths and never retrieve linked logo/icon resources. | Data is ODbL 1.0. Record attribution and the deployment-specific produced-work/adapted-database decision before approval. Community data and provider mappings remain non-destructive while scope is `partial`. |
 | API-Football | Send the token only in `x-apisports-key`; redact authentication, account, quota, and raw-error details. | No new authoritative caching, persistence, or publication is approved because the provider does not grant the required data license. Existing legacy mappings remain non-authoritative unless separate rights clearance changes this decision. |
 
 Provider response ordering is never completeness evidence. Adapters must consume
@@ -144,13 +167,13 @@ non-authoritative and cannot advance removal evidence.
 | Austrian Bundesliga | 2026/27 | `league`; `partial` for the 22-round ground phase, then explicit stage scopes | Sportmonks league 181 | **Conditional** | A paid selection and new adapter are required. Live evidence must prove the split into championship/relegation groups, placeholder behavior, stable IDs across the split, and a safe stage-completeness boundary. football-data.org exposes only ground-round dates publicly and is not removal-capable for the full season. |
 | FA Cup | 2026/27 | `knockout_cup`; `partial` until a specific round is complete | Sportmonks league 24, subject to live lookup | **Conditional** | Current-season coverage, round/leg identifiers, placeholders, replay policy, identity across draws/reschedules, and complete-round evidence require live proof. Generic bounded reconciliation exists, but this competition remains removal-disabled until qualification passes. |
 | EFL Cup | 2026/27 | `knockout_cup`; `partial` until a specific round is complete | Sportmonks league 27 | **Conditional** | Current-season coverage, two-legged round semantics, placeholders, stable identity, and complete-round evidence require live proof. Generic bounded reconciliation exists, but this competition remains removal-disabled until qualification passes. |
-| DFB-Pokal | 2026/27 | `knockout_cup`; `partial` until a specific round is complete | Sportmonks league 109 | **Conditional** | Current-season coverage, round identity, placeholders, cancellations/reschedules, and complete-round evidence require live proof. Generic bounded reconciliation exists, but this competition remains removal-disabled until qualification passes. |
+| DFB-Pokal | 2026/27 | `knockout_cup`; permanently `partial` with this provider | OpenLigaDB league 4945 / `dfb` / 2026 | **Qualified** | ADR 0007 records two stable live observations, the manual DFB comparison, exact attribution, and the ODbL operating boundary. The API has no sufficient completeness or cancellation/placeholder contract, so the source is permanently removal-disabled. |
 | ÖFB Cup | 2026/27 | `knockout_cup`; `partial` until a specific round is complete | Sportmonks league 187 | **Conditional** | A paid selection, current-season live coverage, stable identity, stage/round mapping, and complete-round evidence are required. football-data.org is rejected for this competition because its public catalog is stale at 2020/21. |
 | UEFA Champions League | 2026/27 | not representable by one Phase 5.1 format; qualifying, league, and knockout scopes | Sportmonks league 2 as future candidate | **Deferred** | The hybrid lifecycle exceeds ADR 0004, participants and fixtures are incremental, and current authority evidence is incomplete. No `v0.5.0-beta.1` release claim. |
 | UEFA Europa League | 2026/27 | not representable by one Phase 5.1 format; qualifying, league, and knockout scopes | Sportmonks league 5 as future candidate | **Deferred** | Same hybrid-model gap and incremental completeness risk as the Champions League. No `v0.5.0-beta.1` release claim. |
 | UEFA Conference League | 2026/27 | not representable by one Phase 5.1 format; qualifying, league, and knockout scopes | Sportmonks league 2286 as future candidate | **Deferred** | Same hybrid-model gap and incremental completeness risk as the Champions League. No `v0.5.0-beta.1` release claim. |
 
-The Sportmonks candidate set is not approval to run multiple authorities. A
+The provider candidate set is not approval to run multiple authorities. A
 future implementation must select exactly one provider assignment for each
 competition and season after its conditions pass.
 
