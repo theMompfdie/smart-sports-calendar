@@ -58,7 +58,7 @@ def test_initialize_seasons_catalog_creates_reviewed_seasons(
         sports_repository=sports_repository,
     )
 
-    assert len(seasons) == 2
+    assert len(seasons) == 3
     football = sports_repository.get_by_key("football")
 
     assert football is not None
@@ -74,6 +74,11 @@ def test_initialize_seasons_catalog_creates_reviewed_seasons(
         competition_key="bundesliga",
     )
     assert bundesliga is not None
+    dfb_pokal = competitions_repository.get_by_key(
+        sport_id=football.id,
+        competition_key="dfb_pokal",
+    )
+    assert dfb_pokal is not None
     by_competition = {season.competition_id: season for season in seasons}
 
     premier_league_season = by_competition[premier_league.id]
@@ -91,6 +96,14 @@ def test_initialize_seasons_catalog_creates_reviewed_seasons(
     assert bundesliga_season.end_date == "2027-05-22"
     assert bundesliga_season.is_current is True
     assert bundesliga_season.metadata is None
+
+    dfb_pokal_season = by_competition[dfb_pokal.id]
+    assert dfb_pokal_season.season_key == "2026_27"
+    assert dfb_pokal_season.name == "2026/27"
+    assert dfb_pokal_season.start_date == "2026-08-21"
+    assert dfb_pokal_season.end_date == "2027-05-29"
+    assert dfb_pokal_season.is_current is True
+    assert dfb_pokal_season.metadata is None
 
 
 def test_initialize_seasons_catalog_can_run_repeatedly(

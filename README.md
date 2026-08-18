@@ -14,9 +14,12 @@
 `v0.5.0-beta.1`
 ([tracker #104](https://github.com/theMompfdie/smart-sports-calendar/issues/104))
 
-**Automated tests:** 663 passing tests
+**Automated tests:** 729 passing tests
 
-The application foundation, persistent domain model, repository layer, Microsoft Graph integration, Outlook synchronization engine, and the scheduled, reported API-Football Premier League import runtime are implemented.
+The application foundation, persistent domain model, repository layer,
+Microsoft Graph integration, Outlook synchronization engine, and scheduled
+provider runtimes for the qualified Premier League, Bundesliga, and DFB-Pokal
+paths are implemented.
 
 The beta includes provider-neutral source selection, the approved
 football-data.org Premier League authority, isolated multi-instance deployment,
@@ -112,7 +115,9 @@ football-data.org API v4 runtime supports strict 2026/27 Premier League and
 Bundesliga profiles, independent competition jobs, and a shared provider-wide
 quota. Each scope fails closed before canonical or Outlook handoff unless its
 complete season snapshot validates. Bundesliga live staging remains a separate
-operator gate.
+operator gate. The 2026/27 DFB-Pokal uses the public OpenLigaDB API through a
+separate knockout-cup profile. Its observations are permanently partial: they
+may create or update known fixtures but never infer cancellation or removal.
 
 Phase 4 documentation:
 
@@ -142,6 +147,8 @@ Phase 5 decision records:
 - [source qualification boundary ADR](docs/adr/0005-bound-phase-5-source-qualification.md)
 - [football-data.org Bundesliga selection ADR](docs/adr/0006-select-football-data-for-bundesliga.md)
 - [football-data.org Bundesliga import](docs/football-data-bundesliga-import.md)
+- [OpenLigaDB DFB-Pokal selection ADR](docs/adr/0007-select-openligadb-for-dfb-pokal.md)
+- [OpenLigaDB DFB-Pokal import](docs/openligadb-dfb-pokal-import.md)
 
 ### Database and Persistence
 
@@ -495,7 +502,10 @@ delivery order and operational boundaries.
 - source qualification and competition-specific authority decisions
 - German Bundesliga qualified and implemented through the credential-free
   provider-to-SQLite-to-mocked-Graph boundary; live staging remains pending
-- Austrian, German, and additional English competitions remain evaluated or
+- DFB-Pokal qualified and implemented with OpenLigaDB through the
+  provider-to-SQLite-to-mocked-Graph boundary; isolated live staging remains
+  pending and absence never causes removal
+- Austrian and additional English competitions remain evaluated or
   conditional until their documented qualification and implementation gates
   pass
 

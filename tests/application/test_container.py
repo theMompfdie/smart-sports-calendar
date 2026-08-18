@@ -14,7 +14,12 @@ from app.application.api_football_import_runtime_service import (
     ApiFootballImportRuntimeService,
 )
 from app.application.container import ApplicationContainer
-from app.config.settings import ApiFootballSettings, FootballDataSettings, Settings
+from app.config.settings import (
+    ApiFootballSettings,
+    FootballDataSettings,
+    OpenLigaDBSettings,
+    Settings,
+)
 from app.database.fixture_import_repository import FixtureImportRepository
 from app.database.synchronization_query_repository import (
     SynchronizationQueryRepository,
@@ -83,6 +88,18 @@ def football_data_job(
         role=SourceRole.AUTHORITATIVE,
         scope=SourceScope("football", competition_key, "2026_27"),
         interval_seconds=interval_seconds,
+    )
+
+
+def openligadb_job(
+    competition_key: str = "dfb_pokal",
+) -> SourceJobDefinition:
+    return SourceJobDefinition(
+        job_key="openligadb-dfb-pokal",
+        source_key="openligadb",
+        role=SourceRole.AUTHORITATIVE,
+        scope=SourceScope("football", competition_key, "2026_27"),
+        interval_seconds=21600,
     )
 
 
@@ -179,6 +196,52 @@ def test_container_rejects_unsupported_football_data_profile(tmp_path: Path) -> 
     )
 
     with pytest.raises(SourceConfigurationError, match="supported authoritative"):
+        ApplicationContainer(settings=settings)
+
+
+def test_container_requires_matching_openligadb_job(tmp_path: Path) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        openligadb=OpenLigaDBSettings(enabled=True),
+    )
+
+    with pytest.raises(SourceConfigurationError, match="OPENLIGADB_ENABLED"):
+        ApplicationContainer(settings=settings)
+
+
+@patch("app.application.container.OpenLigaDBClient")
+def test_container_registers_authoritative_openligadb_runtime(
+    client_type: MagicMock, tmp_path: Path
+) -> None:
+    client_type.return_value = MagicMock()
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        openligadb=OpenLigaDBSettings(enabled=True),
+        source_jobs=(openligadb_job(),),
+    )
+
+    container = ApplicationContainer(settings=settings)
+
+    assert container.openligadb_import_runtime_service is not None
+    assert [job.job_key for job in container.source_scheduled_jobs] == [
+        "openligadb-dfb-pokal"
+    ]
+    assert [
+        (job.job_key, job.interval_seconds) for job in container.scheduled_jobs
+    ] == [
+        ("openligadb-dfb-pokal", 21600),
+        ("system:calendar-synchronization", 300),
+    ]
+
+
+def test_container_rejects_unsupported_openligadb_scope(tmp_path: Path) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        openligadb=OpenLigaDBSettings(enabled=True),
+        source_jobs=(openligadb_job("bundesliga"),),
+    )
+
+    with pytest.raises(SourceConfigurationError, match="dfb_pokal"):
         ApplicationContainer(settings=settings)
 
 

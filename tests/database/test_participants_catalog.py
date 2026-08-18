@@ -42,8 +42,8 @@ def test_catalog_creates_and_assigns_reviewed_competition_teams(
 ) -> None:
     repositories, result = initialize(tmp_path)
     database_path = repositories[0]
-    assert len(result.participants) == 38
-    assert len(result.season_participants) == 38
+    assert len(result.participants) == 102
+    assert len(result.season_participants) == 102
     assert {item.participant_key for item in result.participants} >= {
         "arsenal",
         "coventry_city",
@@ -52,6 +52,8 @@ def test_catalog_creates_and_assigns_reviewed_competition_teams(
         "hull_city",
         "ipswich_town",
         "sv_elversberg",
+        "sc_st_toenis",
+        "hamburg_eimsbuetteler_bc",
     }
     assert all(item.participant_type == "team" for item in result.participants)
     with sqlite3.connect(database_path) as connection:
@@ -65,7 +67,11 @@ def test_catalog_creates_and_assigns_reviewed_competition_teams(
             ORDER BY competition.competition_key
             """
         ).fetchall()
-    assert membership_counts == [("bundesliga", 18), ("premier_league", 20)]
+    assert membership_counts == [
+        ("bundesliga", 18),
+        ("dfb_pokal", 64),
+        ("premier_league", 20),
+    ]
     countries_by_key = {
         participant.participant_key: participant.country_code
         for participant in result.participants
@@ -100,8 +106,8 @@ def test_catalog_can_run_repeatedly(tmp_path: Path) -> None:
         membership_count = connection.execute(
             "SELECT COUNT(*) FROM season_participants"
         ).fetchone()
-    assert participant_count == (38,)
-    assert membership_count == (38,)
+    assert participant_count == (84,)
+    assert membership_count == (102,)
     assert [item.id for item in second.participants] == [
         item.id for item in first.participants
     ]

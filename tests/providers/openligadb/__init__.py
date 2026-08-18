@@ -1,0 +1,1 @@
+"""OpenLigaDB provider tests."""

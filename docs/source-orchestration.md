@@ -6,7 +6,8 @@ Issue #74 introduces the provider-neutral authority and scheduling boundary for
 `v0.4.5-beta.1`. Issue #76 uses this boundary for the implemented
 football-data.org Premier League transport and canonical import. Phase 5 issue
 #114 extends the same boundary with a strict Bundesliga profile and
-competition-scoped runtime dispatch.
+competition-scoped runtime dispatch. Issue #119 adds the isolated OpenLigaDB
+DFB-Pokal writer with an invariant permanent-partial observation scope.
 
 ## Source jobs
 
@@ -38,6 +39,9 @@ Keep the environment-variable form on one line. `football_data` supports the
 authoritative `football/premier_league/2026_27` and
 `football/bundesliga/2026_27` profiles; it must be paired with
 `FOOTBALL_DATA_ENABLED=true`. Each profile has a separate job key and interval.
+`openligadb` supports only the authoritative
+`football/dfb_pokal/2026_27` scope and must be paired with
+`OPENLIGADB_ENABLED=true`. It requires no credential.
 
 ## Validation
 
@@ -84,6 +88,11 @@ Multiple `football_data` competition jobs share one client instance. Its
 minimum request interval and retry policy therefore enforce one provider-wide
 quota budget instead of independent per-competition budgets. Each job still
 has its own runtime lock, sync-run metadata, and failure boundary.
+
+The OpenLigaDB DFB-Pokal job has its own client, runtime lock, and retry
+boundary. Regardless of returned round inventory, the runtime always declares
+`partial`, `complete=false`, and `removal_eligible=false`. Missing records can
+therefore never advance cancellation or deletion evidence.
 
 Outlook calendar synchronization is a separate scheduled job controlled by
 `HEARTBEAT_INTERVAL`. Source jobs are registered first so the initial import

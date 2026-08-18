@@ -50,6 +50,14 @@ def configure_required_environment(
         "FOOTBALL_DATA_RETRY_MAX_DELAY_SECONDS",
         "FOOTBALL_DATA_MINIMUM_REQUEST_INTERVAL_SECONDS",
         "FOOTBALL_DATA_REQUESTS_PER_MINUTE",
+        "OPENLIGADB_ENABLED",
+        "OPENLIGADB_BASE_URL",
+        "OPENLIGADB_CONNECT_TIMEOUT_SECONDS",
+        "OPENLIGADB_READ_TIMEOUT_SECONDS",
+        "OPENLIGADB_MAX_ATTEMPTS",
+        "OPENLIGADB_RETRY_BASE_DELAY_SECONDS",
+        "OPENLIGADB_RETRY_MAX_DELAY_SECONDS",
+        "OPENLIGADB_MINIMUM_REQUEST_INTERVAL_SECONDS",
     ):
         monkeypatch.delenv(name, raising=False)
 
@@ -90,6 +98,28 @@ def test_load_settings_rejects_football_data_rate_above_approved_plan(
     monkeypatch.setenv("FOOTBALL_DATA_REQUESTS_PER_MINUTE", "11")
 
     with pytest.raises(ProviderConfigurationError, match="plan limit"):
+        load_settings()
+
+
+def test_load_settings_validates_public_openligadb_transport(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OPENLIGADB_ENABLED", "true")
+    monkeypatch.setenv("OPENLIGADB_MINIMUM_REQUEST_INTERVAL_SECONDS", "2.5")
+
+    settings = load_settings()
+
+    assert settings.openligadb.enabled is True
+    assert settings.openligadb.base_url == "https://api.openligadb.de"
+    assert settings.openligadb.minimum_request_interval_seconds == 2.5
+
+
+def test_load_settings_rejects_unsafe_openligadb_base_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OPENLIGADB_BASE_URL", "http://api.openligadb.de")
+
+    with pytest.raises(ProviderConfigurationError, match="HTTPS URL"):
         load_settings()
 
 
