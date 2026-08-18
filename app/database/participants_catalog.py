@@ -54,6 +54,31 @@ PREMIER_LEAGUE_2026_27_TEAMS = (
     ("tottenham_hotspur", "Tottenham Hotspur", "Spurs"),
 )
 
+BUNDESLIGA_2026_27_TEAMS = (
+    ("fc_koeln", "1. FC Köln", "1. FC Köln"),
+    ("fc_union_berlin", "1. FC Union Berlin", "Union Berlin"),
+    ("fsv_mainz_05", "1. FSV Mainz 05", "Mainz"),
+    ("bayer_04_leverkusen", "Bayer 04 Leverkusen", "Leverkusen"),
+    ("borussia_dortmund", "Borussia Dortmund", "Dortmund"),
+    (
+        "borussia_moenchengladbach",
+        "Borussia Mönchengladbach",
+        "M'gladbach",
+    ),
+    ("eintracht_frankfurt", "Eintracht Frankfurt", "Frankfurt"),
+    ("fc_augsburg", "FC Augsburg", "Augsburg"),
+    ("fc_bayern_muenchen", "FC Bayern München", "Bayern"),
+    ("fc_schalke_04", "FC Schalke 04", "Schalke"),
+    ("hamburger_sv", "Hamburger SV", "HSV"),
+    ("rb_leipzig", "RB Leipzig", "RB Leipzig"),
+    ("sc_freiburg", "SC Freiburg", "Freiburg"),
+    ("sc_paderborn_07", "SC Paderborn 07", "SC Paderborn"),
+    ("sv_elversberg", "SV 07 Elversberg", "Elversberg"),
+    ("werder_bremen", "SV Werder Bremen", "Bremen"),
+    ("tsg_hoffenheim", "TSG 1899 Hoffenheim", "Hoffenheim"),
+    ("vfb_stuttgart", "VfB Stuttgart", "Stuttgart"),
+)
+
 SEASON_PARTICIPANTS_CATALOG = (
     SeasonParticipantsCatalogEntry(
         competition_key="premier_league",
@@ -66,6 +91,19 @@ SEASON_PARTICIPANTS_CATALOG = (
                 short_name=short_name,
             )
             for participant_key, name, short_name in PREMIER_LEAGUE_2026_27_TEAMS
+        ),
+    ),
+    SeasonParticipantsCatalogEntry(
+        competition_key="bundesliga",
+        season_key="2026_27",
+        country_code="DE",
+        participants=tuple(
+            ParticipantCatalogEntry(
+                participant_key=participant_key,
+                name=name,
+                short_name=short_name,
+            )
+            for participant_key, name, short_name in BUNDESLIGA_2026_27_TEAMS
         ),
     ),
 )

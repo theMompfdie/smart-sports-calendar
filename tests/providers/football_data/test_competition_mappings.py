@@ -5,7 +5,10 @@ from app.providers.football_data.competition_mappings import (
     FootballDataCompetitionMapping,
     get_competition_mapping,
 )
-from app.providers.football_data.team_mappings import resolve_team_key
+from app.providers.football_data.team_mappings import (
+    BUNDESLIGA_TEAM_NAME_MAPPING,
+    resolve_team_key,
+)
 
 
 def test_reviewed_competition_mappings_keep_provider_identity_scoped() -> None:
@@ -30,3 +33,34 @@ def test_team_resolution_is_competition_scoped() -> None:
     assert resolve_team_key("premier_league", "Arsenal FC") == "arsenal"
     assert resolve_team_key("bundesliga", "Arsenal FC") is None
     assert resolve_team_key("unknown", "Arsenal FC") is None
+
+
+@pytest.mark.parametrize(
+    ("provider_name", "participant_key"),
+    tuple(BUNDESLIGA_TEAM_NAME_MAPPING.items()),
+)
+def test_reviewed_bundesliga_team_names_resolve_deterministically(
+    provider_name: str,
+    participant_key: str,
+) -> None:
+    assert resolve_team_key("bundesliga", provider_name) == participant_key
+    assert resolve_team_key("premier_league", provider_name) is None
+
+
+@pytest.mark.parametrize(
+    ("provider_name", "participant_key"),
+    [
+        ("Köln", "fc_koeln"),
+        ("Koeln", "fc_koeln"),
+        ("M'gladbach", "borussia_moenchengladbach"),
+        ("Bayern", "fc_bayern_muenchen"),
+        ("HSV", "hamburger_sv"),
+        ("SC Paderborn", "sc_paderborn_07"),
+    ],
+)
+def test_reviewed_bundesliga_short_names_stay_competition_scoped(
+    provider_name: str,
+    participant_key: str,
+) -> None:
+    assert resolve_team_key("bundesliga", provider_name) == participant_key
+    assert resolve_team_key("premier_league", provider_name) is None

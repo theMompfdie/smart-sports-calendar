@@ -144,6 +144,112 @@ class FootballDataQualificationEvidence:
     requests_available_minimum: int | None
 
 
+@dataclass(frozen=True)
+class FootballDataParticipantCandidate:
+    provider_name: str
+    provider_short_name: str | None
+    provider_tla: str | None
+
+
+@dataclass(frozen=True)
+class FootballDataParticipantEvidence:
+    qualification_profile: str
+    observed_at_utc: str
+    api_version: str
+    competition_id: int
+    competition_code: str
+    season_id: int
+    season_start_date: str
+    season_end_date: str
+    team_count: int
+    request_count: int
+    participants: tuple[FootballDataParticipantCandidate, ...]
+
+
+def observe_football_data_participants(
+    api_key: str,
+    *,
+    profile: FootballDataQualificationProfile,
+    season: int = 2026,
+    transport: QualificationTransport | None = None,
+    clock: Callable[[], datetime] | None = None,
+) -> FootballDataParticipantEvidence:
+    _validate_observation_request(api_key, profile=profile, season=season)
+    active_transport = transport or StdlibQualificationTransport()
+    active_clock = clock or (lambda: datetime.now(UTC))
+
+    competition, competition_headers = _request_json(
+        active_transport,
+        f"/v4/competitions/{profile.competition_code}",
+        api_key,
+    )
+    competition_id = _positive_int(competition, "id")
+    if (
+        competition_id != profile.competition_id
+        or competition.get("code") != profile.competition_code
+    ):
+        raise QualificationError("Provider returned the wrong competition.")
+    current_season = _mapping(competition, "currentSeason")
+    season_id = _positive_int(current_season, "id")
+    start_date = _date(_string(current_season, "startDate"))
+    end_date = _date(_string(current_season, "endDate"))
+    if start_date.year != season or end_date < start_date:
+        raise QualificationError("Provider current season does not match the request.")
+
+    teams_payload, teams_headers = _request_json(
+        active_transport,
+        f"/v4/competitions/{profile.competition_code}/teams?season={season}",
+        api_key,
+    )
+    teams = _list(teams_payload, "teams")
+    team_ids: set[int] = set()
+    names: set[str] = set()
+    candidates: list[FootballDataParticipantCandidate] = []
+    for raw_team in teams:
+        team = _mapping_value(raw_team)
+        team_id = _positive_int(team, "id")
+        name = _string(team, "name")
+        normalized_name = name.casefold()
+        if team_id in team_ids or normalized_name in names:
+            raise QualificationError("Provider returned duplicate team identity.")
+        team_ids.add(team_id)
+        names.add(normalized_name)
+        candidates.append(
+            FootballDataParticipantCandidate(
+                provider_name=name,
+                provider_short_name=_optional_string(team, "shortName"),
+                provider_tla=_optional_string(team, "tla"),
+            )
+        )
+    if len(candidates) != profile.expected_team_count:
+        raise QualificationError(
+            f"Expected exactly {profile.expected_team_count} distinct "
+            f"{profile.competition_name} teams."
+        )
+
+    api_versions = {
+        _header_value(headers, "X-API-Version")
+        for headers in (competition_headers, teams_headers)
+    }
+    if api_versions != {"v4"}:
+        raise QualificationError("Provider API version is not consistently v4.")
+    return FootballDataParticipantEvidence(
+        qualification_profile=profile.key,
+        observed_at_utc=_utc_now(active_clock).isoformat(),
+        api_version="v4",
+        competition_id=competition_id,
+        competition_code=profile.competition_code,
+        season_id=season_id,
+        season_start_date=start_date.isoformat(),
+        season_end_date=end_date.isoformat(),
+        team_count=len(candidates),
+        request_count=2,
+        participants=tuple(
+            sorted(candidates, key=lambda candidate: candidate.provider_name.casefold())
+        ),
+    )
+
+
 def qualify_football_data(
     api_key: str,
     *,
@@ -152,12 +258,7 @@ def qualify_football_data(
     transport: QualificationTransport | None = None,
     clock: Callable[[], datetime] | None = None,
 ) -> FootballDataQualificationEvidence:
-    if not api_key.strip():
-        raise QualificationError("FOOTBALL_DATA_API_KEY is required.")
-    if season < 2000 or season > 2100:
-        raise QualificationError("Season is outside the supported range.")
-    if QUALIFICATION_PROFILES.get(profile.key) != profile:
-        raise QualificationError("Qualification profile is not approved.")
+    _validate_observation_request(api_key, profile=profile, season=season)
 
     active_transport = transport or StdlibQualificationTransport()
     active_clock = clock or (lambda: datetime.now(UTC))
@@ -302,6 +403,24 @@ def qualify_football_data(
 
 def render_qualification_evidence(evidence: FootballDataQualificationEvidence) -> str:
     return json.dumps(asdict(evidence), indent=2, sort_keys=True)
+
+
+def render_participant_evidence(evidence: FootballDataParticipantEvidence) -> str:
+    return json.dumps(asdict(evidence), indent=2, sort_keys=True)
+
+
+def _validate_observation_request(
+    api_key: str,
+    *,
+    profile: FootballDataQualificationProfile,
+    season: int,
+) -> None:
+    if not api_key.strip():
+        raise QualificationError("FOOTBALL_DATA_API_KEY is required.")
+    if season < 2000 or season > 2100:
+        raise QualificationError("Season is outside the supported range.")
+    if QUALIFICATION_PROFILES.get(profile.key) != profile:
+        raise QualificationError("Qualification profile is not approved.")
 
 
 def _request_match_pages(
@@ -498,6 +617,15 @@ def _string(payload: Mapping[str, Any], key: str) -> str:
     return value.strip()
 
 
+def _optional_string(payload: Mapping[str, Any], key: str) -> str | None:
+    value = payload.get(key)
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value.strip():
+        raise QualificationError("Provider response has an invalid string field.")
+    return value.strip()
+
+
 def _date(value: str) -> date:
     try:
         return date.fromisoformat(value)
@@ -566,17 +694,35 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=PREMIER_LEAGUE_PROFILE.key,
     )
     parser.add_argument("--season", type=int, default=2026)
+    parser.add_argument(
+        "--participant-candidates",
+        action="store_true",
+        help=(
+            "Print only reviewed participant-mapping candidate fields; "
+            "never prints provider team IDs, headers, or raw payloads."
+        ),
+    )
     arguments = parser.parse_args(argv)
     api_key = os.environ.get("FOOTBALL_DATA_API_KEY", "")
     try:
-        evidence = qualify_football_data(
-            api_key,
-            profile=QUALIFICATION_PROFILES[arguments.competition],
-            season=arguments.season,
-        )
+        profile = QUALIFICATION_PROFILES[arguments.competition]
+        if arguments.participant_candidates:
+            participant_evidence = observe_football_data_participants(
+                api_key,
+                profile=profile,
+                season=arguments.season,
+            )
+            rendered_evidence = render_participant_evidence(participant_evidence)
+        else:
+            qualification_evidence = qualify_football_data(
+                api_key,
+                profile=profile,
+                season=arguments.season,
+            )
+            rendered_evidence = render_qualification_evidence(qualification_evidence)
     except QualificationError as error:
         parser.exit(status=1, message=f"football-data qualification failed: {error}\n")
-    print(render_qualification_evidence(evidence))
+    print(rendered_evidence)
     return 0
 
 

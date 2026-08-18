@@ -13,7 +13,9 @@ from app.operations.football_data_qualification import (
     QualificationError,
     QualificationResponse,
     StdlibQualificationTransport,
+    observe_football_data_participants,
     qualify_football_data,
+    render_participant_evidence,
     render_qualification_evidence,
 )
 
@@ -202,6 +204,76 @@ def test_bundesliga_profile_qualifies_exact_scope() -> None:
         "/v4/competitions/BL1/teams?season=2026",
         "/v4/competitions/BL1/matches?season=2026&limit=500",
     ]
+
+
+def test_bundesliga_participant_observation_is_curated_and_secret_safe() -> None:
+    responses = valid_responses(BUNDESLIGA_PROFILE)
+    teams_payload = payload(responses[1])
+    for index, team in enumerate(teams_payload["teams"], start=1):
+        team["name"] = f"Bundesliga Team {index:02d}"
+        team["shortName"] = f"Team {index:02d}"
+        team["tla"] = f"T{index:02d}"
+    responses[1] = with_payload(responses[1], teams_payload)
+    transport = StubTransport(responses[:2])
+
+    evidence = observe_football_data_participants(
+        "provider-secret",
+        profile=BUNDESLIGA_PROFILE,
+        transport=transport,
+        clock=lambda: OBSERVED_AT,
+    )
+    rendered = render_participant_evidence(evidence)
+
+    assert evidence.qualification_profile == "bundesliga"
+    assert evidence.competition_code == "BL1"
+    assert evidence.competition_id == 2002
+    assert evidence.team_count == 18
+    assert evidence.request_count == 2
+    assert evidence.participants[0].provider_name == "Bundesliga Team 01"
+    assert evidence.participants[-1].provider_tla == "T18"
+    assert "provider-secret" not in rendered
+    assert "account-secret" not in rendered
+    assert '"id"' not in rendered
+    assert '"provider_id"' not in rendered
+    assert [call[0] for call in transport.calls] == [
+        "/v4/competitions/BL1",
+        "/v4/competitions/BL1/teams?season=2026",
+    ]
+
+
+@pytest.mark.parametrize("duplicate_field", ["id", "name"])
+def test_participant_observation_rejects_duplicate_team_identity(
+    duplicate_field: str,
+) -> None:
+    responses = valid_responses(BUNDESLIGA_PROFILE)
+    teams_payload = payload(responses[1])
+    teams_payload["teams"][1][duplicate_field] = teams_payload["teams"][0][
+        duplicate_field
+    ]
+    responses[1] = with_payload(responses[1], teams_payload)
+
+    with pytest.raises(QualificationError, match="duplicate team identity"):
+        observe_football_data_participants(
+            "provider-secret",
+            profile=BUNDESLIGA_PROFILE,
+            transport=StubTransport(responses[:2]),
+            clock=lambda: OBSERVED_AT,
+        )
+
+
+def test_participant_observation_rejects_incomplete_team_set() -> None:
+    responses = valid_responses(BUNDESLIGA_PROFILE)
+    teams_payload = payload(responses[1])
+    teams_payload["teams"].pop()
+    responses[1] = with_payload(responses[1], teams_payload)
+
+    with pytest.raises(QualificationError, match="exactly 18 distinct"):
+        observe_football_data_participants(
+            "provider-secret",
+            profile=BUNDESLIGA_PROFILE,
+            transport=StubTransport(responses[:2]),
+            clock=lambda: OBSERVED_AT,
+        )
 
 
 def test_qualification_rejects_unapproved_profile() -> None:
