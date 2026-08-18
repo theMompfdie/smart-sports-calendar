@@ -34,8 +34,10 @@ decision remains conditional.
 
 API-Football is not eligible as a new Phase 5 authority without written
 competition-specific rights clearance. Sportmonks is the preferred candidate
-for Austrian and domestic-cup qualification, but no subscription or authority
-is approved by this ADR.
+for Austrian and remaining domestic-cup qualification, but no subscription or
+authority is approved by this ADR. Issue #118 supersedes that initial
+preference for the DFB-Pokal alone by evaluating the no-cost OpenLigaDB
+candidate; a competition-specific ADR must still approve or reject it.
 
 ## Consequences
 
