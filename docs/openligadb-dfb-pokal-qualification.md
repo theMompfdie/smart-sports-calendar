@@ -2,8 +2,7 @@
 
 ## Status
 
-**Conditional; repeated live qualification and an explicit approve/reject ADR
-are still required.**
+**Qualified by ADR 0007 for non-destructive `partial` observations only.**
 
 Issue #118 evaluates the public OpenLigaDB API as the no-cost automated source
 candidate for the 2026/27 DFB-Pokal. The identified competition is league
@@ -51,6 +50,12 @@ DFB boundary of 30 fixtures from 21–24 August plus the Dortmund and Bayern
 fixtures on 1–2 September also matched. This comparison validates the current
 observation only; it is not provider-side completeness evidence.
 
+A second complete observation at 18:46:46 UTC reproduced the first
+observation's fixture and participant fingerprints, counts, group identities,
+kickoff boundaries, update boundary, and status counts. ADR 0007 therefore
+approves the source for a later non-destructive implementation while retaining
+the permanent `partial` boundary.
+
 ## Read-only qualification command
 
 The command makes three bounded, unauthenticated HTTPS GET requests. It does
@@ -85,22 +90,22 @@ empty fixture collections; and a round count above the DFB-Pokal capacity.
 
 Normal CI uses synthetic payloads and remains network-free.
 
-## Required live evidence and decision gate
+## Required implementation and operating gates
 
-1. Run the full qualifier and retain only its sanitized output.
+1. Run the full qualifier before implementation staging and retain only its
+   sanitized output.
 2. Repeat the manual DFB comparison whenever a relevant provider change is
    observed.
 3. Repeat the complete API observation after a meaningful interval and compare
    fixture and participant fingerprints, counts, group identities, kickoff
    boundaries, status counts, and latest-update evidence.
-4. Confirm the required attribution text and whether the Outlook calendar and
-   persisted canonical data are a produced work or adapted database for this
-   deployment. Record the operator decision in the ADR.
+4. Apply the exact visible attribution and ODbL operating boundary from ADR
+   0007.
 5. Keep every observation `partial`. OpenLigaDB does not expose enough
    provider-side completeness evidence to authorize `complete_round` or
    `complete_stage` removal semantics.
-6. If approved, create a separate issue for the DFB-Pokal catalog, mapping,
-   adapter, runtime, and staging work.
+6. Keep the separate implementation issue limited to DFB-Pokal catalog,
+   mapping, adapter, runtime, and staging work.
 
 ## Mapping limitations for the later adapter
 

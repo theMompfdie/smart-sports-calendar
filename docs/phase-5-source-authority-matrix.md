@@ -18,8 +18,9 @@ writer.
 Implementation status update, 2026-08-18: issue #114 implements the qualified
 Bundesliga adapter and runtime boundary with credential-free tests. Bundesliga
 is not yet live-staged or released; those operator gates remain outstanding.
-Issue #118 now evaluates OpenLigaDB rather than the rejected paid Sportmonks
-candidate for the DFB-Pokal. That source remains conditional and `partial`.
+Issue #118 qualifies OpenLigaDB rather than the rejected paid Sportmonks
+candidate for the DFB-Pokal. ADR 0007 permanently limits that authority to
+non-destructive `partial` observations.
 
 Decision meanings:
 
@@ -166,7 +167,7 @@ non-authoritative and cannot advance removal evidence.
 | Austrian Bundesliga | 2026/27 | `league`; `partial` for the 22-round ground phase, then explicit stage scopes | Sportmonks league 181 | **Conditional** | A paid selection and new adapter are required. Live evidence must prove the split into championship/relegation groups, placeholder behavior, stable IDs across the split, and a safe stage-completeness boundary. football-data.org exposes only ground-round dates publicly and is not removal-capable for the full season. |
 | FA Cup | 2026/27 | `knockout_cup`; `partial` until a specific round is complete | Sportmonks league 24, subject to live lookup | **Conditional** | Current-season coverage, round/leg identifiers, placeholders, replay policy, identity across draws/reschedules, and complete-round evidence require live proof. Generic bounded reconciliation exists, but this competition remains removal-disabled until qualification passes. |
 | EFL Cup | 2026/27 | `knockout_cup`; `partial` until a specific round is complete | Sportmonks league 27 | **Conditional** | Current-season coverage, two-legged round semantics, placeholders, stable identity, and complete-round evidence require live proof. Generic bounded reconciliation exists, but this competition remains removal-disabled until qualification passes. |
-| DFB-Pokal | 2026/27 | `knockout_cup`; permanently `partial` with this provider | OpenLigaDB league 4945 / `dfb` / 2026 | **Conditional** | Issue #118 adds bounded unauthenticated qualification tooling. Repeated live identity evidence, manual DFB comparison, attribution/ODbL review, and an approve/reject ADR are still required. The API has no sufficient provider-side completeness or cancellation/placeholder contract, so this candidate remains removal-disabled even if approved. |
+| DFB-Pokal | 2026/27 | `knockout_cup`; permanently `partial` with this provider | OpenLigaDB league 4945 / `dfb` / 2026 | **Qualified** | ADR 0007 records two stable live observations, the manual DFB comparison, exact attribution, and the ODbL operating boundary. The API has no sufficient completeness or cancellation/placeholder contract, so the source is permanently removal-disabled. |
 | ÖFB Cup | 2026/27 | `knockout_cup`; `partial` until a specific round is complete | Sportmonks league 187 | **Conditional** | A paid selection, current-season live coverage, stable identity, stage/round mapping, and complete-round evidence are required. football-data.org is rejected for this competition because its public catalog is stale at 2020/21. |
 | UEFA Champions League | 2026/27 | not representable by one Phase 5.1 format; qualifying, league, and knockout scopes | Sportmonks league 2 as future candidate | **Deferred** | The hybrid lifecycle exceeds ADR 0004, participants and fixtures are incremental, and current authority evidence is incomplete. No `v0.5.0-beta.1` release claim. |
 | UEFA Europa League | 2026/27 | not representable by one Phase 5.1 format; qualifying, league, and knockout scopes | Sportmonks league 5 as future candidate | **Deferred** | Same hybrid-model gap and incremental completeness risk as the Champions League. No `v0.5.0-beta.1` release claim. |
