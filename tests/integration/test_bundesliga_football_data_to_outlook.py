@@ -38,7 +38,11 @@ from app.database.synchronization_query_repository import (
     SynchronizationQueryRepository,
 )
 from app.providers.contracts import SourceJobDefinition, SourceRole, SourceScope
-from app.providers.football_data.profiles import BUNDESLIGA_PROFILE
+from app.providers.football_data.profiles import (
+    BUNDESLIGA_PROFILE,
+    PREMIER_LEAGUE_PROFILE,
+    FootballDataCompetitionProfile,
+)
 from app.synchronization.event_synchronizer import EventSynchronizer
 from app.synchronization.outlook_event_payload_builder import OutlookEventPayloadBuilder
 from app.synchronization.synchronization_orchestrator import SynchronizationOrchestrator
@@ -49,10 +53,10 @@ from tests.providers.football_data.support import snapshot
 CALENDAR_ID = "bundesliga-staging-calendar"
 
 
-class BundesligaSnapshotAdapter:
-    def __init__(self) -> None:
-        self.profile = BUNDESLIGA_PROFILE
-        self.snapshot = snapshot(BUNDESLIGA_PROFILE)
+class SnapshotAdapter:
+    def __init__(self, profile: FootballDataCompetitionProfile) -> None:
+        self.profile = profile
+        self.snapshot = snapshot(profile)
 
     def fetch_snapshot(self, season_year: int):
         assert season_year == 2026
@@ -78,50 +82,66 @@ def create_harness(database_path):
 
     settings = FootballDataSettings(enabled=True, api_key="test-token")
     source = register_football_data_source(settings, sources)
-    adapter = BundesligaSnapshotAdapter()
-    service = FootballDataCompetitionService(
-        settings=settings,
-        adapter=adapter,
-        sports_repository=sports,
-        competitions_repository=competitions,
-        seasons_repository=seasons,
-        participants_repository=participants,
-        season_participants_repository=memberships,
-        data_sources_repository=sources,
-        source_mappings_repository=mappings,
-        profile=BUNDESLIGA_PROFILE,
-    )
-    batch = service.fetch_normalized_snapshot()
-    job = SourceJobDefinition(
-        job_key="football-data-bundesliga",
-        source_key="football_data",
-        role=SourceRole.AUTHORITATIVE,
-        scope=SourceScope("football", "bundesliga", "2026_27"),
-        interval_seconds=21600,
-    )
+    adapters = {
+        profile.competition_key: SnapshotAdapter(profile)
+        for profile in (PREMIER_LEAGUE_PROFILE, BUNDESLIGA_PROFILE)
+    }
+    services = {
+        profile.competition_key: FootballDataCompetitionService(
+            settings=settings,
+            adapter=adapters[profile.competition_key],
+            sports_repository=sports,
+            competitions_repository=competitions,
+            seasons_repository=seasons,
+            participants_repository=participants,
+            season_participants_repository=memberships,
+            data_sources_repository=sources,
+            source_mappings_repository=mappings,
+            profile=profile,
+        )
+        for profile in (PREMIER_LEAGUE_PROFILE, BUNDESLIGA_PROFILE)
+    }
+    batches = {
+        competition_key: service.fetch_normalized_snapshot()
+        for competition_key, service in services.items()
+    }
+    jobs = {
+        competition_key: SourceJobDefinition(
+            job_key=f"football-data-{competition_key.replace('_', '-')}",
+            source_key="football_data",
+            role=SourceRole.AUTHORITATIVE,
+            scope=SourceScope("football", competition_key, "2026_27"),
+            interval_seconds=21600,
+        )
+        for competition_key in services
+    }
     SourceAssignmentsRepository(database_path).synchronize(
-        (
+        tuple(
             SourceAssignmentWrite(
                 job_key=job.job_key,
                 source_id=source.id,
-                competition_id=batch.competition_id,
-                season_id=batch.season_id,
+                competition_id=batches[competition_key].competition_id,
+                season_id=batches[competition_key].season_id,
                 role=job.role,
                 interval_seconds=job.interval_seconds,
-            ),
+            )
+            for competition_key, job in jobs.items()
         )
     )
-    provider = FootballDataImportOrchestrator(
-        competition_service=service,
-        import_service=ApiFootballFixtureImportService(
-            sources,
-            FixtureImportRepository(database_path),
-            source_key="football_data",
-        ),
-        sync_runs_repository=runs,
-        data_sources_repository=sources,
-        job_definition=job,
-    )
+    providers = {
+        competition_key: FootballDataImportOrchestrator(
+            competition_service=service,
+            import_service=ApiFootballFixtureImportService(
+                sources,
+                FixtureImportRepository(database_path),
+                source_key="football_data",
+            ),
+            sync_runs_repository=runs,
+            data_sources_repository=sources,
+            job_definition=jobs[competition_key],
+        )
+        for competition_key, service in services.items()
+    }
     graph = RecordingGraphClient()
     calendar = SynchronizationOrchestrator(
         query_repository=SynchronizationQueryRepository(database_path),
@@ -132,14 +152,18 @@ def create_harness(database_path):
         ),
         sync_runs_repository=runs,
     )
-    return provider, calendar, adapter, graph, source, mappings
+    return providers, calendar, adapters, graph, source, mappings
 
 
 def test_bundesliga_snapshot_is_idempotent_and_updates_existing_outlook_event(
     tmp_path,
 ) -> None:
     database_path = tmp_path / "bundesliga-football-data.db"
-    provider, calendar, adapter, graph, source, mappings = create_harness(database_path)
+    providers, calendar, adapters, graph, source, mappings = create_harness(
+        database_path
+    )
+    provider = providers["bundesliga"]
+    adapter = adapters["bundesliga"]
 
     first_import = provider.import_current_competition()
     first_sync_batches = tuple(calendar.synchronize(CALENDAR_ID, 100) for _ in range(4))
@@ -181,7 +205,7 @@ def test_bundesliga_snapshot_is_idempotent_and_updates_existing_outlook_event(
     assert len(graph.operations) == first_operation_count + 1
     assert graph.operations[-1].method == "PATCH"
 
-    fixture_mapping = mappings.get_by_external_id(source.id, "event", "1000")
+    fixture_mapping = mappings.get_by_external_id(source.id, "event", "2000")
     assert fixture_mapping is not None
     canonical_event = SportsEventsRepository(database_path).get_by_id(
         fixture_mapping.internal_id
@@ -189,3 +213,54 @@ def test_bundesliga_snapshot_is_idempotent_and_updates_existing_outlook_event(
     assert canonical_event is not None
     assert canonical_event.title
     assert canonical_event.end_time is None
+
+
+def test_premier_league_and_bundesliga_share_sqlite_without_identity_collisions(
+    tmp_path,
+) -> None:
+    database_path = tmp_path / "multi-competition-football-data.db"
+    providers, calendar, _, graph, source, mappings = create_harness(database_path)
+
+    premier_league_import = providers["premier_league"].import_current_competition()
+    bundesliga_import = providers["bundesliga"].import_current_competition()
+    sync_batches = tuple(calendar.synchronize(CALENDAR_ID, 100) for _ in range(7))
+
+    assert premier_league_import.items_created == 380
+    assert bundesliga_import.items_created == 306
+    assert [batch.items_created for batch in sync_batches] == [
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        86,
+    ]
+    assert len(graph.operations) == 686
+
+    premier_league_mapping = mappings.get_by_external_id(source.id, "event", "1000")
+    bundesliga_mapping = mappings.get_by_external_id(source.id, "event", "2000")
+    assert premier_league_mapping is not None
+    assert bundesliga_mapping is not None
+    assert premier_league_mapping.internal_id != bundesliga_mapping.internal_id
+
+    events = SportsEventsRepository(database_path)
+    premier_league_event = events.get_by_id(premier_league_mapping.internal_id)
+    bundesliga_event = events.get_by_id(bundesliga_mapping.internal_id)
+    assert premier_league_event is not None
+    assert bundesliga_event is not None
+    assert premier_league_event.competition_id != bundesliga_event.competition_id
+
+    premier_league_team = mappings.get_by_external_id(source.id, "participant", "101")
+    bundesliga_team = mappings.get_by_external_id(source.id, "participant", "1001")
+    assert premier_league_team is not None
+    assert bundesliga_team is not None
+    assert premier_league_team.internal_id != bundesliga_team.internal_id
+
+    assert (
+        providers["premier_league"].import_current_competition().items_unchanged == 380
+    )
+    assert providers["bundesliga"].import_current_competition().items_unchanged == 306
+    unchanged_sync = calendar.synchronize(CALENDAR_ID, 700)
+    assert unchanged_sync.items_unchanged == 686
+    assert len(graph.operations) == 686

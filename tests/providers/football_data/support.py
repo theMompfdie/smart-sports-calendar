@@ -44,9 +44,10 @@ def payloads(
         if profile.competition_key == "premier_league"
         else BUNDESLIGA_TEAM_NAME_MAPPING
     )
+    provider_id_base = 100 if profile.competition_key == "premier_league" else 1000
     teams = [
         {
-            "id": 100 + index,
+            "id": provider_id_base + index,
             "name": name,
             "shortName": name.removesuffix(" FC"),
             "tla": f"T{index:02d}",
@@ -54,9 +55,13 @@ def payloads(
         for index, name in enumerate(team_mapping, start=1)
     ]
     matches: list[dict[str, Any]] = []
-    match_id = 1000
-    start_date = "2026-08-21" if profile is PREMIER_LEAGUE_PROFILE else "2026-08-28"
-    end_date = "2027-05-30" if profile is PREMIER_LEAGUE_PROFILE else "2027-05-22"
+    match_id = 1000 if profile.competition_key == "premier_league" else 2000
+    start_date = (
+        "2026-08-21" if profile.competition_key == "premier_league" else "2026-08-28"
+    )
+    end_date = (
+        "2027-05-30" if profile.competition_key == "premier_league" else "2027-05-22"
+    )
     kickoff = datetime.fromisoformat(f"{start_date}T19:00:00+00:00")
     teams_by_id = {team["id"]: team for team in teams}
     for home_id, away_id, matchday in _schedule(list(teams_by_id)):
