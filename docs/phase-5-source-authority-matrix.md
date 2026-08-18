@@ -142,9 +142,9 @@ non-authoritative and cannot advance removal evidence.
 | German Bundesliga | 2026/27 | `league`; authoritative unfiltered `complete_season` | football-data.org `BL1` / 2002 | **Qualified** | ADR 0006 and two stable live observations apply; season 2522, 18 teams, 306 unique fixtures, one page, three requests, and a confirmed Free plan at 10 requests/minute. Qualification is not implementation or release. |
 | German 2. Bundesliga | 2026/27 | `league`; candidate `complete_season` | football-data.org `BL2` / 2004 | **Conditional** | The operator must accept the Standard-tier cost and live evidence must prove 18 teams, 306 fixtures, identity, lifecycle, and completeness. |
 | Austrian Bundesliga | 2026/27 | `league`; `partial` for the 22-round ground phase, then explicit stage scopes | Sportmonks league 181 | **Conditional** | A paid selection and new adapter are required. Live evidence must prove the split into championship/relegation groups, placeholder behavior, stable IDs across the split, and a safe stage-completeness boundary. football-data.org exposes only ground-round dates publicly and is not removal-capable for the full season. |
-| FA Cup | 2026/27 | `knockout_cup`; `partial` until a specific round is complete | Sportmonks league 24, subject to live lookup | **Conditional** | Current-season coverage, round/leg identifiers, placeholders, replay policy, identity across draws/reschedules, and complete-round evidence require live proof. Cup removal remains disabled. |
-| EFL Cup | 2026/27 | `knockout_cup`; `partial` until a specific round is complete | Sportmonks league 27 | **Conditional** | Current-season coverage, two-legged round semantics, placeholders, stable identity, and complete-round evidence require live proof. Cup removal remains disabled. |
-| DFB-Pokal | 2026/27 | `knockout_cup`; `partial` until a specific round is complete | Sportmonks league 109 | **Conditional** | Current-season coverage, round identity, placeholders, cancellations/reschedules, and complete-round evidence require live proof. Cup removal remains disabled. |
+| FA Cup | 2026/27 | `knockout_cup`; `partial` until a specific round is complete | Sportmonks league 24, subject to live lookup | **Conditional** | Current-season coverage, round/leg identifiers, placeholders, replay policy, identity across draws/reschedules, and complete-round evidence require live proof. Generic bounded reconciliation exists, but this competition remains removal-disabled until qualification passes. |
+| EFL Cup | 2026/27 | `knockout_cup`; `partial` until a specific round is complete | Sportmonks league 27 | **Conditional** | Current-season coverage, two-legged round semantics, placeholders, stable identity, and complete-round evidence require live proof. Generic bounded reconciliation exists, but this competition remains removal-disabled until qualification passes. |
+| DFB-Pokal | 2026/27 | `knockout_cup`; `partial` until a specific round is complete | Sportmonks league 109 | **Conditional** | Current-season coverage, round identity, placeholders, cancellations/reschedules, and complete-round evidence require live proof. Generic bounded reconciliation exists, but this competition remains removal-disabled until qualification passes. |
 | ÖFB Cup | 2026/27 | `knockout_cup`; `partial` until a specific round is complete | Sportmonks league 187 | **Conditional** | A paid selection, current-season live coverage, stable identity, stage/round mapping, and complete-round evidence are required. football-data.org is rejected for this competition because its public catalog is stale at 2020/21. |
 | UEFA Champions League | 2026/27 | not representable by one Phase 5.1 format; qualifying, league, and knockout scopes | Sportmonks league 2 as future candidate | **Deferred** | The hybrid lifecycle exceeds ADR 0004, participants and fixtures are incremental, and current authority evidence is incomplete. No `v0.5.0-beta.1` release claim. |
 | UEFA Europa League | 2026/27 | not representable by one Phase 5.1 format; qualifying, league, and knockout scopes | Sportmonks league 5 as future candidate | **Deferred** | Same hybrid-model gap and incremental completeness risk as the Champions League. No `v0.5.0-beta.1` release claim. |
@@ -180,9 +180,10 @@ stable post-split identity must be implemented before any removal decision.
 Cup draws progressively reveal participants and fixtures. A successful request
 for all currently known matches is not a complete season. The maximum future
 destructive boundary is a provider- and competition-qualified
-`complete_stage` or `complete_round`. ADR 0004 keeps every cup non-destructive
-in the current slice, so missing cup fixtures never cancel or remove canonical
-events.
+`complete_stage` or `complete_round`. ADR 0004 now supports bounded generic
+reconciliation for those exact scopes, but every listed cup remains partial and
+non-destructive until its provider-specific completeness evidence and mapping
+contract are qualified.
 
 ### UEFA competitions
 

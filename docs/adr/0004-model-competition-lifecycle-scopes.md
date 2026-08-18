@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-08-16
 - Decision owners: SMART Sports Calendar maintainers
-- Related issues: #104, #105
+- Related issues: #104, #105, #116
 - Follows: ADR 0003
 
 ## Context
@@ -49,10 +49,14 @@ are true:
 4. the scope kind is `complete_season`;
 5. a valid bounded UTC season window is present.
 
-`complete_stage` and `complete_round` are representable and validated, but they
-do not yet create removal evidence. A later knockout/cup lifecycle issue must
-implement and prove exact stage/round event selection before enabling that
-behavior.
+Phase 5.6 extends removal reconciliation to `complete_stage` and
+`complete_round` only when the source is authoritative, the observation is
+unfiltered and non-empty, and every returned fixture matches the exact declared
+boundary. Repository candidate selection uses source, competition, season, and
+the persisted stage/round values; an optional stage on a complete-round scope
+is also part of that boundary. Two distinct successful observations remain
+mandatory. Empty, mixed, contradictory, filtered, or non-authoritative claims
+cannot create removal evidence.
 
 ## Persistence
 
@@ -79,8 +83,10 @@ sources of truth without adding a released behavior.
 - Partial authoritative observations are safe and non-destructive.
 - Existing Premier League CREATE, UPDATE, SKIP, CANCEL, DEFER, and two-complete-
   observation removal behavior remains unchanged.
-- Later Phase 5 issues can add competition catalogs and cup reconciliation
-  against one explicit contract.
+- Qualified providers can use the same two-observation algorithm for an exact
+  cup stage or round without affecting events in other stages or rounds.
+- The generic capability does not qualify or enable any concrete cup; provider
+  and competition completeness evidence remains a separate gate.
 
 ## Alternatives considered
 
@@ -95,8 +101,9 @@ Rejected for now because one canonical format value and run-scoped observation
 metadata satisfy the approved behavior. A new table may be justified later if
 one competition needs multiple persisted lifecycle strategies.
 
-### Enable stage/round removal immediately
+### Enable stage/round removal in Phase 5.1
 
 Rejected because the current repository selects missing candidates only by
 competition, season, and UTC window. Enabling it without exact stage/round
-selection would risk deleting fixtures outside the observed cup scope.
+selection would risk deleting fixtures outside the observed cup scope. Phase
+5.6 later supplied and tested that exact selection boundary.

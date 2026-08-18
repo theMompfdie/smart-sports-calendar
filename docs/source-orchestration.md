@@ -101,10 +101,13 @@ aggregates. A failed or overlapping import makes no canonical changes.
 
 Source role and observation completeness are intentionally separate. An
 authoritative job may produce a partial observation that safely creates or
-updates fixtures without creating removal evidence. Phase 5.1 supports removal
-reconciliation only for an unfiltered complete-season league scope. Complete
-stage and round scopes are typed and validated but remain non-destructive until
-the dedicated knockout/cup lifecycle slice.
+updates fixtures without creating removal evidence. Removal reconciliation is
+supported for an unfiltered complete-season league scope and for a non-empty,
+exact `complete_stage` or `complete_round` knockout/cup scope. Cup candidate
+selection is bounded by source, competition, season, and the declared
+stage/round identifiers. This generic capability does not make a concrete cup
+complete or authoritative; that claim remains adapter- and
+competition-qualified.
 
 Public attribution is owned by the selected source catalog entry. The
 synchronization query resolves the optional attribution only from the enabled

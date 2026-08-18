@@ -129,6 +129,7 @@ class ApiFootballFixtureImportService:
         fixtures: tuple[NormalizedFixture, ...],
         scope: FixtureImportScope,
     ) -> None:
+        ApiFootballFixtureImportService._validate_complete_boundary(fixtures, scope)
         external_ids: set[str] = set()
         for fixture in fixtures:
             if not fixture.external_id.strip():
@@ -172,6 +173,39 @@ class ApiFootballFixtureImportService:
             if roles != ["home", "away"]:
                 raise ProviderIntegrityError(
                     "Fixture must contain deterministic home and away participants: "
+                    f"external_id={fixture.external_id}."
+                )
+
+    @staticmethod
+    def _validate_complete_boundary(
+        fixtures: tuple[NormalizedFixture, ...],
+        scope: FixtureImportScope,
+    ) -> None:
+        lifecycle = scope.lifecycle
+        if lifecycle.scope_kind not in {
+            FixtureObservationScopeKind.COMPLETE_STAGE,
+            FixtureObservationScopeKind.COMPLETE_ROUND,
+        }:
+            return
+        if not fixtures:
+            raise ProviderIntegrityError(
+                "A complete stage or round observation must contain fixtures."
+            )
+        for fixture in fixtures:
+            if (
+                lifecycle.scope_kind is FixtureObservationScopeKind.COMPLETE_STAGE
+                and fixture.stage != lifecycle.stage
+            ):
+                raise ProviderIntegrityError(
+                    "Fixture falls outside the declared complete-stage scope: "
+                    f"external_id={fixture.external_id}."
+                )
+            if lifecycle.scope_kind is FixtureObservationScopeKind.COMPLETE_ROUND and (
+                fixture.round_name != lifecycle.round_name
+                or (lifecycle.stage is not None and fixture.stage != lifecycle.stage)
+            ):
+                raise ProviderIntegrityError(
+                    "Fixture falls outside the declared complete-round scope: "
                     f"external_id={fixture.external_id}."
                 )
 

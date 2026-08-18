@@ -433,7 +433,7 @@ def test_partial_or_filtered_observations_cannot_remove_events(tmp_path: Path) -
         )
 
 
-def test_complete_round_scope_is_typed_but_cannot_remove_events_yet(
+def test_complete_round_removal_is_bounded_and_requires_distinct_observations(
     tmp_path: Path,
 ) -> None:
     context = create_context(tmp_path)
@@ -447,6 +447,12 @@ def test_complete_round_scope_is_typed_but_cannot_remove_events_yet(
             "UPDATE competitions SET competition_type = ? WHERE id = ?",
             (CompetitionFormat.KNOCKOUT_CUP.value, context.competition_id),
         )
+    round_of_16 = tuple(
+        replace(fixture, stage="knockout", round_name="round_of_16")
+        for fixture in fixtures[:2]
+    )
+    other_stage = replace(fixtures[2], stage="qualifying", round_name="round_of_16")
+    quarterfinal = replace(fixtures[3], stage="knockout", round_name="quarterfinal")
     importer = create_importer(context.database_path)
     partial_scope = FixtureImportScope(
         competition_id=context.competition_id,
@@ -459,8 +465,8 @@ def test_complete_round_scope_is_typed_but_cannot_remove_events_yet(
         ),
         authoritative=True,
     )
-    importer.import_fixtures(fixtures, partial_scope)
-    missing = fixtures[0]
+    importer.import_fixtures((*round_of_16, other_stage, quarterfinal), partial_scope)
+    missing = round_of_16[0]
     complete_round_scope = FixtureImportScope(
         competition_id=context.competition_id,
         season_id=context.season_id,
@@ -475,9 +481,10 @@ def test_complete_round_scope_is_typed_but_cannot_remove_events_yet(
         authoritative=True,
     )
 
-    importer.import_fixtures(fixtures[1:], complete_round_scope)
-    importer.import_fixtures(
-        fixtures[1:],
+    first = importer.import_fixtures(round_of_16[1:], complete_round_scope)
+    replay = importer.import_fixtures(round_of_16[1:], complete_round_scope)
+    second = importer.import_fixtures(
+        round_of_16[1:],
         replace(
             complete_round_scope,
             observation_id="cup-round-2",
@@ -493,13 +500,241 @@ def test_complete_round_scope_is_typed_but_cannot_remove_events_yet(
     assert mapping is not None
     event = SportsEventsRepository(context.database_path).get_by_id(mapping.internal_id)
     assert event is not None
+    assert first.count(FixtureImportDecision.DELETE) == 0
+    assert replay.count(FixtureImportDecision.DELETE) == 0
+    assert second.count(FixtureImportDecision.DELETE) == 1
+    assert event.deleted_at == OBSERVED_AT.replace(hour=14).isoformat()
+    for outside_scope in (other_stage, quarterfinal):
+        outside_mapping = SourceMappingsRepository(
+            context.database_path
+        ).get_by_external_id(
+            context.source_id,
+            "event",
+            outside_scope.external_id,
+        )
+        assert outside_mapping is not None
+        outside_event = SportsEventsRepository(context.database_path).get_by_id(
+            outside_mapping.internal_id
+        )
+        assert outside_event is not None
+        assert outside_event.deleted_at is None
+    with sqlite3.connect(context.database_path) as connection:
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM fixture_reconciliation_state"
+            ).fetchone()[0]
+            == 1
+        )
+
+    reappeared = importer.import_fixtures(
+        round_of_16,
+        replace(
+            complete_round_scope,
+            observation_id="cup-round-reappeared",
+            observed_at_utc=OBSERVED_AT.replace(hour=15),
+        ),
+    )
+    event = SportsEventsRepository(context.database_path).get_by_id(mapping.internal_id)
+    assert event is not None
+    assert reappeared.items[0].decision is FixtureImportDecision.UPDATE
     assert event.deleted_at is None
+
+
+def test_complete_stage_reconciles_all_rounds_inside_only_that_stage(
+    tmp_path: Path,
+) -> None:
+    context = create_context(tmp_path)
+    fixtures = tuple(
+        fixture
+        for fixture in context.service.normalize_current_premier_league()
+        if fixture.kickoff_confirmed
+    )
+    with sqlite3.connect(context.database_path) as connection:
+        connection.execute(
+            "UPDATE competitions SET competition_type = ? WHERE id = ?",
+            (CompetitionFormat.KNOCKOUT_CUP.value, context.competition_id),
+        )
+    group_stage = (
+        replace(fixtures[0], stage="group_stage", round_name="group_round_1"),
+        replace(fixtures[1], stage="group_stage", round_name="group_round_2"),
+    )
+    knockout = replace(fixtures[2], stage="knockout", round_name="round_of_16")
+    importer = create_importer(context.database_path)
+    importer.import_fixtures(
+        (*group_stage, knockout),
+        FixtureImportScope(
+            competition_id=context.competition_id,
+            season_id=context.season_id,
+            observation_id="cup-stage-initial",
+            observed_at_utc=OBSERVED_AT,
+            lifecycle=CompetitionLifecycleScope(
+                competition_format=CompetitionFormat.KNOCKOUT_CUP,
+                scope_kind=FixtureObservationScopeKind.PARTIAL,
+            ),
+            authoritative=True,
+        ),
+    )
+    complete_stage = FixtureImportScope(
+        competition_id=context.competition_id,
+        season_id=context.season_id,
+        observation_id="cup-stage-1",
+        observed_at_utc=OBSERVED_AT.replace(hour=13),
+        lifecycle=CompetitionLifecycleScope(
+            competition_format=CompetitionFormat.KNOCKOUT_CUP,
+            scope_kind=FixtureObservationScopeKind.COMPLETE_STAGE,
+            stage="group_stage",
+        ),
+        authoritative=True,
+    )
+
+    importer.import_fixtures(group_stage[1:], complete_stage)
+    result = importer.import_fixtures(
+        group_stage[1:],
+        replace(
+            complete_stage,
+            observation_id="cup-stage-2",
+            observed_at_utc=OBSERVED_AT.replace(hour=14),
+        ),
+    )
+
+    assert result.count(FixtureImportDecision.DELETE) == 1
+    knockout_mapping = SourceMappingsRepository(
+        context.database_path
+    ).get_by_external_id(context.source_id, "event", knockout.external_id)
+    assert knockout_mapping is not None
+    knockout_event = SportsEventsRepository(context.database_path).get_by_id(
+        knockout_mapping.internal_id
+    )
+    assert knockout_event is not None
+    assert knockout_event.deleted_at is None
+
+
+def test_non_authoritative_complete_round_cannot_create_removal_evidence(
+    tmp_path: Path,
+) -> None:
+    context = create_context(tmp_path)
+    fixtures = tuple(
+        replace(fixture, stage="knockout", round_name="round_of_16")
+        for fixture in context.service.normalize_current_premier_league()[:2]
+    )
+    with sqlite3.connect(context.database_path) as connection:
+        connection.execute(
+            "UPDATE competitions SET competition_type = ? WHERE id = ?",
+            (CompetitionFormat.KNOCKOUT_CUP.value, context.competition_id),
+        )
+    importer = create_importer(context.database_path)
+    partial_scope = FixtureImportScope(
+        competition_id=context.competition_id,
+        season_id=context.season_id,
+        observation_id="cup-non-authoritative-initial",
+        observed_at_utc=OBSERVED_AT,
+        lifecycle=CompetitionLifecycleScope(
+            competition_format=CompetitionFormat.KNOCKOUT_CUP,
+            scope_kind=FixtureObservationScopeKind.PARTIAL,
+        ),
+        authoritative=True,
+    )
+    importer.import_fixtures(fixtures, partial_scope)
+    complete_round = FixtureImportScope(
+        competition_id=context.competition_id,
+        season_id=context.season_id,
+        observation_id="cup-non-authoritative-1",
+        observed_at_utc=OBSERVED_AT.replace(hour=13),
+        lifecycle=CompetitionLifecycleScope(
+            competition_format=CompetitionFormat.KNOCKOUT_CUP,
+            scope_kind=FixtureObservationScopeKind.COMPLETE_ROUND,
+            stage="knockout",
+            round_name="round_of_16",
+        ),
+        authoritative=False,
+    )
+
+    importer.import_fixtures(fixtures[1:], complete_round)
+    importer.import_fixtures(
+        fixtures[1:],
+        replace(
+            complete_round,
+            observation_id="cup-non-authoritative-2",
+            observed_at_utc=OBSERVED_AT.replace(hour=14),
+        ),
+    )
+
     with sqlite3.connect(context.database_path) as connection:
         assert (
             connection.execute(
                 "SELECT COUNT(*) FROM fixture_reconciliation_state"
             ).fetchone()[0]
             == 0
+        )
+
+
+@pytest.mark.parametrize(
+    ("fixtures", "scope_kind", "stage", "round_name", "message"),
+    [
+        (
+            (),
+            FixtureObservationScopeKind.COMPLETE_STAGE,
+            "group_stage",
+            None,
+            "contain",
+        ),
+        (
+            (),
+            FixtureObservationScopeKind.COMPLETE_ROUND,
+            None,
+            "round_of_16",
+            "contain",
+        ),
+        (
+            ("wrong-stage",),
+            FixtureObservationScopeKind.COMPLETE_STAGE,
+            "group_stage",
+            None,
+            "complete-stage",
+        ),
+        (
+            ("wrong-round",),
+            FixtureObservationScopeKind.COMPLETE_ROUND,
+            "knockout",
+            "round_of_16",
+            "complete-round",
+        ),
+    ],
+)
+def test_complete_cup_scope_rejects_empty_or_mixed_observations(
+    tmp_path: Path,
+    fixtures: tuple[str, ...],
+    scope_kind: FixtureObservationScopeKind,
+    stage: str | None,
+    round_name: str | None,
+    message: str,
+) -> None:
+    context = create_context(tmp_path)
+    fixture = context.service.normalize_current_premier_league()[0]
+    supplied = tuple(
+        replace(fixture, external_id=f"cup-{value}", stage=value, round_name=value)
+        for value in fixtures
+    )
+    cup_scope = FixtureImportScope(
+        competition_id=context.competition_id,
+        season_id=context.season_id,
+        observation_id="invalid-cup-scope",
+        observed_at_utc=OBSERVED_AT,
+        lifecycle=CompetitionLifecycleScope(
+            competition_format=CompetitionFormat.KNOCKOUT_CUP,
+            scope_kind=scope_kind,
+            stage=stage,
+            round_name=round_name,
+        ),
+        authoritative=True,
+    )
+
+    with pytest.raises(ProviderIntegrityError, match=message):
+        create_importer(context.database_path).import_fixtures(supplied, cup_scope)
+
+    with sqlite3.connect(context.database_path) as connection:
+        assert (
+            connection.execute("SELECT COUNT(*) FROM sports_events").fetchone()[0] == 0
         )
 
 

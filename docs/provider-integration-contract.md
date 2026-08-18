@@ -65,10 +65,12 @@ observation declares one scope kind: `partial`, `complete_season`,
 valid only for a league. Complete stage and round scopes require knockout/cup
 format and a normalized stable stage or round identifier.
 
-Phase 5.1 permits removal evidence only for an authoritative, unfiltered,
-bounded `complete_season` league observation. Complete stage/round scopes are
-validated and reported but remain non-destructive until dedicated cup
-reconciliation proves exact event selection. See
+Removal evidence is permitted for an authoritative, unfiltered, bounded
+`complete_season` league observation. A knockout/cup `complete_stage` or
+`complete_round` observation may contribute evidence only when it is non-empty,
+every fixture matches the exact normalized boundary, and repository selection
+is restricted to the same source, competition, season, and stage/round. The
+generic behavior does not qualify any provider or concrete cup. See
 [`adr/0004-model-competition-lifecycle-scopes.md`](adr/0004-model-competition-lifecycle-scopes.md).
 
 For iCalendar sources, `UID` is the only acceptable provider event identity.
