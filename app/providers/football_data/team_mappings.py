@@ -46,6 +46,11 @@ BUNDESLIGA_TEAM_NAME_MAPPING: dict[str, str] = {
     "VfB Stuttgart": "vfb_stuttgart",
 }
 
+REVIEWED_TEAM_NAME_MAPPINGS = {
+    "premier_league": PREMIER_LEAGUE_TEAM_NAME_MAPPING,
+    "bundesliga": BUNDESLIGA_TEAM_NAME_MAPPING,
+}
+
 _NORMALIZED_TEAM_MAPPING = {
     re.sub(r"[^a-z0-9]", "", name.casefold()): key
     for name, key in PREMIER_LEAGUE_TEAM_NAME_MAPPING.items()
@@ -126,3 +131,10 @@ def resolve_team_key(competition_key: str, provider_name: str) -> str | None:
     for affix in ("footballclub", "afc", "fc"):
         normalized = normalized.removeprefix(affix).removesuffix(affix)
     return mapping.get(normalized)
+
+
+def get_reviewed_team_keys(competition_key: str) -> frozenset[str] | None:
+    mapping = REVIEWED_TEAM_NAME_MAPPINGS.get(competition_key)
+    if mapping is None:
+        return None
+    return frozenset(mapping.values())

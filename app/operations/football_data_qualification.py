@@ -9,9 +9,11 @@ from datetime import UTC, date, datetime, timedelta
 from http.client import HTTPException, HTTPSConnection
 from typing import Any, Protocol
 
-from app.providers.football_data.competition_mappings import (
-    BUNDESLIGA_MAPPING,
-    PREMIER_LEAGUE_MAPPING,
+from app.providers.football_data.profiles import (
+    BUNDESLIGA_PROFILE as BUNDESLIGA_RUNTIME_PROFILE,
+)
+from app.providers.football_data.profiles import (
+    PREMIER_LEAGUE_PROFILE as PREMIER_LEAGUE_RUNTIME_PROFILE,
 )
 
 API_HOST = "api.football-data.org"
@@ -63,21 +65,21 @@ class FootballDataQualificationProfile:
 
 PREMIER_LEAGUE_PROFILE = FootballDataQualificationProfile(
     key="premier-league",
-    competition_name="Premier League",
-    competition_code=PREMIER_LEAGUE_MAPPING.external_code,
-    competition_id=PREMIER_LEAGUE_MAPPING.external_id,
-    expected_team_count=20,
-    expected_match_count=380,
-    expected_matchdays=38,
+    competition_name=PREMIER_LEAGUE_RUNTIME_PROFILE.competition_name,
+    competition_code=PREMIER_LEAGUE_RUNTIME_PROFILE.external_code,
+    competition_id=PREMIER_LEAGUE_RUNTIME_PROFILE.external_id,
+    expected_team_count=PREMIER_LEAGUE_RUNTIME_PROFILE.expected_team_count,
+    expected_match_count=PREMIER_LEAGUE_RUNTIME_PROFILE.expected_match_count,
+    expected_matchdays=PREMIER_LEAGUE_RUNTIME_PROFILE.expected_matchdays,
 )
 BUNDESLIGA_PROFILE = FootballDataQualificationProfile(
     key="bundesliga",
-    competition_name="Bundesliga",
-    competition_code=BUNDESLIGA_MAPPING.external_code,
-    competition_id=BUNDESLIGA_MAPPING.external_id,
-    expected_team_count=18,
-    expected_match_count=306,
-    expected_matchdays=34,
+    competition_name=BUNDESLIGA_RUNTIME_PROFILE.competition_name,
+    competition_code=BUNDESLIGA_RUNTIME_PROFILE.external_code,
+    competition_id=BUNDESLIGA_RUNTIME_PROFILE.external_id,
+    expected_team_count=BUNDESLIGA_RUNTIME_PROFILE.expected_team_count,
+    expected_match_count=BUNDESLIGA_RUNTIME_PROFILE.expected_match_count,
+    expected_matchdays=BUNDESLIGA_RUNTIME_PROFILE.expected_matchdays,
 )
 QUALIFICATION_PROFILES = {
     profile.key: profile for profile in (PREMIER_LEAGUE_PROFILE, BUNDESLIGA_PROFILE)
