@@ -14,7 +14,7 @@
 `v0.5.0-beta.1`
 ([tracker #104](https://github.com/theMompfdie/smart-sports-calendar/issues/104))
 
-**Automated tests:** 579 passing tests
+**Automated tests:** 655 passing tests
 
 The application foundation, persistent domain model, repository layer, Microsoft Graph integration, Outlook synchronization engine, and the scheduled, reported API-Football Premier League import runtime are implemented.
 
@@ -107,9 +107,11 @@ Provider-neutral source jobs provide explicit competition/season authority,
 roles, independent intervals, adapter registration, fail-closed startup
 validation, and persistent assignment history. The current API-Football writer
 must be paired with an explicit authoritative source job when enabled. The
-football-data.org API v4 adapter is the sole released authoritative writer for
-the 2026/27 Premier League scope and fails closed before canonical or Outlook
-handoff unless the complete 20-team, 380-match snapshot validates.
+football-data.org API v4 runtime supports strict 2026/27 Premier League and
+Bundesliga profiles, independent competition jobs, and a shared provider-wide
+quota. Each scope fails closed before canonical or Outlook handoff unless its
+complete season snapshot validates. Bundesliga live staging remains a separate
+operator gate.
 
 Phase 4 documentation:
 
@@ -138,6 +140,7 @@ Phase 5 decision records:
 - [source and authority matrix](docs/phase-5-source-authority-matrix.md)
 - [source qualification boundary ADR](docs/adr/0005-bound-phase-5-source-qualification.md)
 - [football-data.org Bundesliga selection ADR](docs/adr/0006-select-football-data-for-bundesliga.md)
+- [football-data.org Bundesliga import](docs/football-data-bundesliga-import.md)
 
 ### Database and Persistence
 
@@ -489,7 +492,8 @@ delivery order and operational boundaries.
 **Status:** _In progress_
 
 - source qualification and competition-specific authority decisions
-- German Bundesliga as the first conditional implementation candidate
+- German Bundesliga qualified and implemented through the credential-free
+  provider-to-SQLite-to-mocked-Graph boundary; live staging remains pending
 - Austrian, German, and additional English competitions remain evaluated or
   conditional until their documented qualification and implementation gates
   pass

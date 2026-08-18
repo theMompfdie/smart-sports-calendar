@@ -3,10 +3,14 @@
 - Status: Accepted
 - Date: 2026-08-17
 - Decision owners: SMART Sports Calendar maintainers
-- Related issues: #104, #108, #110
+- Related issues: #104, #108, #110, #114
 - Follows: ADR 0005
 - Supersedes in part: ADR 0005's conditional Bundesliga gate
-- Does not authorize: implementation, staging, release, or production use
+- Does not authorize: live staging, release, or production use
+
+Implementation status: issue #114 implements the approved adapter and runtime
+boundary. This ADR still does not by itself authorize live staging, release, or
+production use.
 
 ## Context
 

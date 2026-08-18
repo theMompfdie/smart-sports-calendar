@@ -12,7 +12,8 @@ calendar job may still reconcile previously committed events.
 
 The transport sends the API token only as `X-Auth-Token`, applies separate
 connect/read timeouts, bounded transient retries, response-size limits, HTTPS
-origin validation, and an independent 10-requests-per-minute budget. Tokens,
+origin validation, and a provider-wide 10-requests-per-minute budget. When
+Bundesliga is also configured, both competition jobs share this budget. Tokens,
 raw payloads, account identifiers, and authorization headers are not logged or
 persisted.
 

@@ -4,7 +4,9 @@
 
 Issue #74 introduces the provider-neutral authority and scheduling boundary for
 `v0.4.5-beta.1`. Issue #76 uses this boundary for the implemented
-football-data.org Premier League transport and canonical import.
+football-data.org Premier League transport and canonical import. Phase 5 issue
+#114 extends the same boundary with a strict Bundesliga profile and
+competition-scoped runtime dispatch.
 
 ## Source jobs
 
@@ -32,9 +34,10 @@ Example for the existing API-Football adapter:
 ]
 ```
 
-Keep the environment-variable form on one line. `football_data` is the only
-released authoritative adapter for `football/premier_league/2026_27`; it must
-be paired with `FOOTBALL_DATA_ENABLED=true`.
+Keep the environment-variable form on one line. `football_data` supports the
+authoritative `football/premier_league/2026_27` and
+`football/bundesliga/2026_27` profiles; it must be paired with
+`FOOTBALL_DATA_ENABLED=true`. Each profile has a separate job key and interval.
 
 ## Validation
 
@@ -76,6 +79,11 @@ Each active job has independent due time and interval state. A failure is
 logged with its safe `job_key`, then the scheduler continues with other due
 jobs. Provider-specific bounded retry and quota logic remains inside the
 adapter boundary.
+
+Multiple `football_data` competition jobs share one client instance. Its
+minimum request interval and retry policy therefore enforce one provider-wide
+quota budget instead of independent per-competition budgets. Each job still
+has its own runtime lock, sync-run metadata, and failure boundary.
 
 Outlook calendar synchronization is a separate scheduled job controlled by
 `HEARTBEAT_INTERVAL`. Source jobs are registered first so the initial import
