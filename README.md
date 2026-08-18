@@ -14,7 +14,7 @@
 `v0.5.0-beta.1`
 ([tracker #104](https://github.com/theMompfdie/smart-sports-calendar/issues/104))
 
-**Automated tests:** 656 passing tests
+**Automated tests:** 663 passing tests
 
 The application foundation, persistent domain model, repository layer, Microsoft Graph integration, Outlook synchronization engine, and the scheduled, reported API-Football Premier League import runtime are implemented.
 
@@ -92,6 +92,7 @@ The application focuses on:
 - atomic, idempotent fixture persistence with stable event source mappings
 - explicit create, update, skip, cancel, remove, and TBD-defer decisions
 - lifecycle correction and two-observation authoritative removal handling
+- bounded stage/round reconciliation for qualified knockout/cup observations
 - scheduled non-overlapping provider-import orchestration
 - persistent import-run counters, recovery, and sanitized rate-limit diagnostics
 - successful-import handoff to the existing Outlook synchronization runtime

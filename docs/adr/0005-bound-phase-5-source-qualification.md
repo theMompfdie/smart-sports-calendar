@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-16
-- Issue: #108
+- Related issues: #108, #116
 
 ## Context
 
@@ -44,8 +44,10 @@ is approved by this ADR.
   Bundesliga qualification gate passes and without weakening Premier League
   validation.
 - Championship pagination and play-off semantics receive a separate issue.
-- Split-league and cup imports remain non-destructive until a later ADR proves
-  bounded stage or round completeness.
+- Split-league and concrete cup imports remain non-destructive until their
+  competition-specific qualification proves a complete stage or round. Issue
+  #116 provides the generic bounded reconciliation mechanism but does not
+  qualify a source or competition.
 - UEFA work first requires a hybrid competition-capability design.
 - Provider alternatives may be verification, bootstrap, or future candidates,
   never simultaneous authoritative writers or automatic failover.
