@@ -3,53 +3,92 @@ from typing import Any
 
 from app.providers.contracts import RateLimitSnapshot
 from app.providers.football_data.models import FootballDataSnapshot, parse_snapshot
-from app.providers.football_data.team_mappings import PREMIER_LEAGUE_TEAM_NAME_MAPPING
+from app.providers.football_data.profiles import (
+    PREMIER_LEAGUE_PROFILE,
+    FootballDataCompetitionProfile,
+)
+from app.providers.football_data.team_mappings import (
+    BUNDESLIGA_TEAM_NAME_MAPPING,
+    PREMIER_LEAGUE_TEAM_NAME_MAPPING,
+)
 
 FETCHED_AT = datetime(2026, 8, 9, 12, tzinfo=UTC)
 SOURCE_UPDATED_AT = datetime(2026, 7, 9, 1, 25, tzinfo=UTC)
 
 
-def payloads() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+def _schedule(team_ids: list[int]) -> list[tuple[int, int, int]]:
+    rotation = list(team_ids)
+    first_leg: list[tuple[int, int, int]] = []
+    for round_index in range(len(team_ids) - 1):
+        for pair_index in range(len(team_ids) // 2):
+            home = rotation[pair_index]
+            away = rotation[-pair_index - 1]
+            if (round_index + pair_index) % 2:
+                home, away = away, home
+            first_leg.append((home, away, round_index + 1))
+        rotation = [rotation[0], rotation[-1], *rotation[1:-1]]
+    return [
+        *first_leg,
+        *(
+            (away, home, matchday + len(team_ids) - 1)
+            for home, away, matchday in first_leg
+        ),
+    ]
+
+
+def payloads(
+    profile: FootballDataCompetitionProfile = PREMIER_LEAGUE_PROFILE,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    team_mapping = (
+        PREMIER_LEAGUE_TEAM_NAME_MAPPING
+        if profile.competition_key == "premier_league"
+        else BUNDESLIGA_TEAM_NAME_MAPPING
+    )
+    provider_id_base = 100 if profile.competition_key == "premier_league" else 1000
     teams = [
         {
-            "id": 100 + index,
+            "id": provider_id_base + index,
             "name": name,
             "shortName": name.removesuffix(" FC"),
             "tla": f"T{index:02d}",
         }
-        for index, name in enumerate(PREMIER_LEAGUE_TEAM_NAME_MAPPING, start=1)
+        for index, name in enumerate(team_mapping, start=1)
     ]
     matches: list[dict[str, Any]] = []
-    match_id = 1000
-    kickoff = datetime(2026, 8, 21, 19, tzinfo=UTC)
-    for home in teams:
-        for away in teams:
-            if home["id"] == away["id"]:
-                continue
-            matches.append(
-                {
-                    "id": match_id,
-                    "competition": {"id": 2021},
-                    "season": {"id": 2502},
-                    "utcDate": kickoff.isoformat().replace("+00:00", "Z"),
-                    "status": "SCHEDULED",
-                    "matchday": ((match_id - 1000) % 38) + 1,
-                    "stage": "REGULAR_SEASON",
-                    "lastUpdated": SOURCE_UPDATED_AT.isoformat().replace("+00:00", "Z"),
-                    "homeTeam": {"id": home["id"]},
-                    "awayTeam": {"id": away["id"]},
-                }
-            )
-            match_id += 1
-            kickoff += timedelta(hours=12)
+    match_id = 1000 if profile.competition_key == "premier_league" else 2000
+    start_date = (
+        "2026-08-21" if profile.competition_key == "premier_league" else "2026-08-28"
+    )
+    end_date = (
+        "2027-05-30" if profile.competition_key == "premier_league" else "2027-05-22"
+    )
+    kickoff = datetime.fromisoformat(f"{start_date}T19:00:00+00:00")
+    teams_by_id = {team["id"]: team for team in teams}
+    for home_id, away_id, matchday in _schedule(list(teams_by_id)):
+        matches.append(
+            {
+                "id": match_id,
+                "competition": {"id": profile.external_id},
+                "season": {"id": profile.external_season_id},
+                "utcDate": kickoff.isoformat().replace("+00:00", "Z"),
+                "status": "SCHEDULED",
+                "matchday": matchday,
+                "stage": "REGULAR_SEASON",
+                "lastUpdated": SOURCE_UPDATED_AT.isoformat().replace("+00:00", "Z"),
+                "homeTeam": {"id": home_id},
+                "awayTeam": {"id": away_id},
+            }
+        )
+        match_id += 1
+        kickoff += timedelta(hours=12)
     return (
         {
-            "id": 2021,
-            "code": "PL",
+            "id": profile.external_id,
+            "code": profile.external_code,
             "currentSeason": {
-                "id": 2502,
-                "startDate": "2026-08-21",
-                "endDate": "2027-05-30",
+                "id": profile.external_season_id,
+                "startDate": start_date,
+                "endDate": end_date,
             },
         },
         {"teams": teams},
@@ -57,12 +96,15 @@ def payloads() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     )
 
 
-def snapshot() -> FootballDataSnapshot:
-    competition, teams, matches = payloads()
+def snapshot(
+    profile: FootballDataCompetitionProfile = PREMIER_LEAGUE_PROFILE,
+) -> FootballDataSnapshot:
+    competition, teams, matches = payloads(profile)
     return parse_snapshot(
         competition,
         teams,
         matches,
+        profile=profile,
         expected_season_year=2026,
         fetched_at_utc=FETCHED_AT,
         request_attempts=3,

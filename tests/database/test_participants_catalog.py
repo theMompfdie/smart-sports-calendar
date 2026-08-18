@@ -37,30 +37,41 @@ def initialize(tmp_path: Path):
     return repositories, result
 
 
-def test_catalog_creates_and_assigns_twenty_teams(tmp_path: Path) -> None:
+def test_catalog_creates_and_assigns_reviewed_competition_teams(
+    tmp_path: Path,
+) -> None:
     repositories, result = initialize(tmp_path)
     database_path = repositories[0]
-    assert len(result.participants) == 20
-    assert len(result.season_participants) == 20
+    assert len(result.participants) == 38
+    assert len(result.season_participants) == 38
     assert {item.participant_key for item in result.participants} >= {
         "arsenal",
         "coventry_city",
+        "fc_bayern_muenchen",
+        "fc_koeln",
         "hull_city",
         "ipswich_town",
+        "sv_elversberg",
     }
     assert all(item.participant_type == "team" for item in result.participants)
-    assert all(item.country_code == "GB-ENG" for item in result.participants)
     with sqlite3.connect(database_path) as connection:
-        bundesliga_memberships = connection.execute(
+        membership_counts = connection.execute(
             """
-            SELECT COUNT(*)
+            SELECT competition.competition_key, COUNT(*)
             FROM season_participants AS membership
             JOIN seasons AS season ON season.id = membership.season_id
             JOIN competitions AS competition ON competition.id = season.competition_id
-            WHERE competition.competition_key = 'bundesliga'
+            GROUP BY competition.competition_key
+            ORDER BY competition.competition_key
             """
-        ).fetchone()
-    assert bundesliga_memberships == (0,)
+        ).fetchall()
+    assert membership_counts == [("bundesliga", 18), ("premier_league", 20)]
+    countries_by_key = {
+        participant.participant_key: participant.country_code
+        for participant in result.participants
+    }
+    assert countries_by_key["arsenal"] == "GB-ENG"
+    assert countries_by_key["fc_bayern_muenchen"] == "DE"
 
 
 def test_catalog_excludes_relegated_teams(tmp_path: Path) -> None:
@@ -89,8 +100,8 @@ def test_catalog_can_run_repeatedly(tmp_path: Path) -> None:
         membership_count = connection.execute(
             "SELECT COUNT(*) FROM season_participants"
         ).fetchone()
-    assert participant_count == (20,)
-    assert membership_count == (20,)
+    assert participant_count == (38,)
+    assert membership_count == (38,)
     assert [item.id for item in second.participants] == [
         item.id for item in first.participants
     ]
@@ -110,6 +121,17 @@ def test_catalog_restores_participant_master_data(tmp_path: Path) -> None:
     assert arsenal.name == "Arsenal"
     assert arsenal.participant_type == "team"
     assert arsenal.country_code == "GB-ENG"
+
+    participants.upsert(football.id, "fc_koeln", "individual", "Wrong")
+    initialize_participants_catalog(
+        participants, memberships, sports, competitions, seasons
+    )
+    fc_koeln = participants.get_by_key(football.id, "fc_koeln")
+    assert fc_koeln is not None
+    assert fc_koeln.name == "1. FC Köln"
+    assert fc_koeln.short_name == "1. FC Köln"
+    assert fc_koeln.participant_type == "team"
+    assert fc_koeln.country_code == "DE"
 
 
 def test_catalog_requires_current_season(tmp_path: Path) -> None:

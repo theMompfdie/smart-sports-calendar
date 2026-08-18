@@ -9,16 +9,29 @@ from app.providers.football_data.exceptions import (
     FootballDataSchemaError,
 )
 from app.providers.football_data.models import parse_snapshot
+from app.providers.football_data.profiles import (
+    BUNDESLIGA_PROFILE,
+    PREMIER_LEAGUE_PROFILE,
+    FootballDataCompetitionProfile,
+)
 from app.providers.football_data.team_mappings import resolve_team_key
 
 from tests.providers.football_data.support import FETCHED_AT, payloads, snapshot
 
 
-def parse(competition, teams, matches, *, fetched_at=FETCHED_AT):
+def parse(
+    competition,
+    teams,
+    matches,
+    *,
+    profile: FootballDataCompetitionProfile = PREMIER_LEAGUE_PROFILE,
+    fetched_at=FETCHED_AT,
+):
     return parse_snapshot(
         competition,
         teams,
         matches,
+        profile=profile,
         expected_season_year=2026,
         fetched_at_utc=fetched_at,
         request_attempts=3,
@@ -35,6 +48,17 @@ def test_complete_snapshot_is_sorted_and_typed() -> None:
     assert len(result.matches) == 380
     assert result.matches[0].status == "scheduled"
     assert result.matches[0].kickoff_utc.tzinfo is not None
+
+
+def test_bundesliga_profile_parses_exact_complete_scope() -> None:
+    result = snapshot(BUNDESLIGA_PROFILE)
+
+    assert result.competition_id == 2002
+    assert result.competition_code == "BL1"
+    assert result.season_id == 2522
+    assert len(result.teams) == 18
+    assert len(result.matches) == 306
+    assert {match.matchday for match in result.matches} == set(range(1, 35))
 
 
 @pytest.mark.parametrize(

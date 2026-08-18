@@ -25,6 +25,32 @@ PREMIER_LEAGUE_TEAM_NAME_MAPPING: dict[str, str] = {
     "Tottenham Hotspur FC": "tottenham_hotspur",
 }
 
+BUNDESLIGA_TEAM_NAME_MAPPING: dict[str, str] = {
+    "1. FC Köln": "fc_koeln",
+    "1. FC Union Berlin": "fc_union_berlin",
+    "1. FSV Mainz 05": "fsv_mainz_05",
+    "Bayer 04 Leverkusen": "bayer_04_leverkusen",
+    "Borussia Dortmund": "borussia_dortmund",
+    "Borussia Mönchengladbach": "borussia_moenchengladbach",
+    "Eintracht Frankfurt": "eintracht_frankfurt",
+    "FC Augsburg": "fc_augsburg",
+    "FC Bayern München": "fc_bayern_muenchen",
+    "FC Schalke 04": "fc_schalke_04",
+    "Hamburger SV": "hamburger_sv",
+    "RB Leipzig": "rb_leipzig",
+    "SC Freiburg": "sc_freiburg",
+    "SC Paderborn 07": "sc_paderborn_07",
+    "SV 07 Elversberg": "sv_elversberg",
+    "SV Werder Bremen": "werder_bremen",
+    "TSG 1899 Hoffenheim": "tsg_hoffenheim",
+    "VfB Stuttgart": "vfb_stuttgart",
+}
+
+REVIEWED_TEAM_NAME_MAPPINGS = {
+    "premier_league": PREMIER_LEAGUE_TEAM_NAME_MAPPING,
+    "bundesliga": BUNDESLIGA_TEAM_NAME_MAPPING,
+}
+
 _NORMALIZED_TEAM_MAPPING = {
     re.sub(r"[^a-z0-9]", "", name.casefold()): key
     for name, key in PREMIER_LEAGUE_TEAM_NAME_MAPPING.items()
@@ -54,9 +80,43 @@ _NORMALIZED_TEAM_MAPPING.update(
     }
 )
 
+_NORMALIZED_BUNDESLIGA_TEAM_MAPPING = {
+    re.sub(r"[^a-z0-9]", "", name.casefold()): key
+    for name, key in BUNDESLIGA_TEAM_NAME_MAPPING.items()
+}
+_NORMALIZED_BUNDESLIGA_TEAM_MAPPING.update(
+    {
+        "1fckoln": "fc_koeln",
+        "kln": "fc_koeln",
+        "koeln": "fc_koeln",
+        "koln": "fc_koeln",
+        "unionberlin": "fc_union_berlin",
+        "mainz": "fsv_mainz_05",
+        "mainz05": "fsv_mainz_05",
+        "leverkusen": "bayer_04_leverkusen",
+        "dortmund": "borussia_dortmund",
+        "mgladbach": "borussia_moenchengladbach",
+        "monchengladbach": "borussia_moenchengladbach",
+        "frankfurt": "eintracht_frankfurt",
+        "augsburg": "fc_augsburg",
+        "bayern": "fc_bayern_muenchen",
+        "bayernmunchen": "fc_bayern_muenchen",
+        "schalke": "fc_schalke_04",
+        "schalke04": "fc_schalke_04",
+        "hsv": "hamburger_sv",
+        "freiburg": "sc_freiburg",
+        "scpaderborn": "sc_paderborn_07",
+        "paderborn": "sc_paderborn_07",
+        "elversberg": "sv_elversberg",
+        "bremen": "werder_bremen",
+        "hoffenheim": "tsg_hoffenheim",
+        "stuttgart": "vfb_stuttgart",
+    }
+)
+
 TEAM_NAME_MAPPINGS: dict[str, dict[str, str]] = {
     "premier_league": _NORMALIZED_TEAM_MAPPING,
-    "bundesliga": {},
+    "bundesliga": _NORMALIZED_BUNDESLIGA_TEAM_MAPPING,
 }
 
 
@@ -71,3 +131,10 @@ def resolve_team_key(competition_key: str, provider_name: str) -> str | None:
     for affix in ("footballclub", "afc", "fc"):
         normalized = normalized.removeprefix(affix).removesuffix(affix)
     return mapping.get(normalized)
+
+
+def get_reviewed_team_keys(competition_key: str) -> frozenset[str] | None:
+    mapping = REVIEWED_TEAM_NAME_MAPPINGS.get(competition_key)
+    if mapping is None:
+        return None
+    return frozenset(mapping.values())

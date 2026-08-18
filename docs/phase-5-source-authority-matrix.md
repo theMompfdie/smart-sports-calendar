@@ -15,6 +15,10 @@ plan, or claim that a new competition is released. The existing
 football-data.org Premier League job remains the only released authoritative
 writer.
 
+Implementation status update, 2026-08-18: issue #114 implements the qualified
+Bundesliga adapter and runtime boundary with credential-free tests. Bundesliga
+is not yet live-staged or released; those operator gates remain outstanding.
+
 Decision meanings:
 
 - `Qualified`: implementation may proceed with the named authority and stated
@@ -268,7 +272,7 @@ a job.
 
 | Outcome group | Required work before release |
 | --- | --- |
-| Bundesliga | Create a separate implementation issue; add catalog and mappings; generalize the existing football-data adapter without weakening PL validation; add offline fixtures/tests, SQLite-to-mocked-Graph integration, isolated staging proof, docs, and attribution. |
+| Bundesliga | Complete issue #114, including catalog and mappings, profile-driven football-data runtime, offline fixtures/tests, SQLite-to-mocked-Graph integration, docs, attribution, and isolated staging proof. |
 | Championship and 2. Bundesliga | Separate qualification and implementation issues after Bundesliga; prove competition-specific counts, pagination, and play-off/relegation semantics. |
 | Austrian Bundesliga and domestic cups | Operator provider/plan decision; Sportmonks adapter qualification; stage/round and placeholder policy; non-destructive import first; later destructive reconciliation only under a new ADR. |
 | UEFA competitions | Hybrid competition-capability ADR and model implementation; then repeat source and live qualification. |

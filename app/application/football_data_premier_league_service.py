@@ -18,14 +18,18 @@ from app.providers.contracts import (
     NormalizedFixtureBatch,
     NormalizedFixtureParticipant,
 )
-from app.providers.football_data.adapter import FootballDataPremierLeagueAdapter
+from app.providers.football_data.adapter import FootballDataSnapshotAdapter
 from app.providers.football_data.exceptions import (
     FootballDataIntegrityError,
     FootballDataResolutionError,
 )
 from app.providers.football_data.models import FootballDataMatch, FootballDataSnapshot
+from app.providers.football_data.profiles import (
+    PREMIER_LEAGUE_PROFILE,
+    FootballDataCompetitionProfile,
+)
 from app.providers.football_data.team_mappings import (
-    PREMIER_LEAGUE_TEAM_NAME_MAPPING,
+    get_reviewed_team_keys,
     resolve_team_key,
 )
 
@@ -62,11 +66,11 @@ class _CanonicalContext:
     participants_by_provider_id: dict[int, Participant]
 
 
-class FootballDataPremierLeagueService:
+class FootballDataCompetitionService:
     def __init__(
         self,
         settings: FootballDataSettings,
-        adapter: FootballDataPremierLeagueAdapter,
+        adapter: FootballDataSnapshotAdapter,
         sports_repository: SportsRepository,
         competitions_repository: CompetitionsRepository,
         seasons_repository: SeasonsRepository,
@@ -74,9 +78,13 @@ class FootballDataPremierLeagueService:
         season_participants_repository: SeasonParticipantsRepository,
         data_sources_repository: DataSourcesRepository,
         source_mappings_repository: SourceMappingsRepository,
+        profile: FootballDataCompetitionProfile = PREMIER_LEAGUE_PROFILE,
     ) -> None:
+        if adapter.profile != profile:
+            raise ValueError("football-data.org adapter and service profiles differ.")
         self._settings = settings
         self._adapter = adapter
+        self.profile = profile
         self._sports_repository = sports_repository
         self._competitions_repository = competitions_repository
         self._seasons_repository = seasons_repository
@@ -117,36 +125,54 @@ class FootballDataPremierLeagueService:
         if football is None:
             raise FootballDataResolutionError("Canonical football sport is missing.")
         competition = self._competitions_repository.get_by_key(
-            sport_id=football.id, competition_key="premier_league"
+            sport_id=football.id, competition_key=self.profile.competition_key
         )
         if competition is None:
-            raise FootballDataResolutionError("Canonical Premier League is missing.")
+            raise FootballDataResolutionError(
+                f"Canonical {self.profile.competition_name} is missing."
+            )
         if competition.competition_type is None:
             raise FootballDataResolutionError(
-                "Canonical Premier League competition format is missing."
+                f"Canonical {self.profile.competition_name} competition format "
+                "is missing."
             )
         seasons = self._seasons_repository.get_current_for_competition(competition.id)
         if len(seasons) != 1:
             raise FootballDataResolutionError(
-                "Canonical Premier League must have exactly one current season."
+                f"Canonical {self.profile.competition_name} must have exactly one "
+                "current season."
             )
-        return seasons[0]
+        season = seasons[0]
+        if season.season_key != self.profile.season_key:
+            raise FootballDataResolutionError(
+                f"Canonical {self.profile.competition_name} current season does "
+                "not match the configured profile."
+            )
+        return season
 
     def _map_catalog(self, snapshot: FootballDataSnapshot) -> _CanonicalContext:
         football = self._sports_repository.get_by_key("football")
         if football is None:
             raise FootballDataResolutionError("Canonical football sport is missing.")
         competition = self._competitions_repository.get_by_key(
-            sport_id=football.id, competition_key="premier_league"
+            sport_id=football.id, competition_key=self.profile.competition_key
         )
         if competition is None:
-            raise FootballDataResolutionError("Canonical Premier League is missing.")
+            raise FootballDataResolutionError(
+                f"Canonical {self.profile.competition_name} is missing."
+            )
         seasons = self._seasons_repository.get_current_for_competition(competition.id)
         if len(seasons) != 1:
             raise FootballDataResolutionError(
-                "Canonical Premier League must have exactly one current season."
+                f"Canonical {self.profile.competition_name} must have exactly one "
+                "current season."
             )
         season = seasons[0]
+        if season.season_key != self.profile.season_key:
+            raise FootballDataResolutionError(
+                f"Canonical {self.profile.competition_name} current season does "
+                "not match the configured profile."
+            )
         if season.start_date is None or season.end_date is None:
             raise FootballDataResolutionError("Canonical season dates are incomplete.")
         try:
@@ -161,13 +187,17 @@ class FootballDataPremierLeagueService:
             snapshot.season_end_date,
         ):
             raise FootballDataIntegrityError(
-                "Provider and canonical Premier League season dates differ."
+                f"Provider and canonical {self.profile.competition_name} season "
+                "dates differ."
             )
 
         participants_by_provider_id: dict[int, Participant] = {}
         resolved_team_keys: set[str] = set()
         for team in snapshot.teams:
-            participant_key = resolve_team_key("premier_league", team.name)
+            participant_key = resolve_team_key(
+                self.profile.competition_key,
+                team.name,
+            )
             if participant_key is None:
                 raise FootballDataIntegrityError(
                     "Provider team name does not match the reviewed 2026/27 mapping."
@@ -185,12 +215,14 @@ class FootballDataPremierLeagueService:
             len(
                 {participant.id for participant in participants_by_provider_id.values()}
             )
-            != 20
+            != self.profile.expected_team_count
         ):
             raise FootballDataIntegrityError(
-                "Provider team mapping does not resolve to 20 distinct participants."
+                "Provider team mapping does not resolve to the expected distinct "
+                "participants."
             )
-        if resolved_team_keys != set(PREMIER_LEAGUE_TEAM_NAME_MAPPING.values()):
+        reviewed_team_keys = get_reviewed_team_keys(self.profile.competition_key)
+        if reviewed_team_keys is None or resolved_team_keys != reviewed_team_keys:
             raise FootballDataIntegrityError(
                 "Provider team collection does not cover the reviewed 2026/27 teams."
             )
@@ -299,3 +331,6 @@ class FootballDataPremierLeagueService:
             raise FootballDataIntegrityError(
                 "football-data.org mapping conflicted during persistence."
             ) from error
+
+
+FootballDataPremierLeagueService = FootballDataCompetitionService
