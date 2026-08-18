@@ -33,7 +33,7 @@ from app.domain.competition_lifecycle import (
                 stage="group_stage",
             ),
             True,
-            False,
+            True,
         ),
         (
             CompetitionLifecycleScope(
@@ -43,7 +43,7 @@ from app.domain.competition_lifecycle import (
                 round_name="round_of_16",
             ),
             True,
-            False,
+            True,
         ),
     ],
 )

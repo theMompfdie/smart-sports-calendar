@@ -68,10 +68,12 @@ class CompetitionLifecycleScope:
 
     @property
     def removal_reconciliation_supported(self) -> bool:
-        return (
-            self.competition_format is CompetitionFormat.LEAGUE
-            and self.scope_kind is FixtureObservationScopeKind.COMPLETE_SEASON
-        )
+        if self.competition_format is CompetitionFormat.LEAGUE:
+            return self.scope_kind is FixtureObservationScopeKind.COMPLETE_SEASON
+        return self.scope_kind in {
+            FixtureObservationScopeKind.COMPLETE_STAGE,
+            FixtureObservationScopeKind.COMPLETE_ROUND,
+        }
 
     @staticmethod
     def _parse_competition_format(

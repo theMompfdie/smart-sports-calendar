@@ -585,16 +585,23 @@ class FixtureImportRepository:
         scope: FixtureImportScopeRecord,
     ) -> list[FixtureImportItemResult]:
         timestamp = scope.observed_at_utc.isoformat()
+        boundary_sql, boundary_parameters = self._reconciliation_boundary(scope)
         rows = connection.execute(
-            """
+            f"""
             SELECT sm.external_id, event.*
             FROM source_mappings AS sm
             JOIN sports_events AS event ON event.id = sm.internal_id
             WHERE sm.source_id = ? AND sm.object_type = 'event'
               AND event.competition_id = ? AND event.season_id = ?
+              {boundary_sql}
             ORDER BY event.id
             """,
-            (source_id, scope.competition_id, scope.season_id),
+            (
+                source_id,
+                scope.competition_id,
+                scope.season_id,
+                *boundary_parameters,
+            ),
         ).fetchall()
         results: list[FixtureImportItemResult] = []
         for event in rows:
@@ -663,6 +670,34 @@ class FixtureImportRepository:
                     )
                 )
         return results
+
+    @staticmethod
+    def _reconciliation_boundary(
+        scope: FixtureImportScopeRecord,
+    ) -> tuple[str, tuple[str, ...]]:
+        lifecycle = scope.lifecycle
+        if lifecycle.scope_kind is FixtureObservationScopeKind.COMPLETE_SEASON:
+            return "", ()
+        if lifecycle.scope_kind is FixtureObservationScopeKind.COMPLETE_STAGE:
+            if lifecycle.stage is None:
+                raise FixtureImportConflictError(
+                    "Complete-stage reconciliation requires a stage identifier."
+                )
+            return "AND event.stage = ?", (lifecycle.stage,)
+        if lifecycle.scope_kind is FixtureObservationScopeKind.COMPLETE_ROUND:
+            if lifecycle.round_name is None:
+                raise FixtureImportConflictError(
+                    "Complete-round reconciliation requires a round identifier."
+                )
+            if lifecycle.stage is None:
+                return "AND event.round_name = ?", (lifecycle.round_name,)
+            return (
+                "AND event.round_name = ? AND event.stage = ?",
+                (lifecycle.round_name, lifecycle.stage),
+            )
+        raise FixtureImportConflictError(
+            "Removal reconciliation requires a complete supported lifecycle scope."
+        )
 
     @staticmethod
     def _in_window(event: sqlite3.Row, scope: FixtureImportScopeRecord) -> bool:
