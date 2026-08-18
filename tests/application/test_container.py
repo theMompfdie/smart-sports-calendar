@@ -73,13 +73,16 @@ def api_football_job(
     )
 
 
-def football_data_job() -> SourceJobDefinition:
+def football_data_job(
+    competition_key: str = "premier_league",
+    interval_seconds: int = 3600,
+) -> SourceJobDefinition:
     return SourceJobDefinition(
-        job_key="football-data-premier-league",
+        job_key=f"football-data-{competition_key.replace('_', '-')}",
         source_key="football_data",
         role=SourceRole.AUTHORITATIVE,
-        scope=SourceScope("football", "premier_league", "2026_27"),
-        interval_seconds=3600,
+        scope=SourceScope("football", competition_key, "2026_27"),
+        interval_seconds=interval_seconds,
     )
 
 
@@ -116,6 +119,67 @@ def test_container_registers_authoritative_football_data_runtime(
         ("football-data-premier-league", 3600),
         ("system:calendar-synchronization", 300),
     ]
+
+
+@patch("app.application.container.FootballDataClient")
+def test_container_builds_isolated_competition_runtimes_with_shared_client(
+    client_type: MagicMock, tmp_path: Path
+) -> None:
+    shared_client = MagicMock()
+    client_type.return_value = shared_client
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        football_data=FootballDataSettings(enabled=True, api_key="secret"),
+        source_jobs=(
+            football_data_job(),
+            football_data_job("bundesliga", 21600),
+        ),
+    )
+
+    container = ApplicationContainer(settings=settings)
+
+    assert set(container.football_data_import_runtime_services) == {
+        "football-data-premier-league",
+        "football-data-bundesliga",
+    }
+    assert all(
+        adapter._client is shared_client
+        for adapter in container.football_data_adapters.values()
+    )
+    assert [job.job_key for job in container.source_scheduled_jobs] == [
+        "football-data-premier-league",
+        "football-data-bundesliga",
+    ]
+    assert [job.interval_seconds for job in container.source_scheduled_jobs] == [
+        3600,
+        21600,
+    ]
+    premier_league_runtime = container.football_data_import_runtime_services[
+        "football-data-premier-league"
+    ]
+    bundesliga_runtime = container.football_data_import_runtime_services[
+        "football-data-bundesliga"
+    ]
+    with (
+        patch.object(premier_league_runtime, "run") as premier_league_run,
+        patch.object(bundesliga_runtime, "run") as bundesliga_run,
+    ):
+        for scheduled_job in container.source_scheduled_jobs:
+            scheduled_job.task()
+
+    premier_league_run.assert_called_once_with()
+    bundesliga_run.assert_called_once_with()
+
+
+def test_container_rejects_unsupported_football_data_profile(tmp_path: Path) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        football_data=FootballDataSettings(enabled=True, api_key="secret"),
+        source_jobs=(football_data_job("championship"),),
+    )
+
+    with pytest.raises(SourceConfigurationError, match="supported authoritative"):
+        ApplicationContainer(settings=settings)
 
 
 def test_run_initializes_sports_catalog(

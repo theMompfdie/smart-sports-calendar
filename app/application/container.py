@@ -1,5 +1,6 @@
 import logging
 import signal
+from functools import partial
 from threading import Event
 from types import FrameType
 
@@ -26,7 +27,7 @@ from app.application.football_data_import_runtime_service import (
     FootballDataImportRuntimeService,
 )
 from app.application.football_data_premier_league_service import (
-    FootballDataPremierLeagueService,
+    FootballDataCompetitionService,
     register_football_data_source,
 )
 from app.application.source_registry import SourceRegistry
@@ -66,9 +67,18 @@ from app.providers.api_football.catalog_adapter import ApiFootballCatalogAdapter
 from app.providers.api_football.client import ApiFootballClient
 from app.providers.api_football.fixture_adapter import ApiFootballFixtureAdapter
 from app.providers.api_football.team_mappings import PREMIER_LEAGUE_TEAM_MAPPING
-from app.providers.contracts import SourceConfigurationError, SourceRole
-from app.providers.football_data.adapter import FootballDataPremierLeagueAdapter
+from app.providers.contracts import (
+    SourceConfigurationError,
+    SourceJobDefinition,
+    SourceJobTask,
+    SourceRole,
+)
+from app.providers.football_data.adapter import FootballDataCompetitionAdapter
 from app.providers.football_data.client import FootballDataClient
+from app.providers.football_data.profiles import (
+    FootballDataCompetitionProfile,
+    get_competition_profile,
+)
 from app.scheduler.scheduler import ScheduledJob, Scheduler
 from app.synchronization.event_synchronizer import EventSynchronizer
 from app.synchronization.outlook_event_payload_builder import (
@@ -116,17 +126,22 @@ class ApplicationContainer:
                 "FOOTBALL_DATA_ENABLED and the active football_data source job "
                 "must be configured together."
             )
-        if active_football_data_jobs and (
-            len(active_football_data_jobs) != 1
-            or active_football_data_jobs[0].scope.sport_key != "football"
-            or active_football_data_jobs[0].scope.competition_key != "premier_league"
-            or active_football_data_jobs[0].scope.season_key != "2026_27"
-            or active_football_data_jobs[0].role is not SourceRole.AUTHORITATIVE
-        ):
-            raise SourceConfigurationError(
-                "The football-data.org release adapter supports exactly the "
-                "authoritative football/premier_league/2026_27 scope."
+        football_data_profiles: dict[str, FootballDataCompetitionProfile] = {}
+        for job in active_football_data_jobs:
+            profile = get_competition_profile(
+                job.scope.competition_key,
+                job.scope.season_key,
             )
+            if (
+                job.scope.sport_key != "football"
+                or profile is None
+                or job.role is not SourceRole.AUTHORITATIVE
+            ):
+                raise SourceConfigurationError(
+                    "The football-data.org adapter requires a supported "
+                    "authoritative football competition profile."
+                )
+            football_data_profiles[job.job_key] = profile
         self.logger: logging.Logger = configure_logging(
             self.settings.log_level,
             self.settings.instance_name,
@@ -204,15 +219,18 @@ class ApplicationContainer:
             if self.settings.football_data.enabled
             else None
         )
-        self.football_data_adapter = (
-            FootballDataPremierLeagueAdapter(self.football_data_client)
+        self.football_data_adapters = {
+            job.job_key: FootballDataCompetitionAdapter(
+                self.football_data_client,
+                football_data_profiles[job.job_key],
+            )
+            for job in active_football_data_jobs
             if self.football_data_client is not None
-            else None
-        )
-        self.football_data_premier_league_service = (
-            FootballDataPremierLeagueService(
+        }
+        self.football_data_competition_services = {
+            job.job_key: FootballDataCompetitionService(
                 settings=self.settings.football_data,
-                adapter=self.football_data_adapter,
+                adapter=self.football_data_adapters[job.job_key],
                 sports_repository=self.sports_repository,
                 competitions_repository=self.competitions_repository,
                 seasons_repository=self.seasons_repository,
@@ -220,8 +238,26 @@ class ApplicationContainer:
                 season_participants_repository=self.season_participants_repository,
                 data_sources_repository=self.data_sources_repository,
                 source_mappings_repository=self.source_mappings_repository,
+                profile=self.football_data_adapters[job.job_key].profile,
             )
-            if self.football_data_adapter is not None
+            for job in active_football_data_jobs
+        }
+        premier_league_job_key = next(
+            (
+                job.job_key
+                for job in active_football_data_jobs
+                if job.scope.competition_key == "premier_league"
+            ),
+            None,
+        )
+        self.football_data_adapter = (
+            self.football_data_adapters.get(premier_league_job_key)
+            if premier_league_job_key is not None
+            else None
+        )
+        self.football_data_premier_league_service = (
+            self.football_data_competition_services.get(premier_league_job_key)
+            if premier_league_job_key is not None
             else None
         )
         self.api_football_catalog_adapter = (
@@ -293,27 +329,31 @@ class ApplicationContainer:
             if self.api_football_import_orchestrator is not None
             else None
         )
-        football_data_job = next(iter(active_football_data_jobs), None)
-        self.football_data_import_orchestrator = (
-            FootballDataImportOrchestrator(
-                premier_league_service=self.football_data_premier_league_service,
+        self.football_data_import_orchestrators = {
+            job.job_key: FootballDataImportOrchestrator(
+                competition_service=self.football_data_competition_services[
+                    job.job_key
+                ],
                 import_service=self.football_data_fixture_import_service,
                 sync_runs_repository=self.sync_runs_repository,
                 data_sources_repository=self.data_sources_repository,
-                job_definition=football_data_job,
+                job_definition=job,
             )
-            if self.football_data_premier_league_service is not None
-            and football_data_job is not None
-            else None
-        )
-        self.football_data_import_runtime_service = (
-            FootballDataImportRuntimeService(
-                orchestrator=self.football_data_import_orchestrator,
+            for job in active_football_data_jobs
+        }
+        self.football_data_import_runtime_services = {
+            job_key: FootballDataImportRuntimeService(
+                orchestrator=orchestrator,
                 sync_runs_repository=self.sync_runs_repository,
                 logger=self.logger,
             )
-            if self.football_data_import_orchestrator is not None
-            else None
+            for job_key, orchestrator in self.football_data_import_orchestrators.items()
+        }
+        self.football_data_import_orchestrator = next(
+            iter(self.football_data_import_orchestrators.values()), None
+        )
+        self.football_data_import_runtime_service = next(
+            iter(self.football_data_import_runtime_services.values()), None
         )
         self.outlook_event_payload_builder = OutlookEventPayloadBuilder()
         self.event_synchronizer = EventSynchronizer(
@@ -347,10 +387,10 @@ class ApplicationContainer:
                 supported_roles=frozenset({SourceRole.AUTHORITATIVE}),
                 writes_canonical=True,
             )
-        if self.football_data_import_runtime_service is not None:
+        if self.football_data_import_runtime_services:
             self.source_registry.register(
                 "football_data",
-                self._run_football_data_source_job,
+                task_factory=self._build_football_data_source_task,
                 supported_roles=frozenset({SourceRole.AUTHORITATIVE}),
                 writes_canonical=True,
             )
@@ -489,11 +529,17 @@ class ApplicationContainer:
             )
         return runtime.run()
 
-    def _run_football_data_source_job(self) -> object | None:
-        runtime = self.football_data_import_runtime_service
+    def _build_football_data_source_task(
+        self,
+        definition: SourceJobDefinition,
+    ) -> SourceJobTask:
+        return partial(self._run_football_data_source_job, definition.job_key)
+
+    def _run_football_data_source_job(self, job_key: str) -> object | None:
+        runtime = self.football_data_import_runtime_services.get(job_key)
         if runtime is None:
             raise SourceConfigurationError(
-                "football-data.org source job has no configured runtime."
+                f"football-data.org source job has no configured runtime: {job_key}."
             )
         return runtime.run()
 

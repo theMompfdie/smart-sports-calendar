@@ -164,7 +164,7 @@ def create_harness(database_path, *, persist_source_assignment: bool = True):
             )
         )
     provider = FootballDataImportOrchestrator(
-        premier_league_service=service,
+        competition_service=service,
         import_service=ApiFootballFixtureImportService(
             sources,
             FixtureImportRepository(database_path),

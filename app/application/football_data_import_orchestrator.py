@@ -11,7 +11,7 @@ from app.application.api_football_import_orchestrator import (
 )
 from app.application.football_data_premier_league_service import (
     FOOTBALL_DATA_SOURCE_KEY,
-    FootballDataPremierLeagueService,
+    FootballDataCompetitionService,
 )
 from app.database.data_sources_repository import DataSourcesRepository
 from app.database.fixture_import_repository import (
@@ -36,7 +36,7 @@ class FootballDataImportOrchestrator:
 
     def __init__(
         self,
-        premier_league_service: FootballDataPremierLeagueService,
+        competition_service: FootballDataCompetitionService,
         import_service: ApiFootballFixtureImportService,
         sync_runs_repository: SyncRunsRepository,
         data_sources_repository: DataSourcesRepository,
@@ -46,13 +46,17 @@ class FootballDataImportOrchestrator:
             raise ValueError("football-data.org orchestrator received the wrong job.")
         if job_definition.role is not SourceRole.AUTHORITATIVE:
             raise ValueError("football-data.org release adapter must be authoritative.")
-        self._premier_league_service = premier_league_service
+        self._competition_service = competition_service
         self._import_service = import_service
         self._sync_runs_repository = sync_runs_repository
         self._data_sources_repository = data_sources_repository
         self._job_definition = job_definition
 
-    def import_current_premier_league(self) -> ProviderImportRunResult:
+    @property
+    def job_key(self) -> str:
+        return self._job_definition.job_key
+
+    def import_current_competition(self) -> ProviderImportRunResult:
         metadata = self._base_metadata(complete=False)
         source = self._data_sources_repository.get_by_key(FOOTBALL_DATA_SOURCE_KEY)
         if source is None or not source.is_active:
@@ -70,7 +74,7 @@ class FootballDataImportOrchestrator:
                 "Provider import run could not be started."
             ) from error
         try:
-            batch = self._premier_league_service.fetch_normalized_snapshot()
+            batch = self._competition_service.fetch_normalized_snapshot()
             scope = self._scope(batch)
             result = self._import_service.import_fixtures(batch.fixtures, scope)
             completed = self._sync_runs_repository.complete(
@@ -106,7 +110,7 @@ class FootballDataImportOrchestrator:
     def _base_metadata(self, *, complete: bool) -> dict[str, object]:
         job = self._job_definition
         return {
-            "operation": "premier_league_fixture_import",
+            "operation": "competition_fixture_import",
             "source_key": FOOTBALL_DATA_SOURCE_KEY,
             "job_key": job.job_key,
             "role": job.role.value,
@@ -116,6 +120,10 @@ class FootballDataImportOrchestrator:
             "complete": complete,
             "filtered": False,
         }
+
+    def import_current_premier_league(self) -> ProviderImportRunResult:
+        """Backward-compatible entry point for the original release adapter."""
+        return self.import_current_competition()
 
     @staticmethod
     def _scope(batch: NormalizedFixtureBatch) -> FixtureImportScope:
