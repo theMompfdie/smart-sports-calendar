@@ -31,13 +31,13 @@ def payloads() -> tuple[list[dict], list[dict], list[dict]]:
             "leagueSeason": 2026,
             "group": deepcopy(groups[0]),
             "team1": {
-                "teamId": 11,
+                "teamId": 5712,
                 "teamName": "SC St. Tönis",
                 "shortName": "St. Tönis",
                 "teamIconUrl": "https://example.test/not-imported.png",
             },
             "team2": {
-                "teamId": 12,
+                "teamId": 91,
                 "teamName": "Eintracht Frankfurt",
                 "shortName": "Frankfurt",
             },

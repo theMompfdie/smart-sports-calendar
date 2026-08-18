@@ -38,6 +38,15 @@ COMPETITION_CATALOG = (
         region="Germany",
         calendar_category="SMART | Germany",
     ),
+    CompetitionCatalogEntry(
+        competition_key="dfb_pokal",
+        name="DFB-Pokal",
+        short_name="DFB",
+        country_code="DE",
+        competition_format=CompetitionFormat.KNOCKOUT_CUP,
+        region="Germany",
+        calendar_category="SMART | Germany",
+    ),
 )
 
 
