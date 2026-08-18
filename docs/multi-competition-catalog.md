@@ -11,10 +11,16 @@ The catalog contains:
 | Competition | Canonical key | Season | Format | Catalog status |
 | --- | --- | --- | --- | --- |
 | Premier League | `premier_league` | 2026/27 | `league` | Existing implemented baseline |
-| Bundesliga | `bundesliga` | 2026/27 | `league` | Competition and season only |
+| Bundesliga | `bundesliga` | 2026/27 | `league` | Implemented by issue #114 |
+| DFB-Pokal | `dfb_pokal` | 2026/27 | `knockout_cup` | Added by issue #119 |
 
 Bundesliga season dates are the qualified 2026-08-28 through 2027-05-22
 boundaries recorded by issue #110 and ADR 0006.
+
+Subsequent Phase 5 slices completed the Bundesliga participant/runtime path
+and added the DFB-Pokal competition, season, and 64 reviewed 2026/27
+participants. Shared clubs retain one canonical participant identity across
+Bundesliga and DFB-Pokal memberships.
 
 ## Identity boundaries
 
@@ -28,8 +34,9 @@ football-data.org identities are:
 
 Provider team-name resolution is also competition-scoped. A name registered
 for one competition cannot resolve through another competition's mapping.
-The Bundesliga mapping is intentionally empty until a separate implementation
-issue adds a reviewed participant catalog and deterministic offline fixtures.
+The Bundesliga mapping is implemented by issue #114. DFB-Pokal uses a separate
+reviewed OpenLigaDB `teamId` plus provider-name mapping; it does not reuse the
+football-data.org name resolver.
 
 ## Initialization behavior
 
@@ -45,7 +52,7 @@ The existing SQLite schema already supports multiple competitions, seasons,
 participants, memberships, provider mappings, and source assignments. Phase
 5.4 therefore requires no schema migration.
 
-## Explicit non-enablement
+## Historical Phase 5.4 boundary
 
 Cataloged and provider-mapped do not mean implemented or released. Phase 5.4
 does not add Bundesliga teams, fixtures, source mappings, an authoritative
@@ -53,3 +60,7 @@ source assignment, a scheduler job, SQLite events, staging behavior, or
 Microsoft Graph writes. The football-data.org production adapter remains
 strictly Premier-League-specific until a later issue generalizes and validates
 the complete import path.
+
+That paragraph describes the completed #112 boundary. Issues #114 and #119
+subsequently enabled the Bundesliga and DFB-Pokal implementation paths. Live
+staging and release claims remain separate operator gates.
