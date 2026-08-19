@@ -149,6 +149,7 @@ Phase 5 decision records:
 - [football-data.org Bundesliga import](docs/football-data-bundesliga-import.md)
 - [OpenLigaDB DFB-Pokal selection ADR](docs/adr/0007-select-openligadb-for-dfb-pokal.md)
 - [OpenLigaDB DFB-Pokal import](docs/openligadb-dfb-pokal-import.md)
+- [Phase 5 multi-competition staging validation](docs/phase-5-multi-competition-staging-validation.md)
 
 ### Database and Persistence
 
