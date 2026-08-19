@@ -354,6 +354,7 @@ Existing project evidence:
 
 - [Premier League live qualification](football-data-qualification.md)
 - [Premier League authority decision](adr/0003-select-football-data-for-premier-league.md)
+- [Championship regular-season authority decision](adr/0008-select-football-data-for-championship-regular-season.md)
 - [competition lifecycle model](adr/0004-model-competition-lifecycle-scopes.md)
 - [provider integration contract](provider-integration-contract.md)
 - [source orchestration](source-orchestration.md)

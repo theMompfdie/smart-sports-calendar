@@ -137,8 +137,8 @@ implementation issue but not enabling a source assignment, import, scheduler,
 database write, removal decision, or Outlook operation.
 
 Two complete secret-safe observations at
-`2026-08-19T14:44:06.235111+00:00` and
-`2026-08-19T14:52:03.895633+00:00`, separated by about seven minutes and 58
+`2026-08-19T16:22:19.452504+00:00` and
+`2026-08-19T16:24:32.575705+00:00`, separated by about two minutes and 13
 seconds, both reported:
 
 - API version `v4`, competition code `ELC`, and competition ID `2016`;
@@ -152,7 +152,9 @@ seconds, both reported:
 - latest source update `2026-08-19T05:20:30Z`;
 - one complete match response and three read-only requests; and
 - `match_ids_sha256` =
-  `9fdf11360da92e14748234d2ab2a37a79b6176adf9e756e54d19b129a21e1842`.
+  `9fdf11360da92e14748234d2ab2a37a79b6176adf9e756e54d19b129a21e1842`; and
+- `team_ids_sha256` =
+  `b73d761a2a6f382be662cce9377af728c503a99cd322ca1eccb8b0e846812de9`.
 
 The provider returned all 552 matches in one response despite the requested
 documented maximum limit of 500. The declared count, actual count, unique-ID
@@ -182,10 +184,10 @@ deliberately unsupported.
 
 The command emits only the qualification profile, observation time, aggregate
 identifiers, counts, pagination/request counts, UTC boundaries, status counts,
-stage counts, API version, a SHA-256 fingerprint of the sorted match IDs, the
-latest source-update timestamp, and the minimum remaining request count. It
-never emits the API token, raw body, authorization header, account identifier,
-team names, individual match IDs, or fixture details.
+stage counts, API version, SHA-256 fingerprints of the sorted match and team
+IDs, the latest source-update timestamp, and the minimum remaining request
+count. It never emits the API token, raw body, authorization header, account
+identifier, team names, individual IDs, or fixture details.
 
 In PowerShell, enter the token without echoing it or storing it in shell
 history. For the already approved Premier League profile:
@@ -242,7 +244,7 @@ The command fails closed unless it observes:
 - the selected profile's exact distinct-team and match counts;
 - complete offset-based pagination without overlaps or gaps;
 - distinct positive match IDs;
-- a deterministic SHA-256 fingerprint over the sorted match IDs;
+- deterministic SHA-256 fingerprints over the sorted match and team IDs;
 - the same competition and season identity on every match;
 - two distinct known participants on every match;
 - a complete double round-robin schedule with one appearance per team per
@@ -292,6 +294,8 @@ database write, or Outlook operation is authorized by this command. The
 Championship play-off scope remains unqualified.
 
 ## Sources
+
+- [Championship authority decision](adr/0008-select-football-data-for-championship-regular-season.md)
 
 - [Pricing](https://www.football-data.org/pricing)
 - [Coverage](https://www.football-data.org/coverage)
