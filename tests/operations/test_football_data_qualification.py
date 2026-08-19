@@ -243,10 +243,22 @@ def test_championship_profile_qualifies_paginated_regular_season_scope() -> None
     ]
 
 
-def test_championship_profile_rejects_missing_stage_filter_echo() -> None:
+def test_championship_profile_accepts_missing_optional_stage_filter_echo() -> None:
     responses = valid_responses(CHAMPIONSHIP_PROFILE)
     matches_payload = payload(responses[2])
     matches_payload["filters"].pop("stage")
+    responses[2] = with_payload(responses[2], matches_payload)
+
+    evidence = run_qualification(responses, profile=CHAMPIONSHIP_PROFILE)
+
+    assert evidence.match_count == 552
+    assert evidence.stage_counts == {"REGULAR_SEASON": 552}
+
+
+def test_championship_profile_rejects_wrong_stage_filter_echo() -> None:
+    responses = valid_responses(CHAMPIONSHIP_PROFILE)
+    matches_payload = payload(responses[2])
+    matches_payload["filters"]["stage"] = "PLAYOFFS"
     responses[2] = with_payload(responses[2], matches_payload)
 
     with pytest.raises(QualificationError, match="stage filter"):

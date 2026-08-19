@@ -519,7 +519,8 @@ def _validate_match_filters(
         raise QualificationError("Provider returned the wrong match limit filter.")
     if _filter_int(filters, "offset", default=0) != offset:
         raise QualificationError("Provider returned the wrong match offset filter.")
-    if stage is not None and filters.get("stage") != stage:
+    response_stage = filters.get("stage")
+    if stage is not None and response_stage is not None and response_stage != stage:
         raise QualificationError("Provider returned the wrong match stage filter.")
 
 

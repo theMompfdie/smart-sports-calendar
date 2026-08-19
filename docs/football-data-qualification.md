@@ -183,9 +183,10 @@ finally {
 This stage filter establishes a stable 552-fixture regular-season boundary.
 The seven 2026/27 Championship play-off fixtures are not part of that
 observation and remain a separate, unqualified, non-destructive lifecycle
-scope. Qualification must fail if the provider does not echo the requested
-stage filter, returns either page with the wrong offset, or does not return the
-complete 24-team double round robin.
+scope. The provider may omit the optional stage-filter echo; a present wrong
+value still fails closed. Independently of that metadata, qualification checks
+the stage on every returned match and must fail if either page has the wrong
+offset or the response is not the complete 24-team double round robin.
 
 The command fails closed unless it observes:
 
