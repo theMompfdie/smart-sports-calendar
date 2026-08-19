@@ -1,8 +1,12 @@
 from dataclasses import replace
 from datetime import timedelta
 
+import pytest
 from app.application.api_football_fixture_import_service import (
     ApiFootballFixtureImportService,
+)
+from app.application.api_football_import_orchestrator import (
+    ProviderImportOrchestrationError,
 )
 from app.application.openligadb_dfb_pokal_service import (
     OPENLIGADB_ATTRIBUTION,
@@ -54,6 +58,7 @@ class SnapshotAdapter:
     profile = DFB_POKAL_PROFILE
 
     def __init__(self) -> None:
+        self.failure: Exception | None = None
         self.snapshot = parse_snapshot(
             *payloads(),
             profile=DFB_POKAL_PROFILE,
@@ -62,6 +67,8 @@ class SnapshotAdapter:
         )
 
     def fetch_snapshot(self):
+        if self.failure is not None:
+            raise self.failure
         return self.snapshot
 
 
@@ -193,3 +200,45 @@ def test_dfb_pokal_import_is_idempotent_and_renders_openligadb_attribution(
     assert corrected_import.items_updated == 1
     assert corrected_sync.items_updated == 1
     assert graph.operations[-1].method == "PATCH"
+
+
+def test_dfb_pokal_restart_and_provider_failure_preserve_outlook_identity(
+    tmp_path,
+) -> None:
+    database_path = tmp_path / "openligadb-dfb-pokal-recovery.db"
+    provider, calendar, _, graph = create_harness(database_path)
+
+    assert provider.import_current_competition().items_created == 1
+    assert calendar.synchronize(CALENDAR_ID, 100).items_created == 1
+    assert len(graph.operations) == 1
+
+    restarted_provider, restarted_calendar, restarted_adapter, restarted_graph = (
+        create_harness(database_path)
+    )
+    assert restarted_provider.import_current_competition().items_unchanged == 1
+    assert restarted_calendar.synchronize(CALENDAR_ID, 100).items_unchanged == 1
+    assert restarted_graph.operations == []
+
+    restarted_adapter.failure = RuntimeError("simulated provider outage")
+    with pytest.raises(
+        ProviderImportOrchestrationError,
+        match="Provider import failed with RuntimeError",
+    ):
+        restarted_provider.import_current_competition()
+
+    assert restarted_calendar.synchronize(CALENDAR_ID, 100).items_unchanged == 1
+    assert restarted_graph.operations == []
+
+    restarted_adapter.failure = None
+    assert restarted_provider.import_current_competition().items_unchanged == 1
+    assert restarted_calendar.synchronize(CALENDAR_ID, 100).items_unchanged == 1
+    assert restarted_graph.operations == []
+
+    provider_runs = SyncRunsRepository(database_path).get_recent(
+        run_type="provider_import"
+    )
+    assert [run.status for run in provider_runs[:3]] == [
+        "completed",
+        "failed",
+        "completed",
+    ]
