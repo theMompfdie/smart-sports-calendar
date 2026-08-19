@@ -130,17 +130,18 @@ confirmed only the sanitized Free-plan name and 10-request-per-minute limit.
 ## Secret-safe live qualification commands
 
 The repository includes a read-only command with curated profiles for Premier
-League and Bundesliga. It makes two metadata requests plus one or more paged
-match requests. With the current expected season sizes, each profile normally
-makes exactly three requests. Free-form competition IDs and expected counts
-are deliberately unsupported.
+League, Bundesliga, and the Championship regular season. It makes two metadata
+requests plus one or more paged match requests. Premier League and Bundesliga
+normally make three requests. The Championship profile makes four because its
+552 regular-season fixtures require pages of 500 and 52. Free-form competition
+IDs and expected counts are deliberately unsupported.
 
 The command emits only the qualification profile, observation time, aggregate
 identifiers, counts, pagination/request counts, UTC boundaries, status counts,
-API version, a SHA-256 fingerprint of the sorted match IDs, the latest
-source-update timestamp, and the minimum remaining request count. It never
-emits the API token, raw body, authorization header, account identifier, team
-names, individual match IDs, or fixture details.
+stage counts, API version, a SHA-256 fingerprint of the sorted match IDs, the
+latest source-update timestamp, and the minimum remaining request count. It
+never emits the API token, raw body, authorization header, account identifier,
+team names, individual match IDs, or fixture details.
 
 In PowerShell, enter the token without echoing it or storing it in shell
 history. For the already approved Premier League profile:
@@ -164,6 +165,27 @@ finally {
     Remove-Item Env:FOOTBALL_DATA_API_KEY -ErrorAction SilentlyContinue
 }
 ```
+
+For issue #123, the Championship candidate is deliberately restricted to the
+documented `REGULAR_SEASON` stage. Run this command once, review the output
+locally, wait at least 60 seconds, and repeat the complete command:
+
+```powershell
+$env:FOOTBALL_DATA_API_KEY = Read-Host -MaskInput "football-data.org API token"
+try {
+    python -m app.operations.football_data_qualification --competition championship --season 2026
+}
+finally {
+    Remove-Item Env:FOOTBALL_DATA_API_KEY -ErrorAction SilentlyContinue
+}
+```
+
+This stage filter establishes a stable 552-fixture regular-season boundary.
+The seven 2026/27 Championship play-off fixtures are not part of that
+observation and remain a separate, unqualified, non-destructive lifecycle
+scope. Qualification must fail if the provider does not echo the requested
+stage filter, returns either page with the wrong offset, or does not return the
+complete 24-team double round robin.
 
 The command fails closed unless it observes:
 
@@ -189,18 +211,21 @@ The curated invariants are:
 | --- | --- | ---: | ---: | ---: | ---: |
 | `premier-league` | `PL` | 2021 | 20 | 380 | 38 |
 | `bundesliga` | `BL1` | 2002 | 18 | 306 | 34 |
+| `championship` | `ELC` | 2016 | 24 | 552 | 46 |
 
-Premier League output belongs to issue #79 and Bundesliga output belongs to
-issue #110, in both cases only after manual review. The token, raw response,
-request headers, account dashboard, and `.env` contents must never be copied
-into GitHub.
+Premier League output belongs to issue #79, Bundesliga output to issue #110,
+and Championship output to issue #123, in every case only after manual review.
+The token, raw response, request headers, account dashboard, and `.env`
+contents must never be copied into GitHub.
 
 ## Approved operating conditions
 
 - Absence becomes removal evidence only after two complete, successful
   authoritative snapshots for the selected profile: 380 Premier League
-  matches or 306 Bundesliga matches. A filtered, short, stale, empty,
-  malformed, failed, or wrong-scope response is never authoritative.
+  matches or 306 Bundesliga matches. Championship observations remain
+  non-destructive during #123 even when all 552 regular-season fixtures pass.
+  A short, stale, empty, malformed, failed, or wrong-scope response is never
+  authoritative.
 - Visible attribution is mandatory while provider-derived data is served.
 - Credentials remain in the operator secret store and never enter GitHub,
   logs, screenshots, run metadata, or test artifacts.
@@ -213,10 +238,12 @@ into GitHub.
 - Cancellation requires the scoped re-source-or-remove procedure above before
   provider-derived data may continue to be served.
 
-These conditions qualify both curated profiles. Qualification is not
-implementation: Bundesliga must remain disabled until a separate issue adds
-and validates its catalog, mappings, adapter path, scheduler isolation,
-SQLite-to-Graph behavior, attribution, and staging evidence.
+These conditions qualify the Premier League and Bundesliga profiles. The
+Championship profile remains a candidate until the two live observations and
+manual review required by #123 pass. Qualification is not implementation: no
+Championship source assignment, catalog entry, mapping, runtime pagination,
+scheduler job, database write, or Outlook operation is authorized by this
+command.
 
 ## Sources
 
@@ -230,3 +257,5 @@ SQLite-to-Graph behavior, attribution, and staging evidence.
 - [Lookup tables and response headers](https://docs.football-data.org/general/v4/lookup_tables.html)
 - [Errors](https://docs.football-data.org/general/v4/errors.html)
 - [Official 2026/27 Bundesliga fixture announcement](https://www.bundesliga.com/en/bundesliga/news/2026-27-fixture-lists-now-available-38068)
+- [EFL Championship competition](https://www.efl.com/competitions/efl-championship/)
+- [2026/27 Championship play-off format](https://www.efl.com/news/2026/march/05/efl-statement--sky-bet-championship-play-off-format/)

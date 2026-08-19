@@ -47,6 +47,7 @@ class FootballDataQualificationProfile:
     expected_team_count: int
     expected_match_count: int
     expected_matchdays: int
+    match_stage_filter: str | None = None
 
     def __post_init__(self) -> None:
         if not self.key or not self.competition_name or not self.competition_code:
@@ -61,6 +62,8 @@ class FootballDataQualificationProfile:
             self.expected_team_count * (self.expected_team_count - 1)
         ):
             raise ValueError("Qualification profile is not a double round robin.")
+        if self.match_stage_filter not in {None, "REGULAR_SEASON"}:
+            raise ValueError("Qualification profile has an unsupported stage filter.")
 
 
 PREMIER_LEAGUE_PROFILE = FootballDataQualificationProfile(
@@ -81,8 +84,23 @@ BUNDESLIGA_PROFILE = FootballDataQualificationProfile(
     expected_match_count=BUNDESLIGA_RUNTIME_PROFILE.expected_match_count,
     expected_matchdays=BUNDESLIGA_RUNTIME_PROFILE.expected_matchdays,
 )
+CHAMPIONSHIP_PROFILE = FootballDataQualificationProfile(
+    key="championship",
+    competition_name="Championship",
+    competition_code="ELC",
+    competition_id=2016,
+    expected_team_count=24,
+    expected_match_count=552,
+    expected_matchdays=46,
+    match_stage_filter="REGULAR_SEASON",
+)
 QUALIFICATION_PROFILES = {
-    profile.key: profile for profile in (PREMIER_LEAGUE_PROFILE, BUNDESLIGA_PROFILE)
+    profile.key: profile
+    for profile in (
+        PREMIER_LEAGUE_PROFILE,
+        BUNDESLIGA_PROFILE,
+        CHAMPIONSHIP_PROFILE,
+    )
 }
 
 
@@ -142,6 +160,7 @@ class FootballDataQualificationEvidence:
     earliest_kickoff_utc: str
     latest_kickoff_utc: str
     latest_source_update_utc: str
+    stage_counts: dict[str, int]
     status_counts: dict[str, int]
     requests_available_minimum: int | None
 
@@ -315,6 +334,7 @@ def qualify_football_data(
     kickoffs: list[datetime] = []
     source_updates: list[datetime] = []
     statuses: Counter[str] = Counter()
+    stages: Counter[str] = Counter()
     appearances: Counter[int] = Counter()
     pairings: set[tuple[int, int]] = set()
     matchday_participants: defaultdict[int, set[int]] = defaultdict(set)
@@ -341,8 +361,11 @@ def qualify_football_data(
         pairings.add(pairing)
         appearances.update(pairing)
 
-        if _string(match, "stage") != "REGULAR_SEASON":
+        stage = _string(match, "stage")
+        expected_stage = profile.match_stage_filter or "REGULAR_SEASON"
+        if stage != expected_stage:
             raise QualificationError("A match belongs to an unsupported stage.")
+        stages[stage] += 1
         matchday = _positive_int(match, "matchday")
         if matchday > profile.expected_matchdays:
             raise QualificationError("A match belongs to an invalid matchday.")
@@ -398,6 +421,7 @@ def qualify_football_data(
         earliest_kickoff_utc=min(kickoffs).isoformat(),
         latest_kickoff_utc=max(kickoffs).isoformat(),
         latest_source_update_utc=max(source_updates).isoformat(),
+        stage_counts=dict(sorted(stages.items())),
         status_counts=dict(sorted(statuses.items())),
         requests_available_minimum=min(remaining) if remaining else None,
     )
@@ -440,6 +464,8 @@ def _request_match_pages(
             f"/v4/competitions/{profile.competition_code}/matches"
             f"?season={season}&limit={MATCH_PAGE_LIMIT}"
         )
+        if profile.match_stage_filter is not None:
+            path = f"{path}&stage={profile.match_stage_filter}"
         if offset:
             path = f"{path}&offset={offset}"
         payload, response_headers = _request_json(transport, path, api_key)
@@ -449,6 +475,7 @@ def _request_match_pages(
             season=season,
             limit=MATCH_PAGE_LIMIT,
             offset=offset,
+            stage=profile.match_stage_filter,
         )
         page = _list(payload, "matches")
         declared_count = _non_negative_int(_mapping(payload, "resultSet"), "count")
@@ -482,6 +509,7 @@ def _validate_match_filters(
     season: int,
     limit: int,
     offset: int,
+    stage: str | None,
 ) -> None:
     filters = _mapping(payload, "filters")
     response_season = filters.get("season")
@@ -491,6 +519,8 @@ def _validate_match_filters(
         raise QualificationError("Provider returned the wrong match limit filter.")
     if _filter_int(filters, "offset", default=0) != offset:
         raise QualificationError("Provider returned the wrong match offset filter.")
+    if stage is not None and filters.get("stage") != stage:
+        raise QualificationError("Provider returned the wrong match stage filter.")
 
 
 def _validate_schedule(

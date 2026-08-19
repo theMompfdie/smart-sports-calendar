@@ -7,6 +7,7 @@ import pytest
 from app.operations import football_data_qualification as qualification
 from app.operations.football_data_qualification import (
     BUNDESLIGA_PROFILE,
+    CHAMPIONSHIP_PROFILE,
     PREMIER_LEAGUE_PROFILE,
     FootballDataQualificationEvidence,
     FootballDataQualificationProfile,
@@ -122,6 +123,8 @@ def valid_responses(
         }
         if offset:
             filters["offset"] = str(offset)
+        if profile.match_stage_filter is not None:
+            filters["stage"] = profile.match_stage_filter
         pages.append(
             response(
                 {
@@ -168,6 +171,7 @@ def test_premier_league_profile_preserves_strict_qualification() -> None:
     )
     assert evidence.latest_source_update_utc == "2026-08-16T10:00:00+00:00"
     assert evidence.status_counts == {"TIMED": 380}
+    assert evidence.stage_counts == {"REGULAR_SEASON": 380}
     assert evidence.match_page_count == 1
     assert evidence.request_count == 3
     assert evidence.requests_available_minimum == 7
@@ -204,6 +208,49 @@ def test_bundesliga_profile_qualifies_exact_scope() -> None:
         "/v4/competitions/BL1/teams?season=2026",
         "/v4/competitions/BL1/matches?season=2026&limit=500",
     ]
+
+
+def test_championship_profile_qualifies_paginated_regular_season_scope() -> None:
+    transport = StubTransport(valid_responses(CHAMPIONSHIP_PROFILE))
+
+    evidence = qualify_football_data(
+        "provider-secret",
+        profile=CHAMPIONSHIP_PROFILE,
+        transport=transport,
+        clock=lambda: OBSERVED_AT,
+    )
+
+    assert evidence.qualification_profile == "championship"
+    assert evidence.competition_code == "ELC"
+    assert evidence.competition_id == 2016
+    assert evidence.team_count == 24
+    assert evidence.match_count == 552
+    assert evidence.unique_match_ids == 552
+    assert evidence.match_page_count == 2
+    assert evidence.request_count == 4
+    assert evidence.stage_counts == {"REGULAR_SEASON": 552}
+    assert [call[0] for call in transport.calls] == [
+        "/v4/competitions/ELC",
+        "/v4/competitions/ELC/teams?season=2026",
+        (
+            "/v4/competitions/ELC/matches"
+            "?season=2026&limit=500&stage=REGULAR_SEASON"
+        ),
+        (
+            "/v4/competitions/ELC/matches"
+            "?season=2026&limit=500&stage=REGULAR_SEASON&offset=500"
+        ),
+    ]
+
+
+def test_championship_profile_rejects_missing_stage_filter_echo() -> None:
+    responses = valid_responses(CHAMPIONSHIP_PROFILE)
+    matches_payload = payload(responses[2])
+    matches_payload["filters"].pop("stage")
+    responses[2] = with_payload(responses[2], matches_payload)
+
+    with pytest.raises(QualificationError, match="stage filter"):
+        run_qualification(responses, profile=CHAMPIONSHIP_PROFILE)
 
 
 def test_bundesliga_participant_observation_is_curated_and_secret_safe() -> None:
@@ -594,6 +641,7 @@ def test_render_qualification_evidence_is_stable() -> None:
         earliest_kickoff_utc="2026-08-28T18:30:00+00:00",
         latest_kickoff_utc="2027-05-22T13:30:00+00:00",
         latest_source_update_utc="2026-08-16T10:00:00+00:00",
+        stage_counts={"REGULAR_SEASON": 306},
         status_counts={"TIMED": 306},
         requests_available_minimum=7,
     )
