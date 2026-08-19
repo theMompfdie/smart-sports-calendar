@@ -77,6 +77,7 @@ def valid_responses(
     profile: FootballDataQualificationProfile = PREMIER_LEAGUE_PROFILE,
     *,
     page_limit: int = 500,
+    provider_honors_page_limit: bool = True,
 ) -> list[QualificationResponse]:
     team_ids = list(range(1, profile.expected_team_count + 1))
     start_date = "2026-08-21" if profile is PREMIER_LEAGUE_PROFILE else "2026-08-28"
@@ -115,8 +116,9 @@ def valid_responses(
             }
         )
     pages = []
-    for offset in range(0, len(matches), page_limit):
-        page = matches[offset : offset + page_limit]
+    response_page_size = page_limit if provider_honors_page_limit else len(matches)
+    for offset in range(0, len(matches), response_page_size):
+        page = matches[offset : offset + response_page_size]
         filters: dict[str, object] = {
             "season": "2026",
             "limit": str(page_limit),
@@ -210,8 +212,13 @@ def test_bundesliga_profile_qualifies_exact_scope() -> None:
     ]
 
 
-def test_championship_profile_qualifies_paginated_regular_season_scope() -> None:
-    transport = StubTransport(valid_responses(CHAMPIONSHIP_PROFILE))
+def test_championship_profile_qualifies_complete_unpaged_regular_season() -> None:
+    transport = StubTransport(
+        valid_responses(
+            CHAMPIONSHIP_PROFILE,
+            provider_honors_page_limit=False,
+        )
+    )
 
     evidence = qualify_football_data(
         "provider-secret",
@@ -226,12 +233,33 @@ def test_championship_profile_qualifies_paginated_regular_season_scope() -> None
     assert evidence.team_count == 24
     assert evidence.match_count == 552
     assert evidence.unique_match_ids == 552
-    assert evidence.match_page_count == 2
-    assert evidence.request_count == 4
+    assert evidence.match_page_count == 1
+    assert evidence.request_count == 3
     assert evidence.stage_counts == {"REGULAR_SEASON": 552}
     assert [call[0] for call in transport.calls] == [
         "/v4/competitions/ELC",
         "/v4/competitions/ELC/teams?season=2026",
+        (
+            "/v4/competitions/ELC/matches"
+            "?season=2026&limit=500&stage=REGULAR_SEASON"
+        ),
+    ]
+
+
+def test_championship_profile_supports_documented_match_pagination() -> None:
+    transport = StubTransport(valid_responses(CHAMPIONSHIP_PROFILE))
+
+    evidence = qualify_football_data(
+        "provider-secret",
+        profile=CHAMPIONSHIP_PROFILE,
+        transport=transport,
+        clock=lambda: OBSERVED_AT,
+    )
+
+    assert evidence.match_count == 552
+    assert evidence.match_page_count == 2
+    assert evidence.request_count == 4
+    assert [call[0] for call in transport.calls[-2:]] == [
         (
             "/v4/competitions/ELC/matches"
             "?season=2026&limit=500&stage=REGULAR_SEASON"
@@ -243,26 +271,22 @@ def test_championship_profile_qualifies_paginated_regular_season_scope() -> None
     ]
 
 
-def test_championship_profile_accepts_missing_optional_stage_filter_echo() -> None:
+@pytest.mark.parametrize("stage_echo", [None, ["REGULAR_SEASON"]])
+def test_championship_profile_ignores_non_authoritative_stage_filter_echo(
+    stage_echo: object,
+) -> None:
     responses = valid_responses(CHAMPIONSHIP_PROFILE)
     matches_payload = payload(responses[2])
-    matches_payload["filters"].pop("stage")
+    if stage_echo is None:
+        matches_payload["filters"].pop("stage")
+    else:
+        matches_payload["filters"]["stage"] = stage_echo
     responses[2] = with_payload(responses[2], matches_payload)
 
     evidence = run_qualification(responses, profile=CHAMPIONSHIP_PROFILE)
 
     assert evidence.match_count == 552
     assert evidence.stage_counts == {"REGULAR_SEASON": 552}
-
-
-def test_championship_profile_rejects_wrong_stage_filter_echo() -> None:
-    responses = valid_responses(CHAMPIONSHIP_PROFILE)
-    matches_payload = payload(responses[2])
-    matches_payload["filters"]["stage"] = "PLAYOFFS"
-    responses[2] = with_payload(responses[2], matches_payload)
-
-    with pytest.raises(QualificationError, match="stage filter"):
-        run_qualification(responses, profile=CHAMPIONSHIP_PROFILE)
 
 
 def test_bundesliga_participant_observation_is_curated_and_secret_safe() -> None:

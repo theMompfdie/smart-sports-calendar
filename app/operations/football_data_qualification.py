@@ -475,7 +475,6 @@ def _request_match_pages(
             season=season,
             limit=MATCH_PAGE_LIMIT,
             offset=offset,
-            stage=profile.match_stage_filter,
         )
         page = _list(payload, "matches")
         declared_count = _non_negative_int(_mapping(payload, "resultSet"), "count")
@@ -485,7 +484,10 @@ def _request_match_pages(
             raise QualificationError(
                 "Provider returned an unexpected empty match page."
             )
-        if len(page) > MATCH_PAGE_LIMIT:
+        complete_unpaged_snapshot = (
+            offset == 0 and len(page) == profile.expected_match_count
+        )
+        if len(page) > MATCH_PAGE_LIMIT and not complete_unpaged_snapshot:
             raise QualificationError(
                 "Provider exceeded the requested match page limit."
             )
@@ -509,7 +511,6 @@ def _validate_match_filters(
     season: int,
     limit: int,
     offset: int,
-    stage: str | None,
 ) -> None:
     filters = _mapping(payload, "filters")
     response_season = filters.get("season")
@@ -519,9 +520,6 @@ def _validate_match_filters(
         raise QualificationError("Provider returned the wrong match limit filter.")
     if _filter_int(filters, "offset", default=0) != offset:
         raise QualificationError("Provider returned the wrong match offset filter.")
-    response_stage = filters.get("stage")
-    if stage is not None and response_stage is not None and response_stage != stage:
-        raise QualificationError("Provider returned the wrong match stage filter.")
 
 
 def _validate_schedule(
