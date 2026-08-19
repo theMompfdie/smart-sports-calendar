@@ -157,6 +157,7 @@ class FootballDataQualificationEvidence:
     match_page_count: int
     request_count: int
     match_ids_sha256: str
+    team_ids_sha256: str
     earliest_kickoff_utc: str
     latest_kickoff_utc: str
     latest_source_update_utc: str
@@ -418,6 +419,7 @@ def qualify_football_data(
         match_page_count=len(match_headers),
         request_count=len(headers),
         match_ids_sha256=_identity_fingerprint(match_ids),
+        team_ids_sha256=_identity_fingerprint(team_ids),
         earliest_kickoff_utc=min(kickoffs).isoformat(),
         latest_kickoff_utc=max(kickoffs).isoformat(),
         latest_source_update_utc=max(source_updates).isoformat(),

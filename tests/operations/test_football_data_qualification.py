@@ -171,6 +171,9 @@ def test_premier_league_profile_preserves_strict_qualification() -> None:
     assert evidence.match_ids_sha256 == (
         "1c713d8b46058c74ae88d10e34b4c409d2b428832242a7d9f71eba25cec76450"
     )
+    assert evidence.team_ids_sha256 == (
+        "7747a514fec0c8bbe73acdb5ef9e4ca3a6b9d2be346c2b97de3d0560fa2a415f"
+    )
     assert evidence.latest_source_update_utc == "2026-08-16T10:00:00+00:00"
     assert evidence.status_counts == {"TIMED": 380}
     assert evidence.stage_counts == {"REGULAR_SEASON": 380}
@@ -235,6 +238,9 @@ def test_championship_profile_qualifies_complete_unpaged_regular_season() -> Non
     assert evidence.unique_match_ids == 552
     assert evidence.match_page_count == 1
     assert evidence.request_count == 3
+    assert evidence.team_ids_sha256 == (
+        "6ffdf1ff8cf67fa3895b85cb7d2281e3a63b951a380f1fd0b650537ccb50dfef"
+    )
     assert evidence.stage_counts == {"REGULAR_SEASON": 552}
     assert [call[0] for call in transport.calls] == [
         "/v4/competitions/ELC",
@@ -673,6 +679,9 @@ def test_render_qualification_evidence_is_stable() -> None:
         request_count=3,
         match_ids_sha256=(
             "1c713d8b46058c74ae88d10e34b4c409d2b428832242a7d9f71eba25cec76450"
+        ),
+        team_ids_sha256=(
+            "759b2095495ba759ec08b64452afb7af4122bbea66f8b3b435b5a20860150390"
         ),
         earliest_kickoff_utc="2026-08-28T18:30:00+00:00",
         latest_kickoff_utc="2027-05-22T13:30:00+00:00",
