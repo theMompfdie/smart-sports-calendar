@@ -494,6 +494,14 @@ For issue #63, open the `calendar-sync` container console for
 python -m app.operations.staging_evidence --database /data/sports.db
 ```
 
+For the Phase 5 Premier League, Bundesliga, and DFB-Pokal candidate, follow
+[`phase-5-multi-competition-staging-validation.md`](phase-5-multi-competition-staging-validation.md)
+and run the strict read-only profile after convergence:
+
+```bash
+python -m app.operations.staging_evidence --database /data/sports.db --limit 50 --validate-phase-5-candidate
+```
+
 The command opens SQLite in read-only mode and reports only database integrity,
 schema version, startup count, public authoritative source/scope keys, fixture
 and source-mapping aggregates, kickoff range, source freshness, normalized

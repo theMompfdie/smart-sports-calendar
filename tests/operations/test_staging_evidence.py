@@ -1,11 +1,16 @@
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 from app.application.football_data_premier_league_service import (
     register_football_data_source,
 )
-from app.config.settings import FootballDataSettings
+from app.application.openligadb_dfb_pokal_service import register_openligadb_source
+from app.config.settings import FootballDataSettings, OpenLigaDBSettings
+from app.database.calendar_event_mappings_repository import (
+    CalendarEventMappingsRepository,
+)
 from app.database.competitions_catalog import initialize_competitions_catalog
 from app.database.competitions_repository import CompetitionsRepository
 from app.database.data_sources_repository import DataSourcesRepository
@@ -22,9 +27,15 @@ from app.database.sports_events_repository import SportsEventsRepository
 from app.database.sports_repository import SportsRepository
 from app.database.sync_runs_repository import SyncRunsRepository
 from app.operations.staging_evidence import (
+    SafeAuthoritySummary,
+    SafeFixtureScopeSummary,
+    SafeRunSummary,
+    StagingEvidence,
+    StagingEvidenceValidationError,
     collect_staging_evidence,
     main,
     render_staging_evidence,
+    validate_phase_5_candidate,
 )
 from app.providers.contracts import SourceRole
 
@@ -35,6 +46,122 @@ def create_database(tmp_path: Path) -> Path:
     database.initialize()
     database.record_startup()
     return database_path
+
+
+def phase_5_candidate_evidence() -> StagingEvidence:
+    definitions = (
+        (
+            "football-data-premier-league",
+            "football_data",
+            "premier_league",
+            "complete_season",
+            True,
+            True,
+            380,
+        ),
+        (
+            "football-data-bundesliga",
+            "football_data",
+            "bundesliga",
+            "complete_season",
+            True,
+            True,
+            306,
+        ),
+        (
+            "openligadb-dfb-pokal",
+            "openligadb",
+            "dfb_pokal",
+            "partial",
+            False,
+            False,
+            32,
+        ),
+    )
+    return StagingEvidence(
+        database_quick_check="ok",
+        schema_version="007_create_source_assignments",
+        startup_records=2,
+        sports_events=sum(definition[-1] for definition in definitions),
+        active_authorities=tuple(
+            SafeAuthoritySummary(
+                job_key=job_key,
+                source_key=source_key,
+                sport_key="football",
+                competition_key=competition_key,
+                season_key="2026_27",
+                role="authoritative",
+                interval_seconds=21600,
+            )
+            for job_key, source_key, competition_key, *_ in definitions
+        ),
+        fixture_scopes=tuple(
+            SafeFixtureScopeSummary(
+                source_key=source_key,
+                competition_key=competition_key,
+                season_key="2026_27",
+                fixtures_total=fixture_count,
+                fixtures_active=fixture_count,
+                fixtures_deleted=0,
+                source_event_mappings=fixture_count,
+                source_event_ids_sha256=str(index) * 64,
+                calendar_mappings=fixture_count,
+                calendar_targets=1,
+                calendar_mapping_status_counts={"synced": fixture_count},
+                earliest_start_utc="2026-08-01T18:00:00+00:00",
+                latest_start_utc="2027-05-29T18:00:00+00:00",
+                latest_source_update_utc="2026-08-19T06:00:00+00:00",
+                status_counts={"scheduled": fixture_count},
+            )
+            for index, (
+                _,
+                source_key,
+                competition_key,
+                _,
+                _,
+                _,
+                fixture_count,
+            ) in enumerate(definitions, start=1)
+        ),
+        calendar_mappings_by_status={
+            "synced": sum(definition[-1] for definition in definitions)
+        },
+        recent_runs=tuple(
+            SafeRunSummary(
+                id=index,
+                run_type="provider_import",
+                started_at="2026-08-19T06:00:00+00:00",
+                finished_at="2026-08-19T06:01:00+00:00",
+                status="completed",
+                items_processed=fixture_count,
+                items_created=0,
+                items_updated=0,
+                items_unchanged=fixture_count,
+                items_cancelled=0,
+                items_deleted=0,
+                items_deferred=0,
+                items_failed=0,
+                source_key=source_key,
+                job_key=job_key,
+                competition_key=competition_key,
+                season_key="2026_27",
+                authoritative=True,
+                complete=complete,
+                scope_kind=scope_kind,
+                removal_eligible=removal_eligible,
+                error_category=None,
+            )
+            for index, (
+                job_key,
+                source_key,
+                competition_key,
+                scope_kind,
+                complete,
+                removal_eligible,
+                fixture_count,
+            ) in enumerate(definitions, start=1)
+        ),
+    )
 
 
 def test_collect_staging_evidence_returns_only_safe_operational_fields(
@@ -55,7 +182,18 @@ def test_collect_staging_evidence_returns_only_safe_operational_fields(
         items_unchanged=2,
         items_deleted=0,
         items_failed=0,
-        metadata={"authorization": "Bearer graph-secret"},
+        metadata={
+            "source_key": "openligadb",
+            "job_key": "openligadb-dfb-pokal",
+            "competition_key": "dfb_pokal",
+            "season_key": "2026_27",
+            "authoritative": True,
+            "complete": False,
+            "scope_kind": "partial",
+            "removal_eligible": False,
+            "error_category": "ProviderNetworkError",
+            "authorization": "Bearer graph-secret",
+        },
     )
     failed = repository.start(run_type="calendar_sync")
     repository.fail(
@@ -79,7 +217,17 @@ def test_collect_staging_evidence_returns_only_safe_operational_fields(
         "calendar_sync",
         "provider_import",
     ]
-    assert payload["recent_runs"][1]["items_created"] == 5
+    provider_run = payload["recent_runs"][1]
+    assert provider_run["items_created"] == 5
+    assert provider_run["source_key"] == "openligadb"
+    assert provider_run["job_key"] == "openligadb-dfb-pokal"
+    assert provider_run["competition_key"] == "dfb_pokal"
+    assert provider_run["season_key"] == "2026_27"
+    assert provider_run["authoritative"] is True
+    assert provider_run["complete"] is False
+    assert provider_run["scope_kind"] == "partial"
+    assert provider_run["removal_eligible"] is False
+    assert provider_run["error_category"] == "ProviderNetworkError"
     assert "provider-secret" not in rendered
     assert "calendar-secret" not in rendered
     assert "graph-secret" not in rendered
@@ -144,12 +292,22 @@ def test_collect_staging_evidence_reports_safe_authoritative_fixture_scope(
         source_url="https://example.invalid/secret-fixture-url",
         metadata={"raw": "mapping-metadata-secret"},
     )
+    calendar_mapping = CalendarEventMappingsRepository(database_path).create_pending(
+        event.id, "calendar-secret"
+    )
+    CalendarEventMappingsRepository(database_path).mark_synced(
+        calendar_mapping.id,
+        "outlook-event-secret",
+        "change-key-secret",
+        "content-hash-secret",
+    )
 
     rendered = render_staging_evidence(collect_staging_evidence(database_path))
     payload = json.loads(rendered)
 
     assert payload["active_authorities"] == [
         {
+            "job_key": "football-data-premier-league",
             "competition_key": "premier_league",
             "interval_seconds": 3600,
             "role": "authoritative",
@@ -160,6 +318,9 @@ def test_collect_staging_evidence_reports_safe_authoritative_fixture_scope(
     ]
     assert payload["fixture_scopes"] == [
         {
+            "calendar_mapping_status_counts": {"synced": 1},
+            "calendar_mappings": 1,
+            "calendar_targets": 1,
             "competition_key": "premier_league",
             "earliest_start_utc": "2026-08-21T19:00:00+00:00",
             "fixtures_active": 1,
@@ -169,6 +330,9 @@ def test_collect_staging_evidence_reports_safe_authoritative_fixture_scope(
             "latest_start_utc": "2026-08-21T19:00:00+00:00",
             "season_key": "2026_27",
             "source_event_mappings": 1,
+            "source_event_ids_sha256": (
+                "833a320ca5b5aec480ba4a0f953e89ee751f2fe3c136ff6e27f459df75f5f882"
+            ),
             "source_key": "football_data",
             "status_counts": {"scheduled": 1},
         }
@@ -182,8 +346,102 @@ def test_collect_staging_evidence_reports_safe_authoritative_fixture_scope(
         "secret-fixture-url",
         "mapping-metadata-secret",
         "api.football-data.org",
+        "calendar-secret",
+        "outlook-event-secret",
+        "change-key-secret",
+        "content-hash-secret",
     ):
         assert excluded_value not in rendered
+
+
+def test_collect_staging_evidence_keeps_three_authorities_isolated(
+    tmp_path: Path,
+) -> None:
+    database_path = create_database(tmp_path)
+    sports = SportsRepository(database_path)
+    competitions = CompetitionsRepository(database_path)
+    seasons = SeasonsRepository(database_path)
+    sources = DataSourcesRepository(database_path)
+    initialize_sports_catalog(sports)
+    initialize_competitions_catalog(competitions, sports)
+    initialize_seasons_catalog(seasons, competitions, sports)
+
+    football = sports.get_by_key("football")
+    assert football is not None
+    football_data = register_football_data_source(
+        FootballDataSettings(enabled=True, api_key="provider-secret"), sources
+    )
+    openligadb = register_openligadb_source(OpenLigaDBSettings(enabled=True), sources)
+    scopes = (
+        ("premier_league", "football-data-premier-league", football_data.id),
+        ("bundesliga", "football-data-bundesliga", football_data.id),
+        ("dfb_pokal", "openligadb-dfb-pokal", openligadb.id),
+    )
+    assignments: list[SourceAssignmentWrite] = []
+    events = SportsEventsRepository(database_path)
+    source_mappings = SourceMappingsRepository(database_path)
+    calendar_mappings = CalendarEventMappingsRepository(database_path)
+
+    for index, (competition_key, job_key, source_id) in enumerate(scopes, start=1):
+        competition = competitions.get_by_key(football.id, competition_key)
+        assert competition is not None
+        season = seasons.get_by_key(competition.id, "2026_27")
+        assert season is not None
+        assignments.append(
+            SourceAssignmentWrite(
+                job_key=job_key,
+                source_id=source_id,
+                competition_id=competition.id,
+                season_id=season.id,
+                role=SourceRole.AUTHORITATIVE,
+                interval_seconds=21600,
+            )
+        )
+        event = events.upsert(
+            sport_id=football.id,
+            competition_id=competition.id,
+            season_id=season.id,
+            event_key=f"safe-event-{index}",
+            event_type="match",
+            title="Redacted fixture",
+            start_time=f"2026-08-{20 + index:02d}T18:00:00+00:00",
+            status="scheduled",
+            source_updated_at="2026-08-19T06:00:00+00:00",
+        )
+        source_mappings.upsert(
+            source_id=source_id,
+            object_type="event",
+            internal_id=event.id,
+            external_id=f"safe-provider-id-{index}",
+        )
+        mapping = calendar_mappings.create_pending(event.id, "calendar-secret")
+        calendar_mappings.mark_synced(
+            mapping.id,
+            f"outlook-secret-{index}",
+            None,
+            f"hash-secret-{index}",
+        )
+
+    SourceAssignmentsRepository(database_path).synchronize(tuple(assignments))
+
+    evidence = collect_staging_evidence(database_path)
+
+    assert [authority.job_key for authority in evidence.active_authorities] == [
+        "football-data-bundesliga",
+        "openligadb-dfb-pokal",
+        "football-data-premier-league",
+    ]
+    fixture_scopes = {scope.competition_key: scope for scope in evidence.fixture_scopes}
+    assert set(fixture_scopes) == {"premier_league", "bundesliga", "dfb_pokal"}
+    assert fixture_scopes["premier_league"].source_key == "football_data"
+    assert fixture_scopes["bundesliga"].source_key == "football_data"
+    assert fixture_scopes["dfb_pokal"].source_key == "openligadb"
+    assert all(scope.source_event_mappings == 1 for scope in fixture_scopes.values())
+    assert all(scope.calendar_mappings == 1 for scope in fixture_scopes.values())
+    assert all(scope.calendar_targets == 1 for scope in fixture_scopes.values())
+    assert (
+        len({scope.source_event_ids_sha256 for scope in fixture_scopes.values()}) == 3
+    )
 
 
 def test_collect_staging_evidence_is_read_only(tmp_path: Path) -> None:
@@ -193,6 +451,38 @@ def test_collect_staging_evidence_is_read_only(tmp_path: Path) -> None:
     second = collect_staging_evidence(database_path)
 
     assert first == second
+
+
+def test_validate_phase_5_candidate_accepts_converged_evidence() -> None:
+    validate_phase_5_candidate(phase_5_candidate_evidence())
+
+
+def test_validate_phase_5_candidate_rejects_destructive_dfb_pokal_scope() -> None:
+    evidence = phase_5_candidate_evidence()
+    runs = tuple(
+        replace(run, complete=True, removal_eligible=True)
+        if run.job_key == "openligadb-dfb-pokal"
+        else run
+        for run in evidence.recent_runs
+    )
+
+    with pytest.raises(
+        StagingEvidenceValidationError,
+        match="latest provider run is invalid for dfb_pokal",
+    ):
+        validate_phase_5_candidate(replace(evidence, recent_runs=runs))
+
+
+def test_validate_phase_5_candidate_rejects_events_outside_candidate() -> None:
+    evidence = phase_5_candidate_evidence()
+
+    with pytest.raises(
+        StagingEvidenceValidationError,
+        match="database contains events outside the Phase 5 candidate scopes",
+    ):
+        validate_phase_5_candidate(
+            replace(evidence, sports_events=evidence.sports_events + 1)
+        )
 
 
 def test_collect_staging_evidence_rejects_invalid_input(tmp_path: Path) -> None:
