@@ -127,14 +127,58 @@ leave four requests of per-minute headroom. Both live observations confirmed
 three requests. The quota header was absent, so the operator separately
 confirmed only the sanitized Free-plan name and 10-request-per-minute limit.
 
+## Championship regular-season status
+
+**Qualified for the 2026/27 `REGULAR_SEASON` stage with mandatory operating
+conditions; play-offs remain unqualified.** football-data.org API v4 is the
+selected sole proposed authority for the 552-match Championship regular
+season. The live qualification passed on 2026-08-19, authorizing a separate
+implementation issue but not enabling a source assignment, import, scheduler,
+database write, removal decision, or Outlook operation.
+
+Two complete secret-safe observations at
+`2026-08-19T14:44:06.235111+00:00` and
+`2026-08-19T14:52:03.895633+00:00`, separated by about seven minutes and 58
+seconds, both reported:
+
+- API version `v4`, competition code `ELC`, and competition ID `2016`;
+- season ID `2509`, from 2026-08-14 through 2027-05-01;
+- 24 distinct teams;
+- 552 matches with 552 distinct positive match IDs;
+- all 552 matches in `REGULAR_SEASON` across matchdays 1 through 46;
+- 12 `FINISHED`, 276 `TIMED`, and 264 `SCHEDULED` matches;
+- kickoff coverage from 2026-08-14T19:00:00Z through
+  2027-05-01T00:00:00Z;
+- latest source update `2026-08-19T05:20:30Z`;
+- one complete match response and three read-only requests; and
+- `match_ids_sha256` =
+  `9fdf11360da92e14748234d2ab2a37a79b6176adf9e756e54d19b129a21e1842`.
+
+The provider returned all 552 matches in one response despite the requested
+documented maximum limit of 500. The declared count, actual count, unique-ID
+count, stage distribution, matchday range, and complete double round robin all
+agreed. The qualifier accepts only this exact complete first response or the
+documented `500 + 52` pagination form; any other oversized, incomplete, or
+wrong-scope response fails closed. The optional remaining-quota header was
+absent, consistently with the other Free-plan observations.
+
+The seven revised 2026/27 Championship play-off fixtures are not present in
+the observed regular-season scope. Their participants become known only after
+the league table is complete, so they remain a separate progressive lifecycle
+scope comparable to a cup draw. They require later stage-specific live
+qualification and must not contribute removal evidence under this decision.
+
 ## Secret-safe live qualification commands
 
 The repository includes a read-only command with curated profiles for Premier
 League, Bundesliga, and the Championship regular season. It makes two metadata
 requests plus one or more paged match requests. Premier League and Bundesliga
-normally make three requests. The Championship profile makes four because its
-552 regular-season fixtures require pages of 500 and 52. Free-form competition
-IDs and expected counts are deliberately unsupported.
+normally make three requests. The Championship endpoint was observed returning
+all 552 regular-season fixtures in one response despite the requested limit of
+500, so its current observation also makes three requests. The qualifier still
+supports pages of 500 and 52 if the provider starts honoring its documented
+pagination contract. Free-form competition IDs and expected counts are
+deliberately unsupported.
 
 The command emits only the qualification profile, observation time, aggregate
 identifiers, counts, pagination/request counts, UTC boundaries, status counts,
@@ -183,10 +227,12 @@ finally {
 This stage filter establishes a stable 552-fixture regular-season boundary.
 The seven 2026/27 Championship play-off fixtures are not part of that
 observation and remain a separate, unqualified, non-destructive lifecycle
-scope. The provider may omit the optional stage-filter echo; a present wrong
-value still fails closed. Independently of that metadata, qualification checks
-the stage on every returned match and must fail if either page has the wrong
-offset or the response is not the complete 24-team double round robin.
+scope. The provider's stage-filter echo is non-authoritative and can use a
+different representation from the match resources. Qualification therefore
+checks the stage on every returned match and must fail if either page has the
+wrong offset or the response is not the complete 24-team double round robin.
+An exact 552-match first response is accepted within the configured byte limit;
+any other response above the requested 500-item page limit fails closed.
 
 The command fails closed unless it observes:
 
@@ -223,10 +269,10 @@ contents must never be copied into GitHub.
 
 - Absence becomes removal evidence only after two complete, successful
   authoritative snapshots for the selected profile: 380 Premier League
-  matches or 306 Bundesliga matches. Championship observations remain
-  non-destructive during #123 even when all 552 regular-season fixtures pass.
-  A short, stale, empty, malformed, failed, or wrong-scope response is never
-  authoritative.
+  matches, 306 Bundesliga matches, or the explicitly bounded 552-match
+  Championship `REGULAR_SEASON` stage. Championship play-offs remain
+  non-destructive. A short, stale, empty, malformed, failed, or wrong-scope
+  response is never authoritative.
 - Visible attribution is mandatory while provider-derived data is served.
 - Credentials remain in the operator secret store and never enter GitHub,
   logs, screenshots, run metadata, or test artifacts.
@@ -239,12 +285,11 @@ contents must never be copied into GitHub.
 - Cancellation requires the scoped re-source-or-remove procedure above before
   provider-derived data may continue to be served.
 
-These conditions qualify the Premier League and Bundesliga profiles. The
-Championship profile remains a candidate until the two live observations and
-manual review required by #123 pass. Qualification is not implementation: no
-Championship source assignment, catalog entry, mapping, runtime pagination,
-scheduler job, database write, or Outlook operation is authorized by this
-command.
+These conditions qualify the Premier League, Bundesliga, and Championship
+regular-season profiles. Qualification is not implementation: no Championship
+source assignment, catalog entry, mapping, runtime collection, scheduler job,
+database write, or Outlook operation is authorized by this command. The
+Championship play-off scope remains unqualified.
 
 ## Sources
 
