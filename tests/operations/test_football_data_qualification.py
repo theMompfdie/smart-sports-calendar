@@ -245,10 +245,7 @@ def test_championship_profile_qualifies_complete_unpaged_regular_season() -> Non
     assert [call[0] for call in transport.calls] == [
         "/v4/competitions/ELC",
         "/v4/competitions/ELC/teams?season=2026",
-        (
-            "/v4/competitions/ELC/matches"
-            "?season=2026&limit=500&stage=REGULAR_SEASON"
-        ),
+        ("/v4/competitions/ELC/matches?season=2026&limit=500&stage=REGULAR_SEASON"),
     ]
 
 
@@ -266,10 +263,7 @@ def test_championship_profile_supports_documented_match_pagination() -> None:
     assert evidence.match_page_count == 2
     assert evidence.request_count == 4
     assert [call[0] for call in transport.calls[-2:]] == [
-        (
-            "/v4/competitions/ELC/matches"
-            "?season=2026&limit=500&stage=REGULAR_SEASON"
-        ),
+        ("/v4/competitions/ELC/matches?season=2026&limit=500&stage=REGULAR_SEASON"),
         (
             "/v4/competitions/ELC/matches"
             "?season=2026&limit=500&stage=REGULAR_SEASON&offset=500"
