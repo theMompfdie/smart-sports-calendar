@@ -32,8 +32,5 @@ def test_team_mapping_requires_the_reviewed_id_and_name_pair() -> None:
 
 
 def test_dfb_pokal_mapping_accepts_only_reviewed_saarbruecken_name() -> None:
-    assert (
-        resolve_team_key("dfb_pokal", 3078, "1. FC Saarbrücken")
-        == "fc_saarbruecken"
-    )
+    assert resolve_team_key("dfb_pokal", 3078, "1. FC Saarbrücken") == "fc_saarbruecken"
     assert resolve_team_key("dfb_pokal", 3078, "1.FC Saarbrücken") is None
