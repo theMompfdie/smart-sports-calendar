@@ -60,7 +60,7 @@ DFB_POKAL_TEAM_MAPPINGS: dict[int, OpenLigaDBTeamMapping] = {
     1635: OpenLigaDBTeamMapping("rb_leipzig", "RB Leipzig"),
     2199: OpenLigaDBTeamMapping("viktoria_koeln", "Viktoria Köln"),
     2499: OpenLigaDBTeamMapping("bahlinger_sc", "Bahlinger SC"),
-    3078: OpenLigaDBTeamMapping("fc_saarbruecken", "1.FC Saarbrücken"),
+    3078: OpenLigaDBTeamMapping("fc_saarbruecken", "1. FC Saarbrücken"),
     4550: OpenLigaDBTeamMapping("lueneburger_sk_hansa", "Lüneburger SK Hansa"),
     4555: OpenLigaDBTeamMapping("tsv_schott_mainz", "TSV Schott Mainz"),
     4568: OpenLigaDBTeamMapping("westfalia_rhynern", "SV Westfalia Rhynern"),

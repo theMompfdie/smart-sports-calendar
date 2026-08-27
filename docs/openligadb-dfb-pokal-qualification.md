@@ -63,6 +63,12 @@ extends the bounded profile to accept a null or empty declaration only when the
 UTC kickoff remains valid. `W. Europe Standard Time` remains accepted; any
 other non-empty, malformed, or padded value still fails closed.
 
+The same staging observation reported `1. FC Saarbrücken` for the unchanged
+provider team ID `3078`, correcting the previous spacing in the reviewed name.
+The exact ID/name mapping was updated after review. Name changes with a stable
+ID continue to fail closed until explicitly reviewed; fuzzy matching was not
+introduced.
+
 ## Read-only qualification command
 
 The command makes three bounded, unauthenticated HTTPS GET requests. It does
