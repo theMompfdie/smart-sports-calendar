@@ -7,7 +7,7 @@ from pathlib import Path
 from app.application.api_football_fixture_import_service import (
     ApiFootballFixtureImportService,
 )
-from app.application.openligadb_dfb_pokal_service import register_openligadb_source
+from app.application.openligadb_competition_service import register_openligadb_source
 from app.application.openligadb_import_orchestrator import (
     OpenLigaDBImportOrchestrator,
 )
@@ -35,11 +35,14 @@ from app.providers.contracts import (
     SourceRole,
     SourceScope,
 )
+from app.providers.openligadb.profiles import DFB_POKAL_PROFILE
 
 OBSERVED_AT = datetime(2026, 8, 18, 20, 0, tzinfo=UTC)
 
 
 class SnapshotService:
+    profile = DFB_POKAL_PROFILE
+
     def __init__(self, batches: list[NormalizedFixtureBatch]) -> None:
         self._batches = batches
 

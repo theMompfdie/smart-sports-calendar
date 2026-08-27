@@ -2,8 +2,9 @@ import sqlite3
 from pathlib import Path
 
 import pytest
-from app.application.openligadb_dfb_pokal_service import (
+from app.application.openligadb_competition_service import (
     OPENLIGADB_ATTRIBUTION,
+    OpenLigaDBCompetitionService,
     OpenLigaDBDFBPokalService,
 )
 from app.config.settings import OpenLigaDBSettings
@@ -22,16 +23,22 @@ from app.database.sports_repository import SportsRepository
 from app.domain.competition_lifecycle import CompetitionFormat
 from app.providers.openligadb.exceptions import OpenLigaDBIntegrityError
 from app.providers.openligadb.models import parse_snapshot
-from app.providers.openligadb.profiles import DFB_POKAL_PROFILE
+from app.providers.openligadb.profiles import (
+    DFB_POKAL_PROFILE,
+    SECOND_BUNDESLIGA_PROFILE,
+)
 
-from tests.providers.openligadb.support import FETCHED_AT, payloads
+from tests.providers.openligadb.support import (
+    FETCHED_AT,
+    payloads,
+    second_bundesliga_payloads,
+)
 
 
 class SnapshotAdapter:
-    profile = DFB_POKAL_PROFILE
-
-    def __init__(self, snapshot) -> None:
+    def __init__(self, snapshot, profile=DFB_POKAL_PROFILE) -> None:
         self._snapshot = snapshot
+        self.profile = profile
 
     def fetch_snapshot(self):
         return self._snapshot
@@ -116,3 +123,57 @@ def test_service_fails_closed_on_changed_provider_identity(tmp_path: Path) -> No
 
     with pytest.raises(OpenLigaDBIntegrityError, match="reviewed mapping"):
         service.fetch_normalized_snapshot()
+
+
+def test_service_normalizes_complete_second_bundesliga_snapshot(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "second-bundesliga.db"
+    Database(database_path).initialize()
+    sports = SportsRepository(database_path)
+    competitions = CompetitionsRepository(database_path)
+    seasons = SeasonsRepository(database_path)
+    participants = ParticipantsRepository(database_path)
+    memberships = SeasonParticipantsRepository(database_path)
+    initialize_sports_catalog(sports)
+    initialize_competitions_catalog(competitions, sports)
+    initialize_seasons_catalog(seasons, competitions, sports)
+    initialize_participants_catalog(
+        participants, memberships, sports, competitions, seasons
+    )
+    snapshot = parse_snapshot(
+        *second_bundesliga_payloads(),
+        profile=SECOND_BUNDESLIGA_PROFILE,
+        fetched_at_utc=FETCHED_AT,
+        request_attempts=3,
+    )
+    service = OpenLigaDBCompetitionService(
+        settings=OpenLigaDBSettings(enabled=True),
+        adapter=SnapshotAdapter(snapshot, SECOND_BUNDESLIGA_PROFILE),
+        sports_repository=sports,
+        competitions_repository=competitions,
+        seasons_repository=seasons,
+        participants_repository=participants,
+        season_participants_repository=memberships,
+        data_sources_repository=DataSourcesRepository(database_path),
+        source_mappings_repository=SourceMappingsRepository(database_path),
+        profile=SECOND_BUNDESLIGA_PROFILE,
+    )
+
+    batch = service.fetch_normalized_snapshot()
+
+    assert batch.competition_format is CompetitionFormat.LEAGUE
+    assert len(batch.fixtures) == 306
+    assert batch.fixtures[0].stage == "regular_season"
+    assert batch.fixtures[0].round_name == "matchday-1"
+    assert batch.fixtures[0].sequence_number == 1
+    with sqlite3.connect(database_path) as connection:
+        mappings = connection.execute(
+            "SELECT object_type, COUNT(*) FROM source_mappings "
+            "GROUP BY object_type ORDER BY object_type"
+        ).fetchall()
+    assert mappings == [
+        ("competition", 1),
+        ("participant", 18),
+        ("season", 1),
+    ]

@@ -39,11 +39,12 @@ def test_initialize_competitions_catalog_creates_reviewed_competitions(
         sports_repository=sports_repository,
     )
 
-    assert len(competitions) == 3
+    assert len(competitions) == 4
 
     by_key = {competition.competition_key: competition for competition in competitions}
     premier_league = by_key["premier_league"]
     bundesliga = by_key["bundesliga"]
+    second_bundesliga = by_key["second_bundesliga"]
     dfb_pokal = by_key["dfb_pokal"]
     football = sports_repository.get_by_key("football")
 
@@ -64,6 +65,15 @@ def test_initialize_competitions_catalog_creates_reviewed_competitions(
     assert bundesliga.country_code == "DE"
     assert bundesliga.competition_type == "league"
     assert bundesliga.metadata == {
+        "region": "Germany",
+        "calendar_category": "SMART | Germany",
+    }
+    assert second_bundesliga.sport_id == football.id
+    assert second_bundesliga.name == "2. Bundesliga"
+    assert second_bundesliga.short_name == "2BL"
+    assert second_bundesliga.country_code == "DE"
+    assert second_bundesliga.competition_type == "league"
+    assert second_bundesliga.metadata == {
         "region": "Germany",
         "calendar_category": "SMART | Germany",
     }

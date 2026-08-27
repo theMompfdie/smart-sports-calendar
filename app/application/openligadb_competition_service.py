@@ -1,3 +1,5 @@
+"""Competition-neutral OpenLigaDB catalog mapping and normalization."""
+
 from dataclasses import dataclass
 from datetime import date
 
@@ -70,7 +72,7 @@ class _CanonicalContext:
     participants_by_provider_id: dict[int, Participant]
 
 
-class OpenLigaDBDFBPokalService:
+class OpenLigaDBCompetitionService:
     def __init__(
         self,
         settings: OpenLigaDBSettings,
@@ -124,20 +126,23 @@ class OpenLigaDBDFBPokalService:
             competition_key=self.profile.canonical_competition_key,
         )
         if competition is None:
-            raise OpenLigaDBResolutionError("Canonical DFB-Pokal is missing.")
-        if competition.competition_type is not CompetitionFormat.KNOCKOUT_CUP:
-            raise OpenLigaDBResolutionError(
-                "Canonical DFB-Pokal competition format is invalid."
-            )
+            raise OpenLigaDBResolutionError("Canonical competition is missing.")
+        expected_format = (
+            CompetitionFormat.LEAGUE
+            if self.profile.normalized_stage == "regular_season"
+            else CompetitionFormat.KNOCKOUT_CUP
+        )
+        if competition.competition_type is not expected_format:
+            raise OpenLigaDBResolutionError("Canonical competition format is invalid.")
         seasons = self._seasons_repository.get_current_for_competition(competition.id)
         if len(seasons) != 1:
             raise OpenLigaDBResolutionError(
-                "Canonical DFB-Pokal must have exactly one current season."
+                "Canonical competition must have exactly one current season."
             )
         season = seasons[0]
         if season.season_key != self.profile.canonical_season_key:
             raise OpenLigaDBResolutionError(
-                "Canonical DFB-Pokal current season does not match the profile."
+                "Canonical current season does not match the profile."
             )
         if season.start_date is None or season.end_date is None:
             raise OpenLigaDBResolutionError("Canonical season dates are incomplete.")
@@ -153,13 +158,15 @@ class OpenLigaDBDFBPokalService:
             snapshot.season_end_date,
         ):
             raise OpenLigaDBIntegrityError(
-                "Provider and canonical DFB-Pokal season dates differ."
+                "Provider and canonical season dates differ."
             )
 
         participants_by_provider_id: dict[int, Participant] = {}
         resolved_team_keys: set[str] = set()
         for team in snapshot.teams:
-            participant_key = resolve_team_key(team.id, team.name)
+            participant_key = resolve_team_key(
+                self.profile.canonical_competition_key, team.id, team.name
+            )
             if participant_key is None:
                 raise OpenLigaDBIntegrityError(
                     "Provider team identity does not match the reviewed mapping."
@@ -173,9 +180,19 @@ class OpenLigaDBDFBPokalService:
                 )
             participants_by_provider_id[team.id] = participant
             resolved_team_keys.add(participant_key)
-        if not resolved_team_keys.issubset(get_reviewed_team_keys()):
+        reviewed_team_keys = get_reviewed_team_keys(
+            self.profile.canonical_competition_key
+        )
+        if not resolved_team_keys.issubset(reviewed_team_keys):
             raise OpenLigaDBIntegrityError(
-                "Provider participant collection exceeds the reviewed DFB-Pokal set."
+                "Provider participant collection exceeds the reviewed set."
+            )
+        if self.profile.expected_participant_count is not None and (
+            len(resolved_team_keys) != self.profile.expected_participant_count
+            or resolved_team_keys != reviewed_team_keys
+        ):
+            raise OpenLigaDBIntegrityError(
+                "Provider participant collection differs from the reviewed set."
             )
 
         source = register_openligadb_source(
@@ -220,9 +237,8 @@ class OpenLigaDBDFBPokalService:
             participants_by_provider_id=participants_by_provider_id,
         )
 
-    @staticmethod
     def _normalize_match(
-        match: OpenLigaDBMatch, context: _CanonicalContext
+        self, match: OpenLigaDBMatch, context: _CanonicalContext
     ) -> NormalizedFixture:
         home = context.participants_by_provider_id[match.home_team_id]
         away = context.participants_by_provider_id[match.away_team_id]
@@ -241,7 +257,7 @@ class OpenLigaDBDFBPokalService:
             kickoff_confirmed=True,
             timezone="UTC",
             status=match.status,
-            stage="knockout",
+            stage=self.profile.normalized_stage,
             round_name=match.round_name,
             sequence_number=match.group_order_id,
             venue_name=None,
@@ -285,3 +301,6 @@ class OpenLigaDBDFBPokalService:
             raise OpenLigaDBIntegrityError(
                 "OpenLigaDB mapping conflicted during persistence."
             ) from error
+
+
+OpenLigaDBDFBPokalService = OpenLigaDBCompetitionService

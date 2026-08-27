@@ -79,6 +79,27 @@ BUNDESLIGA_2026_27_TEAMS = (
     ("vfb_stuttgart", "VfB Stuttgart", "Stuttgart"),
 )
 
+SECOND_BUNDESLIGA_2026_27_TEAMS = (
+    ("vfl_osnabrueck", "VfL Osnabrück", "Osnabrück"),
+    ("hertha_bsc", "Hertha BSC", "Hertha"),
+    ("hannover_96", "Hannover 96", "Hannover"),
+    ("eintracht_braunschweig", "Eintracht Braunschweig", "Braunschweig"),
+    ("fc_kaiserslautern", "1. FC Kaiserslautern", "Kaiserslautern"),
+    ("fc_magdeburg", "1. FC Magdeburg", "Magdeburg"),
+    ("fc_nuernberg", "1. FC Nürnberg", "Nürnberg"),
+    ("arminia_bielefeld", "DSC Arminia Bielefeld", "Bielefeld"),
+    ("energie_cottbus", "Energie Cottbus", "Cottbus"),
+    ("fc_st_pauli", "FC St. Pauli", "St. Pauli"),
+    ("holstein_kiel", "Holstein Kiel", "Kiel"),
+    ("karlsruher_sc", "Karlsruher SC", "Karlsruhe"),
+    ("greuther_fuerth", "SpVgg Greuther Fürth", "Fürth"),
+    ("sv_darmstadt_98", "SV Darmstadt 98", "Darmstadt"),
+    ("vfl_bochum", "VfL Bochum", "Bochum"),
+    ("vfl_wolfsburg", "VfL Wolfsburg", "Wolfsburg"),
+    ("dynamo_dresden", "Dynamo Dresden", "Dresden"),
+    ("fc_heidenheim", "1. FC Heidenheim 1846", "Heidenheim"),
+)
+
 DFB_POKAL_2026_27_TEAMS = (
     ("bayer_04_leverkusen", "Bayer 04 Leverkusen", "Leverkusen"),
     ("borussia_dortmund", "Borussia Dortmund", "Dortmund"),
@@ -175,6 +196,19 @@ SEASON_PARTICIPANTS_CATALOG = (
                 short_name=short_name,
             )
             for participant_key, name, short_name in BUNDESLIGA_2026_27_TEAMS
+        ),
+    ),
+    SeasonParticipantsCatalogEntry(
+        competition_key="second_bundesliga",
+        season_key="2026_27",
+        country_code="DE",
+        participants=tuple(
+            ParticipantCatalogEntry(
+                participant_key=participant_key,
+                name=name,
+                short_name=short_name,
+            )
+            for participant_key, name, short_name in SECOND_BUNDESLIGA_2026_27_TEAMS
         ),
     ),
     SeasonParticipantsCatalogEntry(
