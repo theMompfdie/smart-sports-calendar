@@ -24,8 +24,10 @@ team icons and logos are never requested or persisted.
 - `groupID` is retained as provider round identity.
 - `groupOrderID` maps deterministically to `round-{n}`.
 - `matchDateTimeUTC` is the kickoff authority.
-- naive `lastUpdateDateTime` values are interpreted in `Europe/Berlin`, as
-  qualified with provider `timeZoneID` `W. Europe Standard Time`.
+- a null or empty `timeZoneID` is accepted only when the explicit UTC kickoff
+  remains valid; a non-empty value must equal `W. Europe Standard Time`.
+- naive `lastUpdateDateTime` values are interpreted in `Europe/Berlin` under
+  the reviewed DFB-Pokal profile.
 
 Empty, malformed, wrong-scope, duplicate, future-updated, unknown-team, and
 inconsistent-round observations fail before canonical fixture persistence.

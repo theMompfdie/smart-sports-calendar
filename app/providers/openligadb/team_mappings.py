@@ -60,7 +60,7 @@ DFB_POKAL_TEAM_MAPPINGS: dict[int, OpenLigaDBTeamMapping] = {
     1635: OpenLigaDBTeamMapping("rb_leipzig", "RB Leipzig"),
     2199: OpenLigaDBTeamMapping("viktoria_koeln", "Viktoria Köln"),
     2499: OpenLigaDBTeamMapping("bahlinger_sc", "Bahlinger SC"),
-    3078: OpenLigaDBTeamMapping("fc_saarbruecken", "1.FC Saarbrücken"),
+    3078: OpenLigaDBTeamMapping("fc_saarbruecken", "1. FC Saarbrücken"),
     4550: OpenLigaDBTeamMapping("lueneburger_sk_hansa", "Lüneburger SK Hansa"),
     4555: OpenLigaDBTeamMapping("tsv_schott_mainz", "TSV Schott Mainz"),
     4568: OpenLigaDBTeamMapping("westfalia_rhynern", "SV Westfalia Rhynern"),
@@ -74,15 +74,46 @@ DFB_POKAL_TEAM_MAPPINGS: dict[int, OpenLigaDBTeamMapping] = {
     7595: OpenLigaDBTeamMapping("hamburg_eimsbuetteler_bc", "Hamburg Eimsbütteler BC"),
 }
 
+SECOND_BUNDESLIGA_TEAM_MAPPINGS: dict[int, OpenLigaDBTeamMapping] = {
+    36: OpenLigaDBTeamMapping("vfl_osnabrueck", "VfL Osnabrück"),
+    54: OpenLigaDBTeamMapping("hertha_bsc", "Hertha BSC"),
+    55: OpenLigaDBTeamMapping("hannover_96", "Hannover 96"),
+    74: OpenLigaDBTeamMapping("eintracht_braunschweig", "Eintracht Braunschweig"),
+    76: OpenLigaDBTeamMapping("fc_kaiserslautern", "1. FC Kaiserslautern"),
+    78: OpenLigaDBTeamMapping("fc_magdeburg", "1. FC Magdeburg"),
+    79: OpenLigaDBTeamMapping("fc_nuernberg", "1. FC Nürnberg"),
+    83: OpenLigaDBTeamMapping("arminia_bielefeld", "DSC Arminia Bielefeld"),
+    93: OpenLigaDBTeamMapping("energie_cottbus", "Energie Cottbus"),
+    98: OpenLigaDBTeamMapping("fc_st_pauli", "FC St. Pauli"),
+    104: OpenLigaDBTeamMapping("holstein_kiel", "Holstein Kiel"),
+    105: OpenLigaDBTeamMapping("karlsruher_sc", "Karlsruher SC"),
+    115: OpenLigaDBTeamMapping("greuther_fuerth", "SpVgg Greuther Fürth"),
+    118: OpenLigaDBTeamMapping("sv_darmstadt_98", "SV Darmstadt 98"),
+    129: OpenLigaDBTeamMapping("vfl_bochum", "VfL Bochum"),
+    131: OpenLigaDBTeamMapping("vfl_wolfsburg", "VfL Wolfsburg"),
+    177: OpenLigaDBTeamMapping("dynamo_dresden", "Dynamo Dresden"),
+    199: OpenLigaDBTeamMapping("fc_heidenheim", "1. FC Heidenheim 1846"),
+}
 
-def resolve_team_key(provider_id: int, provider_name: str) -> str | None:
-    mapping = DFB_POKAL_TEAM_MAPPINGS.get(provider_id)
+TEAM_MAPPINGS_BY_COMPETITION_KEY = {
+    "dfb_pokal": DFB_POKAL_TEAM_MAPPINGS,
+    "second_bundesliga": SECOND_BUNDESLIGA_TEAM_MAPPINGS,
+}
+
+
+def resolve_team_key(
+    competition_key: str, provider_id: int, provider_name: str
+) -> str | None:
+    mapping = TEAM_MAPPINGS_BY_COMPETITION_KEY.get(competition_key, {}).get(provider_id)
     if mapping is None or mapping.provider_name != provider_name.strip():
         return None
     return mapping.participant_key
 
 
-def get_reviewed_team_keys() -> frozenset[str]:
+def get_reviewed_team_keys(competition_key: str) -> frozenset[str]:
     return frozenset(
-        mapping.participant_key for mapping in DFB_POKAL_TEAM_MAPPINGS.values()
+        mapping.participant_key
+        for mapping in TEAM_MAPPINGS_BY_COMPETITION_KEY.get(
+            competition_key, {}
+        ).values()
     )

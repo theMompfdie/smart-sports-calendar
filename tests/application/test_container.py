@@ -95,7 +95,7 @@ def openligadb_job(
     competition_key: str = "dfb_pokal",
 ) -> SourceJobDefinition:
     return SourceJobDefinition(
-        job_key="openligadb-dfb-pokal",
+        job_key=f"openligadb-{competition_key.replace('_', '-')}",
         source_key="openligadb",
         role=SourceRole.AUTHORITATIVE,
         scope=SourceScope("football", competition_key, "2026_27"),
@@ -234,6 +234,57 @@ def test_container_registers_authoritative_openligadb_runtime(
     ]
 
 
+@patch("app.application.container.OpenLigaDBClient")
+def test_container_builds_isolated_openligadb_competition_runtimes(
+    client_type: MagicMock, tmp_path: Path
+) -> None:
+    shared_client = MagicMock()
+    client_type.return_value = shared_client
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        openligadb=OpenLigaDBSettings(enabled=True),
+        source_jobs=(
+            openligadb_job(),
+            openligadb_job("second_bundesliga"),
+        ),
+    )
+
+    container = ApplicationContainer(settings=settings)
+
+    assert set(container.openligadb_import_runtime_services) == {
+        "openligadb-dfb-pokal",
+        "openligadb-second-bundesliga",
+    }
+    assert all(
+        adapter._client is shared_client
+        for adapter in container.openligadb_adapters.values()
+    )
+    assert [job.job_key for job in container.source_scheduled_jobs] == [
+        "openligadb-dfb-pokal",
+        "openligadb-second-bundesliga",
+    ]
+    dfb_runtime = container.openligadb_import_runtime_services["openligadb-dfb-pokal"]
+    second_bundesliga_runtime = container.openligadb_import_runtime_services[
+        "openligadb-second-bundesliga"
+    ]
+    with (
+        patch.object(dfb_runtime, "run") as dfb_run,
+        patch.object(second_bundesliga_runtime, "run") as second_bundesliga_run,
+    ):
+        for scheduled_job in container.source_scheduled_jobs:
+            scheduled_job.task()
+
+    dfb_run.assert_called_once_with()
+    second_bundesliga_run.assert_called_once_with()
+    assert [
+        (job.job_key, job.interval_seconds) for job in container.scheduled_jobs
+    ] == [
+        ("openligadb-dfb-pokal", 21600),
+        ("openligadb-second-bundesliga", 21600),
+        ("system:calendar-synchronization", 300),
+    ]
+
+
 def test_container_rejects_unsupported_openligadb_scope(tmp_path: Path) -> None:
     settings = replace(
         create_settings(tmp_path / "sports.db"),
@@ -241,7 +292,7 @@ def test_container_rejects_unsupported_openligadb_scope(tmp_path: Path) -> None:
         source_jobs=(openligadb_job("bundesliga"),),
     )
 
-    with pytest.raises(SourceConfigurationError, match="dfb_pokal"):
+    with pytest.raises(SourceConfigurationError, match="supported authoritative"):
         ApplicationContainer(settings=settings)
 
 

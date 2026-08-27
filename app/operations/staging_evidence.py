@@ -106,6 +106,14 @@ PHASE_5_AUTHORITIES = {
         False,
         None,
     ),
+    "openligadb-second-bundesliga": (
+        "openligadb",
+        "second_bundesliga",
+        "partial",
+        False,
+        False,
+        306,
+    ),
 }
 
 

@@ -118,8 +118,9 @@ complete season snapshot validates. Bundesliga live staging remains a separate
 operator gate. The 2026/27 DFB-Pokal uses the public OpenLigaDB API through a
 separate knockout-cup profile. Its observations are permanently partial: they
 may create or update known fixtures but never infer cancellation or removal.
-The same public provider is qualified as the preferred no-cost 2026/27
-2. Bundesliga authority; it is not implemented or enabled.
+The same public provider is qualified and implemented as the preferred no-cost
+2026/27 2. Bundesliga authority. Its initial runtime is removal-disabled and
+requires isolated staging validation before any release claim.
 
 Phase 4 documentation:
 
@@ -154,6 +155,7 @@ Phase 5 decision records:
 - [OpenLigaDB DFB-Pokal import](docs/openligadb-dfb-pokal-import.md)
 - [OpenLigaDB 2. Bundesliga qualification](docs/openligadb-2-bundesliga-qualification.md)
 - [OpenLigaDB 2. Bundesliga selection ADR](docs/adr/0009-select-openligadb-for-2-bundesliga.md)
+- [OpenLigaDB 2. Bundesliga import](docs/openligadb-second-bundesliga-import.md)
 - [Phase 5 multi-competition staging validation](docs/phase-5-multi-competition-staging-validation.md)
 
 ### Database and Persistence
@@ -511,6 +513,9 @@ delivery order and operational boundaries.
 - DFB-Pokal qualified and implemented with OpenLigaDB through the
   provider-to-SQLite-to-mocked-Graph boundary; isolated live staging remains
   pending and absence never causes removal
+- 2. Bundesliga qualified and implemented with OpenLigaDB through the
+  provider-to-SQLite-to-mocked-Graph boundary; initial operation remains
+  removal-disabled and isolated live staging is pending
 - Austrian and additional English competitions remain evaluated or
   conditional until their documented qualification and implementation gates
   pass

@@ -75,6 +75,7 @@ DFB_POKAL_PROFILE = OpenLigaDBQualificationProfile(
     season_start_date=date(2026, 8, 21),
     season_end_date=date(2027, 5, 29),
     group_capacities=(32, 16, 8, 4, 2, 1),
+    allow_missing_timezone_id=True,
 )
 SECOND_BUNDESLIGA_PROFILE = OpenLigaDBQualificationProfile(
     key="2-bundesliga",

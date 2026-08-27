@@ -48,3 +48,80 @@ def payloads() -> tuple[list[dict], list[dict], list[dict]]:
         }
     ]
     return leagues, groups, matches
+
+
+SECOND_BUNDESLIGA_TEAMS = (
+    (36, "VfL Osnabrück", "Osnabrück"),
+    (54, "Hertha BSC", "Hertha"),
+    (55, "Hannover 96", "Hannover"),
+    (74, "Eintracht Braunschweig", "Braunschweig"),
+    (76, "1. FC Kaiserslautern", "Kaiserslautern"),
+    (78, "1. FC Magdeburg", "Magdeburg"),
+    (79, "1. FC Nürnberg", "Nürnberg"),
+    (83, "DSC Arminia Bielefeld", "Bielefeld"),
+    (93, "Energie Cottbus", "Cottbus"),
+    (98, "FC St. Pauli", "St. Pauli"),
+    (104, "Holstein Kiel", "Kiel"),
+    (105, "Karlsruher SC", "Karlsruhe"),
+    (115, "SpVgg Greuther Fürth", "Fürth"),
+    (118, "SV Darmstadt 98", "Darmstadt"),
+    (129, "VfL Bochum", "Bochum"),
+    (131, "VfL Wolfsburg", "Wolfsburg"),
+    (177, "Dynamo Dresden", "Dresden"),
+    (199, "1. FC Heidenheim 1846", "Heidenheim"),
+)
+
+
+def second_bundesliga_payloads() -> tuple[list[dict], list[dict], list[dict]]:
+    leagues = [
+        {
+            "leagueId": 4938,
+            "leagueName": "2. Fußball-Bundesliga 2026/2027",
+            "leagueShortcut": "bl2",
+            "leagueSeason": "2026",
+            "sport": {"sportId": 1, "sportName": "Fußball"},
+        }
+    ]
+    groups = [
+        {
+            "groupID": 60000 + order,
+            "groupName": f"{order}. Spieltag",
+            "groupOrderID": order,
+        }
+        for order in range(1, 35)
+    ]
+    teams = [
+        {"teamId": team_id, "teamName": name, "shortName": short_name}
+        for team_id, name, short_name in SECOND_BUNDESLIGA_TEAMS
+    ]
+    rotation = teams.copy()
+    first_half: list[list[tuple[dict, dict]]] = []
+    for _ in range(17):
+        first_half.append(
+            [(rotation[index], rotation[-1 - index]) for index in range(9)]
+        )
+        rotation = [rotation[0], rotation[-1], *rotation[1:-1]]
+    second_half = [[(away, home) for home, away in matchday] for matchday in first_half]
+    matchdays = [*first_half, *second_half]
+    matches: list[dict] = []
+    for matchday, pairings in enumerate(matchdays, start=1):
+        for slot, (home, away) in enumerate(pairings):
+            matches.append(
+                {
+                    "matchID": 90000 + (matchday - 1) * 9 + slot,
+                    "leagueId": 4938,
+                    "leagueName": "2. Fußball-Bundesliga 2026/2027",
+                    "leagueShortcut": "bl2",
+                    "leagueSeason": 2026,
+                    "group": deepcopy(groups[matchday - 1]),
+                    "team1": deepcopy(home),
+                    "team2": deepcopy(away),
+                    "matchDateTimeUTC": "2026-08-07T18:30:00Z",
+                    "lastUpdateDateTime": "2026-08-16T15:26:22.460",
+                    "timeZoneID": (
+                        "" if len(matches) < 18 else "W. Europe Standard Time"
+                    ),
+                    "matchIsFinished": len(matches) < 18,
+                }
+            )
+    return leagues, groups, matches

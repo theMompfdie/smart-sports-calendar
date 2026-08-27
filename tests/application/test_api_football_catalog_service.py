@@ -183,7 +183,7 @@ def test_service_maps_provider_catalog_to_existing_canonical_rows(
     assert table_count(context.database_path, "data_sources") == 1
     assert table_count(context.database_path, "source_mappings") == 22
     assert table_count(context.database_path, "participants") == 84
-    assert table_count(context.database_path, "season_participants") == 102
+    assert table_count(context.database_path, "season_participants") == 120
     assert all(
         participant is not None and result_participant.id == participant.id
         for result_participant, participant in zip(
@@ -208,7 +208,7 @@ def test_service_is_idempotent_without_timestamp_churn(tmp_path: Path) -> None:
     assert table_count(context.database_path, "data_sources") == 1
     assert table_count(context.database_path, "source_mappings") == 22
     assert table_count(context.database_path, "participants") == 84
-    assert table_count(context.database_path, "season_participants") == 102
+    assert table_count(context.database_path, "season_participants") == 120
 
 
 def test_service_uses_external_ids_even_when_provider_names_change(

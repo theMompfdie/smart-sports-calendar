@@ -7,9 +7,16 @@ from app.providers.openligadb.exceptions import (
     OpenLigaDBSchemaError,
 )
 from app.providers.openligadb.models import parse_snapshot
-from app.providers.openligadb.profiles import DFB_POKAL_PROFILE
+from app.providers.openligadb.profiles import (
+    DFB_POKAL_PROFILE,
+    SECOND_BUNDESLIGA_PROFILE,
+)
 
-from tests.providers.openligadb.support import FETCHED_AT, payloads
+from tests.providers.openligadb.support import (
+    FETCHED_AT,
+    payloads,
+    second_bundesliga_payloads,
+)
 
 
 def parse(leagues, groups, matches, *, fetched_at=FETCHED_AT):
@@ -37,7 +44,7 @@ def test_partial_snapshot_is_sorted_typed_and_excludes_logo_data() -> None:
 
 def test_empty_duplicate_and_wrong_scope_snapshots_fail_closed() -> None:
     leagues, groups, matches = payloads()
-    with pytest.raises(OpenLigaDBIntegrityError, match="no DFB-Pokal"):
+    with pytest.raises(OpenLigaDBIntegrityError, match="no configured"):
         parse(leagues, groups, [])
 
     leagues, groups, matches = payloads()
@@ -77,4 +84,82 @@ def test_finished_status_and_future_source_update_are_explicit() -> None:
     future_local = (FETCHED_AT + timedelta(days=1)).replace(tzinfo=None)
     matches[0]["lastUpdateDateTime"] = future_local.isoformat()
     with pytest.raises(OpenLigaDBIntegrityError, match="future"):
+        parse(leagues, groups, matches)
+
+
+def test_second_bundesliga_complete_snapshot_and_timezone_exception() -> None:
+    leagues, groups, matches = second_bundesliga_payloads()
+
+    result = parse_snapshot(
+        leagues,
+        groups,
+        matches,
+        profile=SECOND_BUNDESLIGA_PROFILE,
+        fetched_at_utc=FETCHED_AT,
+        request_attempts=3,
+    )
+
+    assert len(result.matches) == 306
+    assert len(result.teams) == 18
+    assert result.matches[0].round_name == "matchday-1"
+
+
+def test_second_bundesliga_incomplete_or_duplicate_pairing_fails_closed() -> None:
+    leagues, groups, matches = second_bundesliga_payloads()
+    with pytest.raises(OpenLigaDBIntegrityError, match="exactly 306"):
+        parse_snapshot(
+            leagues,
+            groups,
+            matches[:-1],
+            profile=SECOND_BUNDESLIGA_PROFILE,
+            fetched_at_utc=FETCHED_AT,
+            request_attempts=3,
+        )
+
+    leagues, groups, matches = second_bundesliga_payloads()
+    matches[-1]["team1"] = deepcopy(matches[0]["team1"])
+    matches[-1]["team2"] = deepcopy(matches[0]["team2"])
+    with pytest.raises(OpenLigaDBIntegrityError, match="directed pairing"):
+        parse_snapshot(
+            leagues,
+            groups,
+            matches,
+            profile=SECOND_BUNDESLIGA_PROFILE,
+            fetched_at_utc=FETCHED_AT,
+            request_attempts=3,
+        )
+
+
+@pytest.mark.parametrize("missing_timezone", [None, ""])
+def test_dfb_pokal_accepts_missing_timezone_with_explicit_utc_kickoff(
+    missing_timezone: object,
+) -> None:
+    leagues, groups, matches = payloads()
+    matches[0]["timeZoneID"] = missing_timezone
+
+    result = parse(leagues, groups, matches)
+
+    assert result.matches[0].kickoff_utc.isoformat() == "2026-08-21T18:00:00+00:00"
+
+
+def test_dfb_pokal_missing_timezone_still_requires_explicit_utc_kickoff() -> None:
+    leagues, groups, matches = payloads()
+    matches[0]["timeZoneID"] = None
+    matches[0]["matchDateTimeUTC"] = "2026-08-21T16:00:00"
+
+    with pytest.raises(OpenLigaDBSchemaError, match="must be UTC"):
+        parse(leagues, groups, matches)
+
+
+@pytest.mark.parametrize(
+    "invalid_timezone",
+    ["UTC", " W. Europe Standard Time", 42],
+)
+def test_dfb_pokal_rejects_unexpected_or_malformed_timezone(
+    invalid_timezone: object,
+) -> None:
+    leagues, groups, matches = payloads()
+    matches[0]["timeZoneID"] = invalid_timezone
+
+    with pytest.raises((OpenLigaDBIntegrityError, OpenLigaDBSchemaError)):
         parse(leagues, groups, matches)

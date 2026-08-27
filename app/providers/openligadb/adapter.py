@@ -4,6 +4,7 @@ from app.providers.openligadb.client import OpenLigaDBClient, OpenLigaDBResponse
 from app.providers.openligadb.models import OpenLigaDBSnapshot, parse_snapshot
 from app.providers.openligadb.profiles import (
     DFB_POKAL_PROFILE,
+    SECOND_BUNDESLIGA_PROFILE,
     OpenLigaDBCompetitionProfile,
 )
 
@@ -47,3 +48,8 @@ class OpenLigaDBCompetitionAdapter:
 class OpenLigaDBDFBPokalAdapter(OpenLigaDBCompetitionAdapter):
     def __init__(self, client: OpenLigaDBClient) -> None:
         super().__init__(client, DFB_POKAL_PROFILE)
+
+
+class OpenLigaDBSecondBundesligaAdapter(OpenLigaDBCompetitionAdapter):
+    def __init__(self, client: OpenLigaDBClient) -> None:
+        super().__init__(client, SECOND_BUNDESLIGA_PROFILE)

@@ -10,7 +10,7 @@ from app.application.api_football_import_orchestrator import (
 )
 from app.application.openligadb_competition_service import (
     OPENLIGADB_ATTRIBUTION,
-    OpenLigaDBDFBPokalService,
+    OpenLigaDBCompetitionService,
     register_openligadb_source,
 )
 from app.application.openligadb_import_orchestrator import (
@@ -43,25 +43,28 @@ from app.database.synchronization_query_repository import (
 )
 from app.providers.contracts import SourceJobDefinition, SourceRole, SourceScope
 from app.providers.openligadb.models import parse_snapshot
-from app.providers.openligadb.profiles import DFB_POKAL_PROFILE
+from app.providers.openligadb.profiles import SECOND_BUNDESLIGA_PROFILE
 from app.synchronization.event_synchronizer import EventSynchronizer
 from app.synchronization.outlook_event_payload_builder import OutlookEventPayloadBuilder
 from app.synchronization.synchronization_orchestrator import SynchronizationOrchestrator
 
 from tests.integration.provider_outlook_support import RecordingGraphClient
-from tests.providers.openligadb.support import FETCHED_AT, payloads
+from tests.providers.openligadb.support import (
+    FETCHED_AT,
+    second_bundesliga_payloads,
+)
 
-CALENDAR_ID = "dfb-pokal-staging-calendar"
+CALENDAR_ID = "second-bundesliga-staging-calendar"
 
 
 class SnapshotAdapter:
-    profile = DFB_POKAL_PROFILE
+    profile = SECOND_BUNDESLIGA_PROFILE
 
     def __init__(self) -> None:
         self.failure: Exception | None = None
         self.snapshot = parse_snapshot(
-            *payloads(),
-            profile=DFB_POKAL_PROFILE,
+            *second_bundesliga_payloads(),
+            profile=self.profile,
             fetched_at_utc=FETCHED_AT,
             request_attempts=3,
         )
@@ -80,7 +83,6 @@ def create_harness(database_path):
     participants = ParticipantsRepository(database_path)
     memberships = SeasonParticipantsRepository(database_path)
     sources = DataSourcesRepository(database_path)
-    source_mappings = SourceMappingsRepository(database_path)
     runs = SyncRunsRepository(database_path)
     initialize_sports_catalog(sports)
     initialize_competitions_catalog(competitions, sports)
@@ -91,7 +93,7 @@ def create_harness(database_path):
     settings = OpenLigaDBSettings(enabled=True)
     source = register_openligadb_source(settings, sources)
     adapter = SnapshotAdapter()
-    service = OpenLigaDBDFBPokalService(
+    service = OpenLigaDBCompetitionService(
         settings=settings,
         adapter=adapter,
         sports_repository=sports,
@@ -100,19 +102,20 @@ def create_harness(database_path):
         participants_repository=participants,
         season_participants_repository=memberships,
         data_sources_repository=sources,
-        source_mappings_repository=source_mappings,
+        source_mappings_repository=SourceMappingsRepository(database_path),
+        profile=SECOND_BUNDESLIGA_PROFILE,
     )
     football = sports.get_by_key("football")
     assert football is not None
-    competition = competitions.get_by_key(football.id, "dfb_pokal")
+    competition = competitions.get_by_key(football.id, "second_bundesliga")
     assert competition is not None
     season = seasons.get_by_key(competition.id, "2026_27")
     assert season is not None
     job = SourceJobDefinition(
-        job_key="openligadb-dfb-pokal",
+        job_key="openligadb-second-bundesliga",
         source_key="openligadb",
         role=SourceRole.AUTHORITATIVE,
-        scope=SourceScope("football", "dfb_pokal", "2026_27"),
+        scope=SourceScope("football", "second_bundesliga", "2026_27"),
         interval_seconds=21600,
     )
     SourceAssignmentsRepository(database_path).synchronize(
@@ -151,72 +154,90 @@ def create_harness(database_path):
     return provider, calendar, adapter, graph
 
 
-def test_dfb_pokal_import_is_idempotent_and_renders_openligadb_attribution(
+def test_second_bundesliga_import_is_idempotent_and_non_destructive(
     tmp_path,
 ) -> None:
     provider, calendar, adapter, graph = create_harness(
-        tmp_path / "openligadb-dfb-pokal.db"
+        tmp_path / "openligadb-second-bundesliga.db"
     )
 
     first_import = provider.import_current_competition()
-    first_sync = calendar.synchronize(CALENDAR_ID, 100)
+    first_sync = calendar.synchronize(CALENDAR_ID, 400)
 
-    assert first_import.items_created == 1
+    assert first_import.items_created == 306
     assert first_import.items_cancelled == 0
     assert first_import.items_deleted == 0
-    assert first_sync.items_created == 1
-    assert len(graph.operations) == 1
-    payload = graph.operations[0].payload
-    assert payload is not None
-    assert payload["subject"] == "SC St. Tönis vs Eintracht Frankfurt"
-    body = payload["body"]
-    assert isinstance(body, dict)
-    assert f"Source: {OPENLIGADB_ATTRIBUTION}" in body["content"]
-    assert "Round: round-1" in body["content"]
+    assert first_sync.items_created == 306
+    assert len(graph.operations) == 306
+    first_payload = graph.operations[0].payload
+    assert first_payload is not None
+    assert "Round: matchday-1" in first_payload["body"]["content"]
+    assert f"Source: {OPENLIGADB_ATTRIBUTION}" in first_payload["body"]["content"]
 
-    second_import = provider.import_current_competition()
-    second_sync = calendar.synchronize(CALENDAR_ID, 100)
+    assert provider.import_current_competition().items_unchanged == 306
+    assert calendar.synchronize(CALENDAR_ID, 400).items_unchanged == 306
+    assert len(graph.operations) == 306
 
-    assert second_import.items_unchanged == 1
-    assert second_sync.items_unchanged == 1
-    assert len(graph.operations) == 1
+    adapter.snapshot = replace(
+        adapter.snapshot,
+        matches=adapter.snapshot.matches[:-1],
+        fetched_at_utc=adapter.snapshot.fetched_at_utc + timedelta(minutes=5),
+    )
+    missing_import = provider.import_current_competition()
+    missing_sync = calendar.synchronize(CALENDAR_ID, 400)
 
-    match = adapter.snapshot.matches[0]
+    assert missing_import.items_cancelled == 0
+    assert missing_import.items_deleted == 0
+    assert missing_sync.items_cancelled == 0
+    assert missing_sync.items_deleted == 0
+    assert len(graph.operations) == 306
+
+
+def test_second_bundesliga_reschedule_preserves_outlook_identity(tmp_path) -> None:
+    provider, calendar, adapter, graph = create_harness(
+        tmp_path / "openligadb-second-bundesliga-reschedule.db"
+    )
+    assert provider.import_current_competition().items_created == 306
+    assert calendar.synchronize(CALENDAR_ID, 400).items_created == 306
+
+    changed = adapter.snapshot.matches[0]
     adapter.snapshot = replace(
         adapter.snapshot,
         matches=(
             replace(
-                match,
-                kickoff_utc=match.kickoff_utc + timedelta(hours=2),
-                source_updated_at=match.source_updated_at + timedelta(days=1),
+                changed,
+                kickoff_utc=changed.kickoff_utc + timedelta(hours=2),
+                source_updated_at=changed.source_updated_at + timedelta(days=1),
             ),
+            *adapter.snapshot.matches[1:],
         ),
         fetched_at_utc=adapter.snapshot.fetched_at_utc + timedelta(minutes=5),
     )
 
     corrected_import = provider.import_current_competition()
-    corrected_sync = calendar.synchronize(CALENDAR_ID, 100)
+    corrected_sync = calendar.synchronize(CALENDAR_ID, 400)
 
     assert corrected_import.items_updated == 1
+    assert corrected_import.items_unchanged == 305
     assert corrected_sync.items_updated == 1
     assert graph.operations[-1].method == "PATCH"
 
 
-def test_dfb_pokal_restart_and_provider_failure_preserve_outlook_identity(
+def test_second_bundesliga_restart_and_provider_failure_preserve_outlook_identity(
     tmp_path,
 ) -> None:
-    database_path = tmp_path / "openligadb-dfb-pokal-recovery.db"
+    database_path = tmp_path / "openligadb-second-bundesliga-recovery.db"
     provider, calendar, _, graph = create_harness(database_path)
 
-    assert provider.import_current_competition().items_created == 1
-    assert calendar.synchronize(CALENDAR_ID, 100).items_created == 1
-    assert len(graph.operations) == 1
+    assert provider.import_current_competition().items_created == 306
+    assert calendar.synchronize(CALENDAR_ID, 400).items_created == 306
+    assert len(graph.operations) == 306
 
     restarted_provider, restarted_calendar, restarted_adapter, restarted_graph = (
         create_harness(database_path)
     )
-    assert restarted_provider.import_current_competition().items_unchanged == 1
-    assert restarted_calendar.synchronize(CALENDAR_ID, 100).items_unchanged == 1
+    assert restarted_provider.import_current_competition().items_unchanged == 306
+    assert restarted_calendar.synchronize(CALENDAR_ID, 400).items_unchanged == 306
     assert restarted_graph.operations == []
 
     restarted_adapter.failure = RuntimeError("simulated provider outage")
@@ -226,12 +247,12 @@ def test_dfb_pokal_restart_and_provider_failure_preserve_outlook_identity(
     ):
         restarted_provider.import_current_competition()
 
-    assert restarted_calendar.synchronize(CALENDAR_ID, 100).items_unchanged == 1
+    assert restarted_calendar.synchronize(CALENDAR_ID, 400).items_unchanged == 306
     assert restarted_graph.operations == []
 
     restarted_adapter.failure = None
-    assert restarted_provider.import_current_competition().items_unchanged == 1
-    assert restarted_calendar.synchronize(CALENDAR_ID, 100).items_unchanged == 1
+    assert restarted_provider.import_current_competition().items_unchanged == 306
+    assert restarted_calendar.synchronize(CALENDAR_ID, 400).items_unchanged == 306
     assert restarted_graph.operations == []
 
     provider_runs = SyncRunsRepository(database_path).get_recent(

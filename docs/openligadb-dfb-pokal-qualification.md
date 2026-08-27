@@ -56,6 +56,19 @@ kickoff boundaries, update boundary, and status counts. ADR 0007 therefore
 approves the source for a later non-destructive implementation while retaining
 the permanent `partial` boundary.
 
+During isolated Phase 5 staging on 2026-08-27, a fresh observation still
+contained 32 fixtures but 29 of them omitted the optional `timeZoneID` field.
+All 32 retained an explicit `matchDateTimeUTC` value. Issue #134 therefore
+extends the bounded profile to accept a null or empty declaration only when the
+UTC kickoff remains valid. `W. Europe Standard Time` remains accepted; any
+other non-empty, malformed, or padded value still fails closed.
+
+The same staging observation reported `1. FC Saarbrücken` for the unchanged
+provider team ID `3078`, correcting the previous spacing in the reviewed name.
+The exact ID/name mapping was updated after review. Name changes with a stable
+ID continue to fail closed until explicitly reviewed; fuzzy matching was not
+introduced.
+
 ## Read-only qualification command
 
 The command makes three bounded, unauthenticated HTTPS GET requests. It does
@@ -84,8 +97,8 @@ responses, logo URLs, venue data, goals, or results.
 The qualifier rejects non-200, non-JSON, malformed, oversized, or non-list
 responses; missing or duplicate league/round/fixture identities; the wrong
 sport, league, shortcut, or season; unknown fixture groups; duplicate teams in
-one fixture; missing team identity; non-UTC kickoff values; unexpected provider
-timezone declarations; invalid update timestamps; dates outside the season;
+one fixture; missing team identity; non-UTC kickoff values; unexpected or
+malformed non-empty provider timezone declarations; invalid update timestamps; dates outside the season;
 empty fixture collections; and a round count above the DFB-Pokal capacity.
 
 Normal CI uses synthetic payloads and remains network-free.
@@ -116,9 +129,11 @@ Normal CI uses synthetic payloads and remains network-free.
   is insufficient.
 - `groupID` is the provider round identity and `groupOrderID` normalizes to
   `round-{n}` independently of localized names.
-- `matchDateTimeUTC` is the kickoff authority. `lastUpdateDateTime` is a naive
-  provider-local timestamp and is converted using `Europe/Berlin` only after
-  `timeZoneID` is validated as `W. Europe Standard Time`.
+- `matchDateTimeUTC` is the kickoff authority. A missing `timeZoneID` is
+  accepted only while that explicit UTC value remains valid. A non-empty
+  declaration must equal `W. Europe Standard Time`. `lastUpdateDateTime` is a
+  naive provider-local timestamp and is converted using `Europe/Berlin` under
+  this reviewed competition profile.
 - `matchIsFinished` distinguishes scheduled from finished matches but does not
   provide a safe cancelled/postponed taxonomy.
 - The API exposes no explicit home/away role field beyond `team1` and `team2`,

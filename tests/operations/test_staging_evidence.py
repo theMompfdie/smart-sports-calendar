@@ -6,7 +6,7 @@ import pytest
 from app.application.football_data_premier_league_service import (
     register_football_data_source,
 )
-from app.application.openligadb_dfb_pokal_service import register_openligadb_source
+from app.application.openligadb_competition_service import register_openligadb_source
 from app.config.settings import FootballDataSettings, OpenLigaDBSettings
 from app.database.calendar_event_mappings_repository import (
     CalendarEventMappingsRepository,
@@ -76,6 +76,15 @@ def phase_5_candidate_evidence() -> StagingEvidence:
             False,
             False,
             32,
+        ),
+        (
+            "openligadb-second-bundesliga",
+            "openligadb",
+            "second_bundesliga",
+            "partial",
+            False,
+            False,
+            306,
         ),
     )
     return StagingEvidence(
@@ -354,7 +363,7 @@ def test_collect_staging_evidence_reports_safe_authoritative_fixture_scope(
         assert excluded_value not in rendered
 
 
-def test_collect_staging_evidence_keeps_three_authorities_isolated(
+def test_collect_staging_evidence_keeps_four_authorities_isolated(
     tmp_path: Path,
 ) -> None:
     database_path = create_database(tmp_path)
@@ -376,6 +385,11 @@ def test_collect_staging_evidence_keeps_three_authorities_isolated(
         ("premier_league", "football-data-premier-league", football_data.id),
         ("bundesliga", "football-data-bundesliga", football_data.id),
         ("dfb_pokal", "openligadb-dfb-pokal", openligadb.id),
+        (
+            "second_bundesliga",
+            "openligadb-second-bundesliga",
+            openligadb.id,
+        ),
     )
     assignments: list[SourceAssignmentWrite] = []
     events = SportsEventsRepository(database_path)
@@ -430,17 +444,24 @@ def test_collect_staging_evidence_keeps_three_authorities_isolated(
         "football-data-bundesliga",
         "openligadb-dfb-pokal",
         "football-data-premier-league",
+        "openligadb-second-bundesliga",
     ]
     fixture_scopes = {scope.competition_key: scope for scope in evidence.fixture_scopes}
-    assert set(fixture_scopes) == {"premier_league", "bundesliga", "dfb_pokal"}
+    assert set(fixture_scopes) == {
+        "premier_league",
+        "bundesliga",
+        "dfb_pokal",
+        "second_bundesliga",
+    }
     assert fixture_scopes["premier_league"].source_key == "football_data"
     assert fixture_scopes["bundesliga"].source_key == "football_data"
     assert fixture_scopes["dfb_pokal"].source_key == "openligadb"
+    assert fixture_scopes["second_bundesliga"].source_key == "openligadb"
     assert all(scope.source_event_mappings == 1 for scope in fixture_scopes.values())
     assert all(scope.calendar_mappings == 1 for scope in fixture_scopes.values())
     assert all(scope.calendar_targets == 1 for scope in fixture_scopes.values())
     assert (
-        len({scope.source_event_ids_sha256 for scope in fixture_scopes.values()}) == 3
+        len({scope.source_event_ids_sha256 for scope in fixture_scopes.values()}) == 4
     )
 
 

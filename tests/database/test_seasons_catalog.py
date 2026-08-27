@@ -58,7 +58,7 @@ def test_initialize_seasons_catalog_creates_reviewed_seasons(
         sports_repository=sports_repository,
     )
 
-    assert len(seasons) == 3
+    assert len(seasons) == 4
     football = sports_repository.get_by_key("football")
 
     assert football is not None
@@ -74,6 +74,11 @@ def test_initialize_seasons_catalog_creates_reviewed_seasons(
         competition_key="bundesliga",
     )
     assert bundesliga is not None
+    second_bundesliga = competitions_repository.get_by_key(
+        sport_id=football.id,
+        competition_key="second_bundesliga",
+    )
+    assert second_bundesliga is not None
     dfb_pokal = competitions_repository.get_by_key(
         sport_id=football.id,
         competition_key="dfb_pokal",
@@ -96,6 +101,14 @@ def test_initialize_seasons_catalog_creates_reviewed_seasons(
     assert bundesliga_season.end_date == "2027-05-22"
     assert bundesliga_season.is_current is True
     assert bundesliga_season.metadata is None
+
+    second_bundesliga_season = by_competition[second_bundesliga.id]
+    assert second_bundesliga_season.season_key == "2026_27"
+    assert second_bundesliga_season.name == "2026/27"
+    assert second_bundesliga_season.start_date == "2026-08-07"
+    assert second_bundesliga_season.end_date == "2027-05-23"
+    assert second_bundesliga_season.is_current is True
+    assert second_bundesliga_season.metadata is None
 
     dfb_pokal_season = by_competition[dfb_pokal.id]
     assert dfb_pokal_season.season_key == "2026_27"

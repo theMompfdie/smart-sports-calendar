@@ -9,9 +9,9 @@ from app.application.api_football_import_orchestrator import (
     ProviderImportOrchestrationError,
     ProviderImportRunResult,
 )
-from app.application.openligadb_dfb_pokal_service import (
+from app.application.openligadb_competition_service import (
     OPENLIGADB_SOURCE_KEY,
-    OpenLigaDBDFBPokalService,
+    OpenLigaDBCompetitionService,
 )
 from app.database.data_sources_repository import DataSourcesRepository
 from app.database.fixture_import_repository import (
@@ -36,7 +36,7 @@ class OpenLigaDBImportOrchestrator:
 
     def __init__(
         self,
-        competition_service: OpenLigaDBDFBPokalService,
+        competition_service: OpenLigaDBCompetitionService,
         import_service: ApiFootballFixtureImportService,
         sync_runs_repository: SyncRunsRepository,
         data_sources_repository: DataSourcesRepository,
@@ -45,7 +45,14 @@ class OpenLigaDBImportOrchestrator:
         if job_definition.source_key != OPENLIGADB_SOURCE_KEY:
             raise ValueError("OpenLigaDB orchestrator received the wrong job.")
         if job_definition.role is not SourceRole.AUTHORITATIVE:
-            raise ValueError("OpenLigaDB DFB-Pokal adapter must be authoritative.")
+            raise ValueError("OpenLigaDB adapter must be authoritative.")
+        profile = competition_service.profile
+        if (
+            job_definition.scope.sport_key != "football"
+            or job_definition.scope.competition_key != profile.canonical_competition_key
+            or job_definition.scope.season_key != profile.canonical_season_key
+        ):
+            raise ValueError("OpenLigaDB job and competition profile differ.")
         self._competition_service = competition_service
         self._import_service = import_service
         self._sync_runs_repository = sync_runs_repository

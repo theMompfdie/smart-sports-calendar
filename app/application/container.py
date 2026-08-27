@@ -30,8 +30,8 @@ from app.application.football_data_premier_league_service import (
     FootballDataCompetitionService,
     register_football_data_source,
 )
-from app.application.openligadb_dfb_pokal_service import (
-    OpenLigaDBDFBPokalService,
+from app.application.openligadb_competition_service import (
+    OpenLigaDBCompetitionService,
     register_openligadb_source,
 )
 from app.application.openligadb_import_orchestrator import (
@@ -89,8 +89,12 @@ from app.providers.football_data.profiles import (
     FootballDataCompetitionProfile,
     get_competition_profile,
 )
-from app.providers.openligadb.adapter import OpenLigaDBDFBPokalAdapter
+from app.providers.openligadb.adapter import OpenLigaDBCompetitionAdapter
 from app.providers.openligadb.client import OpenLigaDBClient
+from app.providers.openligadb.profiles import OpenLigaDBCompetitionProfile
+from app.providers.openligadb.profiles import (
+    get_competition_profile as get_openligadb_competition_profile,
+)
 from app.scheduler.scheduler import ScheduledJob, Scheduler
 from app.synchronization.event_synchronizer import EventSynchronizer
 from app.synchronization.outlook_event_payload_builder import (
@@ -164,17 +168,22 @@ class ApplicationContainer:
                 "OPENLIGADB_ENABLED and the active openligadb source job must "
                 "be configured together."
             )
-        if active_openligadb_jobs and (
-            len(active_openligadb_jobs) != 1
-            or active_openligadb_jobs[0].scope.sport_key != "football"
-            or active_openligadb_jobs[0].scope.competition_key != "dfb_pokal"
-            or active_openligadb_jobs[0].scope.season_key != "2026_27"
-            or active_openligadb_jobs[0].role is not SourceRole.AUTHORITATIVE
-        ):
-            raise SourceConfigurationError(
-                "The OpenLigaDB adapter supports exactly the authoritative "
-                "football/dfb_pokal/2026_27 scope."
+        openligadb_profiles: dict[str, OpenLigaDBCompetitionProfile] = {}
+        for job in active_openligadb_jobs:
+            profile = get_openligadb_competition_profile(
+                job.scope.competition_key,
+                job.scope.season_key,
             )
+            if (
+                job.scope.sport_key != "football"
+                or profile is None
+                or job.role is not SourceRole.AUTHORITATIVE
+            ):
+                raise SourceConfigurationError(
+                    "The OpenLigaDB adapter requires a supported authoritative "
+                    "football competition profile."
+                )
+            openligadb_profiles[job.job_key] = profile
         self.logger: logging.Logger = configure_logging(
             self.settings.log_level,
             self.settings.instance_name,
@@ -262,15 +271,18 @@ class ApplicationContainer:
             if self.settings.openligadb.enabled
             else None
         )
-        self.openligadb_adapter = (
-            OpenLigaDBDFBPokalAdapter(self.openligadb_client)
+        self.openligadb_adapters = {
+            job.job_key: OpenLigaDBCompetitionAdapter(
+                self.openligadb_client,
+                openligadb_profiles[job.job_key],
+            )
+            for job in active_openligadb_jobs
             if self.openligadb_client is not None
-            else None
-        )
-        self.openligadb_competition_service = (
-            OpenLigaDBDFBPokalService(
+        }
+        self.openligadb_competition_services = {
+            job.job_key: OpenLigaDBCompetitionService(
                 settings=self.settings.openligadb,
-                adapter=self.openligadb_adapter,
+                adapter=self.openligadb_adapters[job.job_key],
                 sports_repository=self.sports_repository,
                 competitions_repository=self.competitions_repository,
                 seasons_repository=self.seasons_repository,
@@ -278,9 +290,13 @@ class ApplicationContainer:
                 season_participants_repository=self.season_participants_repository,
                 data_sources_repository=self.data_sources_repository,
                 source_mappings_repository=self.source_mappings_repository,
+                profile=openligadb_profiles[job.job_key],
             )
-            if self.openligadb_adapter is not None
-            else None
+            for job in active_openligadb_jobs
+        }
+        self.openligadb_adapter = next(iter(self.openligadb_adapters.values()), None)
+        self.openligadb_competition_service = next(
+            iter(self.openligadb_competition_services.values()), None
         )
         self.football_data_adapters = {
             job.job_key: FootballDataCompetitionAdapter(
@@ -418,27 +434,29 @@ class ApplicationContainer:
         self.football_data_import_runtime_service = next(
             iter(self.football_data_import_runtime_services.values()), None
         )
-        openligadb_job = next(iter(active_openligadb_jobs), None)
-        self.openligadb_import_orchestrator = (
-            OpenLigaDBImportOrchestrator(
-                competition_service=self.openligadb_competition_service,
+        self.openligadb_import_orchestrators = {
+            job.job_key: OpenLigaDBImportOrchestrator(
+                competition_service=self.openligadb_competition_services[job.job_key],
                 import_service=self.openligadb_fixture_import_service,
                 sync_runs_repository=self.sync_runs_repository,
                 data_sources_repository=self.data_sources_repository,
-                job_definition=openligadb_job,
+                job_definition=job,
             )
-            if self.openligadb_competition_service is not None
-            and openligadb_job is not None
-            else None
-        )
-        self.openligadb_import_runtime_service = (
-            OpenLigaDBImportRuntimeService(
-                orchestrator=self.openligadb_import_orchestrator,
+            for job in active_openligadb_jobs
+        }
+        self.openligadb_import_runtime_services = {
+            job_key: OpenLigaDBImportRuntimeService(
+                orchestrator=orchestrator,
                 sync_runs_repository=self.sync_runs_repository,
                 logger=self.logger,
             )
-            if self.openligadb_import_orchestrator is not None
-            else None
+            for job_key, orchestrator in self.openligadb_import_orchestrators.items()
+        }
+        self.openligadb_import_orchestrator = next(
+            iter(self.openligadb_import_orchestrators.values()), None
+        )
+        self.openligadb_import_runtime_service = next(
+            iter(self.openligadb_import_runtime_services.values()), None
         )
         self.outlook_event_payload_builder = OutlookEventPayloadBuilder()
         self.event_synchronizer = EventSynchronizer(
@@ -479,10 +497,10 @@ class ApplicationContainer:
                 supported_roles=frozenset({SourceRole.AUTHORITATIVE}),
                 writes_canonical=True,
             )
-        if self.openligadb_import_runtime_service is not None:
+        if self.openligadb_import_runtime_services:
             self.source_registry.register(
                 "openligadb",
-                self._run_openligadb_source_job,
+                task_factory=self._build_openligadb_source_task,
                 supported_roles=frozenset({SourceRole.AUTHORITATIVE}),
                 writes_canonical=True,
             )
@@ -644,11 +662,17 @@ class ApplicationContainer:
             )
         return runtime.run()
 
-    def _run_openligadb_source_job(self) -> object | None:
-        runtime = self.openligadb_import_runtime_service
+    def _build_openligadb_source_task(
+        self,
+        definition: SourceJobDefinition,
+    ) -> SourceJobTask:
+        return partial(self._run_openligadb_source_job, definition.job_key)
+
+    def _run_openligadb_source_job(self, job_key: str) -> object | None:
+        runtime = self.openligadb_import_runtime_services.get(job_key)
         if runtime is None:
             raise SourceConfigurationError(
-                "OpenLigaDB source job has no configured runtime."
+                f"OpenLigaDB source job has no configured runtime: {job_key}."
             )
         return runtime.run()
 
