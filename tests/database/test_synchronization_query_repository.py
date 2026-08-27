@@ -186,7 +186,7 @@ def test_get_by_event_id_returns_complete_event_aggregate(
     )
 
     assert synchronization_event is not None
-    assert synchronization_event.event == event
+    assert synchronization_event.event == events_repository.get_by_id(event.id)
     assert synchronization_event.sport == sport
     assert synchronization_event.competition == competition
     assert synchronization_event.season == season
@@ -579,6 +579,7 @@ def test_get_candidates_prioritizes_actionable_work_before_synced_mapping(
             outlook_event_id="outlook-synced",
             outlook_change_key=None,
             content_hash="synced-hash",
+            event_revision=1,
         )
         is not None
     )
@@ -646,6 +647,7 @@ def test_get_candidates_rotates_synced_mappings_by_oldest_sync_time(
             outlook_event_id="outlook-newer",
             outlook_change_key=None,
             content_hash="newer-hash",
+            event_revision=1,
         )
         is not None
     )
@@ -655,6 +657,7 @@ def test_get_candidates_rotates_synced_mappings_by_oldest_sync_time(
             outlook_event_id="outlook-older",
             outlook_change_key=None,
             content_hash="older-hash",
+            event_revision=1,
         )
         is not None
     )
@@ -674,6 +677,155 @@ def test_get_candidates_rotates_synced_mappings_by_oldest_sync_time(
     )
 
     assert [candidate.event.id for candidate in candidates] == [older_sync_event.id]
+
+
+def test_get_candidates_prioritizes_revision_drift_at_championship_scale(
+    tmp_path: Path,
+) -> None:
+    database_path = create_database(tmp_path)
+    sport = SportsRepository(database_path).upsert("football", "Football")
+    timestamp = "2026-08-27T20:00:00+00:00"
+    fixture_count = 1576
+    with sqlite3.connect(database_path) as connection:
+        connection.executemany(
+            """
+            INSERT INTO sports_events (
+                sport_id, event_key, event_type, title, start_time,
+                first_seen_at, last_seen_at, created_at, updated_at
+            ) VALUES (?, ?, 'match', ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                (
+                    sport.id,
+                    f"scale-fixture-{index}",
+                    f"Scale fixture {index}",
+                    timestamp,
+                    timestamp,
+                    timestamp,
+                    timestamp,
+                    timestamp,
+                )
+                for index in range(fixture_count)
+            ),
+        )
+        event_rows = connection.execute(
+            "SELECT id FROM sports_events ORDER BY id"
+        ).fetchall()
+        connection.executemany(
+            """
+            INSERT INTO calendar_event_mappings (
+                event_id, calendar_id, transaction_id, outlook_event_id,
+                content_hash, sync_status, last_synced_at,
+                last_synced_revision, created_at, updated_at
+            ) VALUES (?, 'calendar-1', ?, ?, 'hash', 'synced', ?, 1, ?, ?)
+            """,
+            (
+                (
+                    event_id,
+                    f"00000000-0000-4000-8000-{event_id:012d}",
+                    f"outlook-{event_id}",
+                    timestamp,
+                    timestamp,
+                    timestamp,
+                )
+                for (event_id,) in event_rows
+            ),
+        )
+        changed_event_id = event_rows[-1][0]
+        connection.execute(
+            "UPDATE sports_events SET status = 'postponed' WHERE id = ?",
+            (changed_event_id,),
+        )
+
+    candidates = SynchronizationQueryRepository(database_path).get_candidates(
+        calendar_id="calendar-1",
+        limit=100,
+    )
+
+    assert len(candidates) == 100
+    assert candidates[0].event.id == changed_event_id
+    assert candidates[0].event.sync_revision == 2
+
+
+def test_outlook_payload_changes_increment_event_revision(
+    tmp_path: Path,
+) -> None:
+    database_path = create_database(tmp_path)
+    sport = SportsRepository(database_path).upsert("football", "Football")
+    events = SportsEventsRepository(database_path)
+    event = events.upsert(
+        sport_id=sport.id,
+        event_key="revision-fixture",
+        event_type="match",
+        title="Home vs Away",
+        start_time="2026-08-27T18:00:00+00:00",
+    )
+
+    unchanged = events.upsert(
+        sport_id=sport.id,
+        event_key="revision-fixture",
+        event_type="match",
+        title="Home vs Away",
+        start_time="2026-08-27T18:00:00+00:00",
+    )
+    assert unchanged.sync_revision == 1
+
+    participants = ParticipantsRepository(database_path)
+    home = participants.upsert(
+        sport_id=sport.id,
+        participant_key="home",
+        participant_type="team",
+        name="Home",
+    )
+    EventParticipantsRepository(database_path).upsert(
+        event_id=event.id,
+        participant_id=home.id,
+        role="home",
+    )
+    loaded = events.get_by_id(event.id)
+    assert loaded is not None
+    assert loaded.sync_revision == 2
+
+    participants.upsert(
+        sport_id=sport.id,
+        participant_key="home",
+        participant_type="team",
+        name="Renamed Home",
+    )
+    loaded = events.get_by_id(event.id)
+    assert loaded is not None
+    assert loaded.sync_revision == 3
+
+    EventResultsRepository(database_path).create(
+        event_id=event.id,
+        participant_id=home.id,
+        result_type="score",
+        value_number=1,
+    )
+    loaded = events.get_by_id(event.id)
+    assert loaded is not None
+    assert loaded.sync_revision == 4
+
+    EventStatisticsRepository(database_path).create(
+        event_id=event.id,
+        participant_id=home.id,
+        statistic_key="shots",
+        statistic_name="Shots",
+        value_number=5,
+    )
+    loaded = events.get_by_id(event.id)
+    assert loaded is not None
+    assert loaded.sync_revision == 5
+
+    changed = events.upsert(
+        sport_id=sport.id,
+        event_key="revision-fixture",
+        event_type="match",
+        title="Home vs Away",
+        start_time="2026-08-27T18:00:00+00:00",
+        status="postponed",
+    )
+    assert changed.sync_revision == 6
 
 
 def test_get_candidates_includes_cancelled_event(

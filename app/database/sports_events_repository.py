@@ -34,6 +34,7 @@ class SportsEvent:
     metadata: dict[str, Any] | None
     created_at: str
     updated_at: str
+    sync_revision: int = 1
 
 
 class SportsEventsRepository:
@@ -70,7 +71,8 @@ class SportsEventsRepository:
                     deleted_at,
                     metadata_json,
                     created_at,
-                    updated_at
+                    updated_at,
+                    sync_revision
                 FROM sports_events
                 WHERE event_key = ?
                 """,
@@ -262,4 +264,5 @@ class SportsEventsRepository:
             metadata=(json.loads(metadata_json) if metadata_json is not None else None),
             created_at=row["created_at"],
             updated_at=row["updated_at"],
+            sync_revision=row["sync_revision"],
         )

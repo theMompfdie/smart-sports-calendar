@@ -85,8 +85,10 @@ class SynchronizationQueryRepository:
                 )
                 ORDER BY
                     CASE
-                        WHEN cem.sync_status = 'synced' THEN 1
-                        ELSE 0
+                        WHEN cem.id IS NULL THEN 0
+                        WHEN cem.sync_status != 'synced' THEN 0
+                        WHEN se.sync_revision > cem.last_synced_revision THEN 0
+                        ELSE 1
                     END,
                     CASE
                         WHEN cem.sync_status = 'synced'

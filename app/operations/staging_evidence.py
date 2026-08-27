@@ -63,6 +63,7 @@ class SafeFixtureScopeSummary:
     latest_start_utc: str | None
     latest_source_update_utc: str | None
     status_counts: dict[str, int]
+    calendar_mappings_revision_pending: int = 0
 
 
 @dataclass(frozen=True)
@@ -75,6 +76,7 @@ class StagingEvidence:
     fixture_scopes: tuple[SafeFixtureScopeSummary, ...]
     calendar_mappings_by_status: dict[str, int]
     recent_runs: tuple[SafeRunSummary, ...]
+    calendar_mappings_revision_pending: int = 0
 
 
 class StagingEvidenceValidationError(RuntimeError):
@@ -151,6 +153,15 @@ def collect_staging_evidence(
             ORDER BY sync_status
             """
         ).fetchall()
+        revision_pending_row = connection.execute(
+            """
+            SELECT COUNT(*)
+            FROM calendar_event_mappings AS mapping
+            JOIN sports_events AS event ON event.id = mapping.event_id
+            WHERE event.deleted_at IS NULL
+              AND mapping.last_synced_revision < event.sync_revision
+            """
+        ).fetchone()
         authority_rows = connection.execute(
             """
             SELECT
@@ -230,6 +241,9 @@ def collect_staging_evidence(
         calendar_mappings_by_status={
             str(row["sync_status"]): int(row["item_count"]) for row in mapping_rows
         },
+        calendar_mappings_revision_pending=(
+            int(revision_pending_row[0]) if revision_pending_row is not None else 0
+        ),
         recent_runs=tuple(_safe_run_summary(row) for row in run_rows),
     )
 
@@ -315,6 +329,18 @@ def _fixture_scope_summary(
         """,
         (authority["competition_id"], authority["season_id"]),
     ).fetchall()
+    revision_pending_row = connection.execute(
+        """
+        SELECT COUNT(*)
+        FROM calendar_event_mappings AS mapping
+        JOIN sports_events AS event ON event.id = mapping.event_id
+        WHERE event.competition_id = ?
+          AND event.season_id = ?
+          AND event.deleted_at IS NULL
+          AND mapping.last_synced_revision < event.sync_revision
+        """,
+        (authority["competition_id"], authority["season_id"]),
+    ).fetchone()
     source_event_ids = [str(row["external_id"]) for row in source_mapping_rows]
     return SafeFixtureScopeSummary(
         source_key=str(authority["source_key"]),
@@ -343,6 +369,9 @@ def _fixture_scope_summary(
             str(row["sync_status"]): int(row["item_count"])
             for row in calendar_status_rows
         },
+        calendar_mappings_revision_pending=(
+            int(revision_pending_row[0]) if revision_pending_row is not None else 0
+        ),
         earliest_start_utc=aggregate["earliest_start_utc"],
         latest_start_utc=aggregate["latest_start_utc"],
         latest_source_update_utc=aggregate["latest_source_update_utc"],
@@ -433,6 +462,8 @@ def validate_phase_5_candidate(evidence: StagingEvidence) -> None:
         errors.append("database contains events outside the Phase 5 candidate scopes")
     if evidence.calendar_mappings_by_status != {"synced": scoped_fixture_total}:
         errors.append("calendar mappings are not globally converged")
+    if evidence.calendar_mappings_revision_pending != 0:
+        errors.append("calendar mapping revisions are not globally converged")
 
     provider_runs: dict[str, SafeRunSummary] = {}
     for run in evidence.recent_runs:
@@ -499,6 +530,11 @@ def validate_phase_5_candidate(evidence: StagingEvidence) -> None:
             }:
                 errors.append(
                     f"calendar mappings are not converged for {competition_key}"
+                )
+            if fixture_scope.calendar_mappings_revision_pending != 0:
+                errors.append(
+                    f"calendar mapping revisions are not converged for "
+                    f"{competition_key}"
                 )
             if (
                 sum(fixture_scope.status_counts.values())

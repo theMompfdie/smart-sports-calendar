@@ -89,7 +89,7 @@ def phase_5_candidate_evidence() -> StagingEvidence:
     )
     return StagingEvidence(
         database_quick_check="ok",
-        schema_version="007_create_source_assignments",
+        schema_version="008_add_calendar_sync_revisions",
         startup_records=2,
         sports_events=sum(definition[-1] for definition in definitions),
         active_authorities=tuple(
@@ -216,12 +216,13 @@ def test_collect_staging_evidence_returns_only_safe_operational_fields(
     payload = json.loads(rendered)
 
     assert payload["database_quick_check"] == "ok"
-    assert payload["schema_version"] == "007_create_source_assignments"
+    assert payload["schema_version"] == "008_add_calendar_sync_revisions"
     assert payload["startup_records"] == 1
     assert payload["sports_events"] == 0
     assert payload["active_authorities"] == []
     assert payload["fixture_scopes"] == []
     assert payload["calendar_mappings_by_status"] == {}
+    assert payload["calendar_mappings_revision_pending"] == 0
     assert [run["run_type"] for run in payload["recent_runs"]] == [
         "calendar_sync",
         "provider_import",
@@ -309,6 +310,7 @@ def test_collect_staging_evidence_reports_safe_authoritative_fixture_scope(
         "outlook-event-secret",
         "change-key-secret",
         "content-hash-secret",
+        event_revision=1,
     )
 
     rendered = render_staging_evidence(collect_staging_evidence(database_path))
@@ -329,6 +331,7 @@ def test_collect_staging_evidence_reports_safe_authoritative_fixture_scope(
         {
             "calendar_mapping_status_counts": {"synced": 1},
             "calendar_mappings": 1,
+            "calendar_mappings_revision_pending": 0,
             "calendar_targets": 1,
             "competition_key": "premier_league",
             "earliest_start_utc": "2026-08-21T19:00:00+00:00",
@@ -434,6 +437,7 @@ def test_collect_staging_evidence_keeps_four_authorities_isolated(
             f"outlook-secret-{index}",
             None,
             f"hash-secret-{index}",
+            event_revision=1,
         )
 
     SourceAssignmentsRepository(database_path).synchronize(tuple(assignments))
@@ -476,6 +480,18 @@ def test_collect_staging_evidence_is_read_only(tmp_path: Path) -> None:
 
 def test_validate_phase_5_candidate_accepts_converged_evidence() -> None:
     validate_phase_5_candidate(phase_5_candidate_evidence())
+
+
+def test_validate_phase_5_candidate_rejects_revision_drift() -> None:
+    evidence = phase_5_candidate_evidence()
+
+    with pytest.raises(
+        StagingEvidenceValidationError,
+        match="calendar mapping revisions are not globally converged",
+    ):
+        validate_phase_5_candidate(
+            replace(evidence, calendar_mappings_revision_pending=1)
+        )
 
 
 def test_validate_phase_5_candidate_rejects_destructive_dfb_pokal_scope() -> None:

@@ -104,7 +104,10 @@ precedes the first calendar batch. Provider callbacks do not invoke Graph;
 therefore a backlog larger than `SYNCHRONIZATION_BATCH_LIMIT` continues across
 calendar heartbeats without consuming provider quota, and a failed provider
 job does not prevent later synchronization of already committed canonical
-events.
+events. Outlook-visible canonical changes increment a persisted event revision.
+Mappings whose recorded revision is behind are selected before the ordinary
+oldest-synchronized rotation, so increasing the batch limit is not required to
+make a late-position fixture update promptly visible.
 
 Provider import run metadata records the safe job key, source key, role,
 competition key, season key, canonical IDs, authoritative flag, competition
@@ -136,6 +139,15 @@ canonical competition and season. Startup synchronizes configured jobs
 transactionally: removed jobs are disabled rather than deleted, and existing
 data sources, source mappings, canonical events, and Outlook mappings are not
 rewritten.
+
+Migration `008_add_calendar_sync_revisions` adds monotonic event revisions and
+the last successfully processed revision to Outlook mappings. SQLite triggers
+cover the event fields and related aggregates used by the Outlook payload.
+Existing events start at revision `1` while existing mappings start at `0`,
+which intentionally schedules one non-destructive reconciliation sweep after
+upgrade. A concurrent canonical change cannot be lost: completion records the
+revision loaded for that Graph operation and leaves the mapping pending when a
+newer revision already exists.
 
 Phase 5.1 adds no schema migration. The existing
 `competitions.competition_type` column is the canonical typed competition

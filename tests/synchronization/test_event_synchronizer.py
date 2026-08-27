@@ -62,6 +62,7 @@ def create_synchronization_event(
     synchronization_event.event.id = event_id
     synchronization_event.event.status = status
     synchronization_event.event.deleted_at = deleted_at
+    synchronization_event.event.sync_revision = 1
     synchronization_event.mapping = mapping
 
     return synchronization_event
@@ -143,6 +144,7 @@ def test_synchronize_event_revives_deleted_mapping_for_reappeared_event() -> Non
         outlook_event_id="outlook-event-1",
         outlook_change_key=None,
         content_hash="new-hash",
+        event_revision=1,
     )
 
 
@@ -228,6 +230,7 @@ def test_synchronize_event_creates_event_without_existing_mapping() -> None:
         outlook_event_id="outlook-event-1",
         outlook_change_key=None,
         content_hash="new-hash",
+        event_revision=1,
     )
     mappings_repository.mark_failed.assert_not_called()
 
@@ -263,7 +266,9 @@ def test_synchronize_event_returns_unchanged_for_equal_content_hash() -> None:
     graph_client.create_event.assert_not_called()
     graph_client.update_event.assert_not_called()
     mappings_repository.create_pending.assert_not_called()
-    mappings_repository.mark_checked.assert_called_once_with(mapping.id)
+    mappings_repository.mark_checked.assert_called_once_with(
+        mapping.id, event_revision=1
+    )
     mappings_repository.mark_synced.assert_not_called()
     mappings_repository.mark_failed.assert_not_called()
 
@@ -309,6 +314,7 @@ def test_synchronize_event_updates_changed_event() -> None:
         outlook_event_id="outlook-event-1",
         outlook_change_key="change-key-1",
         content_hash="new-hash",
+        event_revision=1,
     )
     mappings_repository.mark_failed.assert_not_called()
 
@@ -384,6 +390,7 @@ def test_synchronize_event_updates_cancelled_event() -> None:
         outlook_event_id="outlook-event-1",
         outlook_change_key="change-key-1",
         content_hash="cancelled-hash",
+        event_revision=1,
     )
 
 
@@ -416,7 +423,9 @@ def test_synchronize_event_skips_unchanged_cancelled_event() -> None:
     assert result.content_hash == "cancelled-hash"
 
     graph_client.update_event.assert_not_called()
-    mappings_repository.mark_checked.assert_called_once_with(mapping.id)
+    mappings_repository.mark_checked.assert_called_once_with(
+        mapping.id, event_revision=1
+    )
     mappings_repository.mark_synced.assert_not_called()
     mappings_repository.mark_failed.assert_not_called()
 
@@ -1039,6 +1048,7 @@ def test_synchronize_event_retries_failed_mapping_without_outlook_event_id() -> 
         outlook_event_id="outlook-event-1",
         outlook_change_key=None,
         content_hash="new-hash",
+        event_revision=1,
     )
 
 
@@ -1086,4 +1096,5 @@ def test_synchronize_event_reuses_pending_mapping_without_outlook_event_id() -> 
         outlook_event_id="outlook-event-1",
         outlook_change_key=None,
         content_hash="new-hash",
+        event_revision=1,
     )
