@@ -124,7 +124,7 @@ The complete provider settings are:
 | `FOOTBALL_DATA_MAX_ATTEMPTS` | `3` | Bounded transient retry count, maximum `10` |
 | `FOOTBALL_DATA_REQUESTS_PER_MINUTE` | `10` | Must not exceed the approved free-plan limit |
 | `FOOTBALL_DATA_MINIMUM_REQUEST_INTERVAL_SECONDS` | `6.1` | Enforces the configured per-minute request budget |
-| `OPENLIGADB_ENABLED` | `false` | Enables the public API v1 DFB-Pokal adapter; requires the matching authoritative job |
+| `OPENLIGADB_ENABLED` | `false` | Enables the public API v1 DFB-Pokal and/or 2. Bundesliga adapters; requires at least one matching authoritative job |
 | `OPENLIGADB_BASE_URL` | `https://api.openligadb.de` | HTTPS-only public provider origin without credentials, query, or fragment |
 | `OPENLIGADB_CONNECT_TIMEOUT_SECONDS` | `5` | Positive finite connection timeout |
 | `OPENLIGADB_READ_TIMEOUT_SECONDS` | `30` | Positive finite response timeout |
@@ -137,8 +137,8 @@ The JSON value must remain on one line in `.env` or Portainer. Adapter and job
 enablement must agree. The existing API-Football adapter supports only the
 `authoritative` role because it writes canonical data. `football_data` supports
 the authoritative 2026/27 Premier League and Bundesliga scopes. `openligadb`
-supports only the authoritative 2026/27 DFB-Pokal scope and requires no
-credential. Keep the football-data.org token in Portainer or another ignored
+supports the authoritative 2026/27 DFB-Pokal and 2. Bundesliga scopes and
+requires no credential. Keep the football-data.org token in Portainer or another ignored
 operator secret store. See [source orchestration](source-orchestration.md).
 
 `OUTLOOK_CALENDAR_ID` is required for every Graph write. It must be the
