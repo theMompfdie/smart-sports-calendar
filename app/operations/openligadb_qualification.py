@@ -1,10 +1,10 @@
 import argparse
 import hashlib
 import json
-from collections import Counter
+from collections import Counter, defaultdict
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 from http.client import HTTPException, HTTPSConnection
 from typing import Any, Protocol
 from zoneinfo import ZoneInfo
@@ -12,18 +12,89 @@ from zoneinfo import ZoneInfo
 API_HOST = "api.openligadb.de"
 API_VERSION = "v1"
 MAX_RESPONSE_BYTES = 4 * 1024 * 1024
-DFB_POKAL_LEAGUE_ID = 4945
-DFB_POKAL_SHORTCUT = "dfb"
-DFB_POKAL_SEASON = 2026
-DFB_POKAL_SPORT_ID = 1
-DFB_POKAL_GROUP_COUNT = 6
-DFB_POKAL_GROUP_CAPACITIES = {1: 32, 2: 16, 3: 8, 4: 4, 5: 2, 6: 1}
 PROVIDER_TIME_ZONE_ID = "W. Europe Standard Time"
 PROVIDER_TIME_ZONE = ZoneInfo("Europe/Berlin")
 
 
 class OpenLigaDBQualificationError(RuntimeError):
     """A bounded failure of the read-only OpenLigaDB qualification."""
+
+
+@dataclass(frozen=True)
+class OpenLigaDBQualificationProfile:
+    key: str
+    competition_name: str
+    league_id: int
+    league_shortcut: str
+    league_season: int
+    sport_id: int
+    authoritative_scope: str
+    season_start_date: date
+    season_end_date: date
+    group_capacities: tuple[int, ...]
+    expected_fixture_count: int | None = None
+    expected_participant_count: int | None = None
+    require_complete_double_round_robin: bool = False
+    allow_missing_timezone_id: bool = False
+
+    def __post_init__(self) -> None:
+        if not self.key or not self.competition_name or not self.league_shortcut:
+            raise ValueError("Qualification profile identity is required.")
+        if self.league_id <= 0 or self.league_season <= 0 or self.sport_id <= 0:
+            raise ValueError("Qualification profile identifiers must be positive.")
+        if self.authoritative_scope not in {"partial", "complete_season"}:
+            raise ValueError("Qualification profile scope is unsupported.")
+        if self.season_end_date < self.season_start_date:
+            raise ValueError("Qualification profile season dates are invalid.")
+        if not self.group_capacities or any(
+            capacity <= 0 for capacity in self.group_capacities
+        ):
+            raise ValueError("Qualification profile group capacities are invalid.")
+        if self.require_complete_double_round_robin and (
+            self.expected_fixture_count is None
+            or self.expected_participant_count is None
+            or self.expected_participant_count % 2
+            or len(self.group_capacities) != (self.expected_participant_count - 1) * 2
+            or set(self.group_capacities) != {self.expected_participant_count // 2}
+            or self.expected_fixture_count
+            != self.expected_participant_count * (self.expected_participant_count - 1)
+        ):
+            raise ValueError(
+                "Qualification profile has invalid double-round-robin semantics."
+            )
+
+
+DFB_POKAL_PROFILE = OpenLigaDBQualificationProfile(
+    key="dfb-pokal",
+    competition_name="DFB-Pokal",
+    league_id=4945,
+    league_shortcut="dfb",
+    league_season=2026,
+    sport_id=1,
+    authoritative_scope="partial",
+    season_start_date=date(2026, 8, 21),
+    season_end_date=date(2027, 5, 29),
+    group_capacities=(32, 16, 8, 4, 2, 1),
+)
+SECOND_BUNDESLIGA_PROFILE = OpenLigaDBQualificationProfile(
+    key="2-bundesliga",
+    competition_name="2. Bundesliga",
+    league_id=4938,
+    league_shortcut="bl2",
+    league_season=2026,
+    sport_id=1,
+    authoritative_scope="complete_season",
+    season_start_date=date(2026, 8, 7),
+    season_end_date=date(2027, 5, 23),
+    group_capacities=(9,) * 34,
+    expected_fixture_count=306,
+    expected_participant_count=18,
+    require_complete_double_round_robin=True,
+    allow_missing_timezone_id=True,
+)
+QUALIFICATION_PROFILES = {
+    profile.key: profile for profile in (DFB_POKAL_PROFILE, SECOND_BUNDESLIGA_PROFILE)
+}
 
 
 @dataclass(frozen=True)
@@ -98,35 +169,40 @@ class OpenLigaDBQualificationEvidence:
     earliest_kickoff_utc: str
     latest_kickoff_utc: str
     latest_source_update_utc: str
+    missing_timezone_declarations: int
     status_counts: dict[str, int]
     rounds: tuple[OpenLigaDBRoundEvidence, ...]
 
 
-def qualify_dfb_pokal(
+def qualify_openligadb(
     *,
+    profile: OpenLigaDBQualificationProfile = DFB_POKAL_PROFILE,
     transport: OpenLigaDBQualificationTransport | None = None,
     clock: Callable[[], datetime] | None = None,
 ) -> OpenLigaDBQualificationEvidence:
     active_transport = transport or StdlibOpenLigaDBQualificationTransport()
     active_clock = clock or (lambda: datetime.now(UTC))
 
+    if QUALIFICATION_PROFILES.get(profile.key) != profile:
+        raise OpenLigaDBQualificationError("Qualification profile is not approved.")
+
     leagues = _request_list(
-        active_transport, f"/getavailableleagues/{DFB_POKAL_SEASON}"
+        active_transport, f"/getavailableleagues/{profile.league_season}"
     )
-    league = _select_league(leagues)
+    league = _select_league(leagues, profile)
     league_name = _string(league, "leagueName")
     sport = _mapping(league, "sport")
     sport_name = _string(sport, "sportName")
 
     raw_groups = _request_list(
         active_transport,
-        f"/getavailablegroups/{DFB_POKAL_SHORTCUT}/{DFB_POKAL_SEASON}",
+        f"/getavailablegroups/{profile.league_shortcut}/{profile.league_season}",
     )
-    groups = _validate_groups(raw_groups)
+    groups = _validate_groups(raw_groups, profile)
 
     raw_matches = _request_list(
         active_transport,
-        f"/getmatchdata/{DFB_POKAL_SHORTCUT}/{DFB_POKAL_SEASON}",
+        f"/getmatchdata/{profile.league_shortcut}/{profile.league_season}",
     )
     if not raw_matches:
         raise OpenLigaDBQualificationError("Provider returned no fixtures.")
@@ -137,6 +213,10 @@ def qualify_dfb_pokal(
     source_updates: list[datetime] = []
     status_counts: Counter[str] = Counter()
     group_fixture_counts: Counter[int] = Counter()
+    participant_appearances: Counter[int] = Counter()
+    group_participants: defaultdict[int, set[int]] = defaultdict(set)
+    directed_pairings: set[tuple[int, int]] = set()
+    missing_timezone_declarations = 0
 
     for raw_match in raw_matches:
         match = _mapping_value(raw_match)
@@ -148,9 +228,9 @@ def qualify_dfb_pokal(
         fixture_ids.add(fixture_id)
 
         if (
-            _positive_int(match, "leagueId") != DFB_POKAL_LEAGUE_ID
-            or _string(match, "leagueShortcut").casefold() != DFB_POKAL_SHORTCUT
-            or _season(match, "leagueSeason") != DFB_POKAL_SEASON
+            _positive_int(match, "leagueId") != profile.league_id
+            or _string(match, "leagueShortcut").casefold() != profile.league_shortcut
+            or _season(match, "leagueSeason") != profile.league_season
         ):
             raise OpenLigaDBQualificationError(
                 "A fixture belongs to the wrong competition or season."
@@ -174,10 +254,10 @@ def qualify_dfb_pokal(
         group_fixture_counts[group_order_id] += 1
         if (
             group_fixture_counts[group_order_id]
-            > DFB_POKAL_GROUP_CAPACITIES[group_order_id]
+            > profile.group_capacities[group_order_id - 1]
         ):
             raise OpenLigaDBQualificationError(
-                "A round exceeds the DFB-Pokal fixture capacity."
+                "A group exceeds the configured fixture capacity."
             )
 
         team1_id = _team_id(match, "team1")
@@ -187,17 +267,38 @@ def qualify_dfb_pokal(
                 "A fixture contains the same participant twice."
             )
         participant_ids.update((team1_id, team2_id))
+        participant_appearances.update((team1_id, team2_id))
+        group_participants[group_order_id].update((team1_id, team2_id))
+        pairing = (team1_id, team2_id)
+        if pairing in directed_pairings:
+            raise OpenLigaDBQualificationError(
+                "Provider returned a duplicate directed pairing."
+            )
+        directed_pairings.add(pairing)
 
-        if _string(match, "timeZoneID") != PROVIDER_TIME_ZONE_ID:
+        timezone_id = match.get("timeZoneID")
+        if timezone_id is None or timezone_id == "":
+            if not profile.allow_missing_timezone_id:
+                raise OpenLigaDBQualificationError(
+                    "Provider response has an invalid timeZoneID string field."
+                )
+            missing_timezone_declarations += 1
+        elif not isinstance(timezone_id, str) or timezone_id.strip() != timezone_id:
+            raise OpenLigaDBQualificationError(
+                "Provider response has an invalid timeZoneID string field."
+            )
+        elif timezone_id != PROVIDER_TIME_ZONE_ID:
             raise OpenLigaDBQualificationError(
                 "A fixture uses an unexpected provider timezone."
             )
         kickoff = _utc_datetime(match, "matchDateTimeUTC")
-        if (
-            not datetime(2026, 8, 1, tzinfo=UTC)
-            <= kickoff
-            < datetime(2027, 6, 30, tzinfo=UTC)
-        ):
+        season_floor = datetime.combine(
+            profile.season_start_date, datetime.min.time(), UTC
+        )
+        season_ceiling = datetime.combine(
+            profile.season_end_date, datetime.max.time(), UTC
+        )
+        if not season_floor <= kickoff <= season_ceiling:
             raise OpenLigaDBQualificationError(
                 "A fixture kickoff falls outside the qualification season."
             )
@@ -212,6 +313,20 @@ def qualify_dfb_pokal(
         observed_at
     ):
         raise OpenLigaDBQualificationError("Qualification clock must return UTC.")
+    observed_at = observed_at.astimezone(UTC)
+    if max(source_updates) > observed_at + timedelta(minutes=5):
+        raise OpenLigaDBQualificationError("Provider source update is in the future.")
+
+    if profile.require_complete_double_round_robin:
+        _validate_complete_double_round_robin(
+            profile,
+            fixture_count=len(fixture_ids),
+            participant_ids=participant_ids,
+            participant_appearances=participant_appearances,
+            group_fixture_counts=group_fixture_counts,
+            group_participants=group_participants,
+            directed_pairings=directed_pairings,
+        )
 
     rounds = tuple(
         OpenLigaDBRoundEvidence(
@@ -220,20 +335,20 @@ def qualify_dfb_pokal(
             provider_name=_string(group, "groupName"),
             normalized_round=f"round-{order}",
             fixture_count=group_fixture_counts[order],
-            expected_fixture_capacity=DFB_POKAL_GROUP_CAPACITIES[order],
+            expected_fixture_capacity=profile.group_capacities[order - 1],
         )
         for order, group in sorted(groups.items())
     )
     return OpenLigaDBQualificationEvidence(
-        qualification_profile="dfb-pokal",
+        qualification_profile=profile.key,
         observed_at_utc=observed_at.isoformat(),
         api_version=API_VERSION,
-        authoritative_scope="partial",
-        league_id=DFB_POKAL_LEAGUE_ID,
+        authoritative_scope=profile.authoritative_scope,
+        league_id=profile.league_id,
         league_name=league_name,
-        league_shortcut=DFB_POKAL_SHORTCUT,
-        league_season=DFB_POKAL_SEASON,
-        sport_id=DFB_POKAL_SPORT_ID,
+        league_shortcut=profile.league_shortcut,
+        league_season=profile.league_season,
+        sport_id=profile.sport_id,
         sport_name=sport_name,
         fixture_count=len(fixture_ids),
         unique_fixture_ids=len(fixture_ids),
@@ -244,8 +359,33 @@ def qualify_dfb_pokal(
         earliest_kickoff_utc=min(kickoffs).isoformat(),
         latest_kickoff_utc=max(kickoffs).isoformat(),
         latest_source_update_utc=max(source_updates).isoformat(),
+        missing_timezone_declarations=missing_timezone_declarations,
         status_counts=dict(sorted(status_counts.items())),
         rounds=rounds,
+    )
+
+
+def qualify_dfb_pokal(
+    *,
+    transport: OpenLigaDBQualificationTransport | None = None,
+    clock: Callable[[], datetime] | None = None,
+) -> OpenLigaDBQualificationEvidence:
+    return qualify_openligadb(
+        profile=DFB_POKAL_PROFILE,
+        transport=transport,
+        clock=clock,
+    )
+
+
+def qualify_second_bundesliga(
+    *,
+    transport: OpenLigaDBQualificationTransport | None = None,
+    clock: Callable[[], datetime] | None = None,
+) -> OpenLigaDBQualificationEvidence:
+    return qualify_openligadb(
+        profile=SECOND_BUNDESLIGA_PROFILE,
+        transport=transport,
+        clock=clock,
     )
 
 
@@ -255,29 +395,33 @@ def render_qualification_evidence(
     return json.dumps(asdict(evidence), indent=2, sort_keys=True)
 
 
-def _select_league(values: Sequence[object]) -> Mapping[str, Any]:
+def _select_league(
+    values: Sequence[object], profile: OpenLigaDBQualificationProfile
+) -> Mapping[str, Any]:
     matches: list[Mapping[str, Any]] = []
     for value in values:
         league = _mapping_value(value)
         shortcut = league.get("leagueShortcut")
-        if isinstance(shortcut, str) and shortcut.casefold() == DFB_POKAL_SHORTCUT:
+        if isinstance(shortcut, str) and shortcut.casefold() == profile.league_shortcut:
             matches.append(league)
     if len(matches) != 1:
         raise OpenLigaDBQualificationError(
-            "Provider did not return exactly one DFB-Pokal league."
+            "Provider did not return exactly one configured league."
         )
     league = matches[0]
     sport = _mapping(league, "sport")
     if (
-        _positive_int(league, "leagueId") != DFB_POKAL_LEAGUE_ID
-        or _season(league, "leagueSeason") != DFB_POKAL_SEASON
-        or _positive_int(sport, "sportId") != DFB_POKAL_SPORT_ID
+        _positive_int(league, "leagueId") != profile.league_id
+        or _season(league, "leagueSeason") != profile.league_season
+        or _positive_int(sport, "sportId") != profile.sport_id
     ):
         raise OpenLigaDBQualificationError("Provider returned the wrong competition.")
     return league
 
 
-def _validate_groups(values: Sequence[object]) -> dict[int, Mapping[str, Any]]:
+def _validate_groups(
+    values: Sequence[object], profile: OpenLigaDBQualificationProfile
+) -> dict[int, Mapping[str, Any]]:
     groups: dict[int, Mapping[str, Any]] = {}
     group_ids: set[int] = set()
     for value in values:
@@ -291,11 +435,50 @@ def _validate_groups(values: Sequence[object]) -> dict[int, Mapping[str, Any]]:
             )
         groups[order] = group
         group_ids.add(group_id)
-    if set(groups) != set(range(1, DFB_POKAL_GROUP_COUNT + 1)):
+    if set(groups) != set(range(1, len(profile.group_capacities) + 1)):
         raise OpenLigaDBQualificationError(
-            "Provider returned an invalid DFB-Pokal round inventory."
+            "Provider returned an invalid configured group/round inventory."
         )
     return groups
+
+
+def _validate_complete_double_round_robin(
+    profile: OpenLigaDBQualificationProfile,
+    *,
+    fixture_count: int,
+    participant_ids: set[int],
+    participant_appearances: Counter[int],
+    group_fixture_counts: Counter[int],
+    group_participants: Mapping[int, set[int]],
+    directed_pairings: set[tuple[int, int]],
+) -> None:
+    if fixture_count != profile.expected_fixture_count:
+        raise OpenLigaDBQualificationError(
+            f"Expected exactly {profile.expected_fixture_count} fixtures."
+        )
+    if len(participant_ids) != profile.expected_participant_count:
+        raise OpenLigaDBQualificationError(
+            f"Expected exactly {profile.expected_participant_count} participants."
+        )
+    expected_appearances = len(profile.group_capacities)
+    if set(participant_appearances) != participant_ids or any(
+        count != expected_appearances for count in participant_appearances.values()
+    ):
+        raise OpenLigaDBQualificationError(
+            "Provider returned an incomplete participant schedule."
+        )
+    if any(
+        group_fixture_counts[order] != capacity
+        or group_participants[order] != participant_ids
+        for order, capacity in enumerate(profile.group_capacities, start=1)
+    ):
+        raise OpenLigaDBQualificationError(
+            "Provider returned an incomplete matchday schedule."
+        )
+    if len(directed_pairings) != profile.expected_fixture_count:
+        raise OpenLigaDBQualificationError(
+            "Provider returned an incomplete directed-pairing schedule."
+        )
 
 
 def _request_list(
@@ -360,7 +543,7 @@ def _string(container: Mapping[str, Any], key: str) -> str:
     value = container.get(key)
     if not isinstance(value, str) or not value.strip():
         raise OpenLigaDBQualificationError(
-            "Provider response has an invalid string field."
+            f"Provider response has an invalid {key} string field."
         )
     return value.strip()
 
@@ -417,13 +600,21 @@ def _ids_hash(values: set[int]) -> str:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Perform read-only OpenLigaDB calls and print bounded DFB-Pokal "
+            "Perform read-only OpenLigaDB calls and print bounded competition "
             "qualification evidence."
         )
     )
-    parser.parse_args(argv)
+    parser.add_argument(
+        "--competition",
+        choices=tuple(QUALIFICATION_PROFILES),
+        default=DFB_POKAL_PROFILE.key,
+    )
+    arguments = parser.parse_args(argv)
     try:
-        evidence = qualify_dfb_pokal()
+        if arguments.competition == DFB_POKAL_PROFILE.key:
+            evidence = qualify_dfb_pokal()
+        else:
+            evidence = qualify_second_bundesliga()
     except OpenLigaDBQualificationError as error:
         parser.exit(status=1, message=f"OpenLigaDB qualification failed: {error}\n")
     print(render_qualification_evidence(evidence))
