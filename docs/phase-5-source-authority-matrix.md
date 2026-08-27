@@ -22,6 +22,12 @@ Issue #118 qualifies OpenLigaDB rather than the rejected paid Sportmonks
 candidate for the DFB-Pokal. ADR 0007 permanently limits that authority to
 non-destructive `partial` observations.
 
+Cost-policy update, 2026-08-27: issue #124 evaluates the no-cost OpenLigaDB
+`bl2` / 4938 candidate before the paid football-data.org fallback. A permitted,
+technically trustworthy no-cost source is preferred for this hobby project even
+when it requires another bounded adapter. Cost does not weaken qualification,
+identity, lifecycle, failure, licensing, or attribution requirements.
+
 Decision meanings:
 
 - `Qualified`: implementation may proceed with the named authority and stated
@@ -113,20 +119,22 @@ therefore required before access ends.
 
 OpenLigaDB is a free community-maintained sports database intended for
 automated use through an unauthenticated JSON API. Its 2026 directory exposes
-the DFB-Pokal as league `4945`, shortcut `dfb`, season `2026`, with six ordered
-groups. Matches expose fixture, participant, league, season, and group IDs plus
-UTC kickoffs and provider-local update timestamps.
+the DFB-Pokal as league `4945`, shortcut `dfb`, and the 2. Bundesliga as league
+`4938`, shortcut `bl2`, both for season `2026`. Matches expose fixture,
+participant, league, season, and group IDs plus UTC kickoffs and provider-local
+update timestamps.
 
 The API data is offered under ODbL 1.0. Public produced works require
 attribution, and public adapted databases can trigger share-alike and
 machine-readable-access obligations. Linked club logos and icons have separate
 rights and are excluded from retrieval and persistence.
 
-Community editing, the lack of a documented completeness marker, and the
-absence of explicit placeholder, cancellation, postponement, pagination,
-quota, and rate-limit semantics prevent removal-capable observations. The
-DFB-Pokal source must stay `partial`; the official DFB schedule is used only
-for manual verification.
+Community editing and the absence of explicit placeholder, cancellation,
+postponement, pagination, quota, and rate-limit semantics require a
+competition-specific fail-closed contract. The incrementally published
+DFB-Pokal source must stay `partial`. The 2. Bundesliga candidate exposes a
+structurally provable 18-team, 34-matchday, 306-fixture double round robin.
+ADR 0009 qualifies that scope but keeps initial operation non-destructive.
 
 ### API-Football v3
 
@@ -146,7 +154,7 @@ decision.
 | --- | --- | --- |
 | football-data.org | Send the application token only in `X-Auth-Token`; never log the header, client/account headers, raw errors, or a secret-bearing URL. | No separate public cache TTL was found. Persist only the fixture fields required by the calendar under the one-application and attribution conditions. Before cancellation, disable retrieval and either qualify a replacement source or remove provider-derived events, mappings, and retained data through a scoped, backed-up operator procedure. |
 | Sportmonks | Keep the API token in environment/secret-store configuration and send it only in the supported `Authorization` header. Never place `api_token` in request URLs; sanitize transport failures. | Terms allow storage/distribution of returned data and derived applications but not resale of the service or raw product. Use is domain-scoped. Before subscription access ends, decide and document replacement, retained-data, and source-mapping handling. |
-| OpenLigaDB | Public read access requires no account or token. Use only fixed HTTPS API paths and never retrieve linked logo/icon resources. | Data is ODbL 1.0. Record attribution and the deployment-specific produced-work/adapted-database decision before approval. Community data and provider mappings remain non-destructive while scope is `partial`. |
+| OpenLigaDB | Public read access requires no account or token. Use only fixed HTTPS API paths and never retrieve linked logo/icon resources. | Data is ODbL 1.0. Record attribution and the deployment-specific produced-work/adapted-database decision before approval. Observations remain non-destructive unless competition-specific qualification proves a complete scope and an ADR authorizes removal evidence. |
 | API-Football | Send the token only in `x-apisports-key`; redact authentication, account, quota, and raw-error details. | No new authoritative caching, persistence, or publication is approved because the provider does not grant the required data license. Existing legacy mappings remain non-authoritative unless separate rights clearance changes this decision. |
 
 Provider response ordering is never completeness evidence. Adapters must consume
@@ -163,7 +171,7 @@ non-authoritative and cannot advance removal evidence.
 | English Premier League | 2026/27 | `league`; authoritative unfiltered `complete_season` | football-data.org `PL` / 2021 | **Qualified** | Existing ADR 0003 and two-observation live evidence apply; 20 teams and 380 unique fixtures; visible attribution and cancellation cleanup remain mandatory. |
 | EFL Championship | 2026/27 | `league`; authoritative `complete_stage` for `REGULAR_SEASON`; play-offs remain a separate `partial` scope | football-data.org `ELC` / 2016 | **Qualified for regular season** | Two stable live observations proved 24 teams, 46 matchdays, 552 unique fixtures, and one exact complete response despite the ignored 500-item limit. A future adapter must also support documented `500 + 52` pagination and fail closed otherwise. The seven play-off fixtures require later qualification and cannot provide removal evidence. |
 | German Bundesliga | 2026/27 | `league`; authoritative unfiltered `complete_season` | football-data.org `BL1` / 2002 | **Implemented; staging pending** | ADR 0006 and issue #114 provide the qualified profile, reviewed 18-team mapping, complete-season runtime, and offline SQLite-to-Graph proof. Isolated live staging remains a separate gate. |
-| German 2. Bundesliga | 2026/27 | `league`; candidate `complete_season` | football-data.org `BL2` / 2004 | **Conditional** | The operator must accept the Standard-tier cost and live evidence must prove 18 teams, 306 fixtures, identity, lifecycle, and completeness. |
+| German 2. Bundesliga | 2026/27 | `league`; structurally `complete_season`, initially removal-disabled | OpenLigaDB league 4938 / `bl2` / 2026; football-data.org only as paid fallback | **Qualified; implementation pending** | Two stable secret-free observations proved 18 teams, 34 matchdays, 306 unique fixtures and directed pairings. All pairings matched the official DFL fixture list. ADR 0009 requires review of identity-set changes and keeps initial operation non-destructive. |
 | Austrian Bundesliga | 2026/27 | `league`; `partial` for the 22-round ground phase, then explicit stage scopes | Sportmonks league 181 | **Conditional** | A paid selection and new adapter are required. Live evidence must prove the split into championship/relegation groups, placeholder behavior, stable IDs across the split, and a safe stage-completeness boundary. football-data.org exposes only ground-round dates publicly and is not removal-capable for the full season. |
 | FA Cup | 2026/27 | `knockout_cup`; `partial` until a specific round is complete | Sportmonks league 24, subject to live lookup | **Conditional** | Current-season coverage, round/leg identifiers, placeholders, replay policy, identity across draws/reschedules, and complete-round evidence require live proof. Generic bounded reconciliation exists, but this competition remains removal-disabled until qualification passes. |
 | EFL Cup | 2026/27 | `knockout_cup`; `partial` until a specific round is complete | Sportmonks league 27 | **Conditional** | Current-season coverage, two-legged round semantics, placeholders, stable identity, and complete-round evidence require live proof. Generic bounded reconciliation exists, but this competition remains removal-disabled until qualification passes. |
@@ -258,8 +266,8 @@ the outcome can change to `Qualified`:
    fingerprint. Do not record raw payloads, names, fixture IDs, account values,
    headers, or secret-bearing URLs.
 7. Recheck current coverage, plan, quota, terms, attribution, cancellation,
-   retention, and cost. The operator must explicitly approve any paid plan or
-   changed terms.
+   retention, and cost. Prefer a permitted, trustworthy no-cost candidate. The
+   operator must explicitly approve any paid fallback or changed terms.
 8. Update this decision record and add a focused ADR before implementation.
 
 The qualification command exposes only reviewed, immutable competition
@@ -291,6 +299,9 @@ a job.
 - Authentication, catalog, collection, and retry calls all count against that
   budget; no implementation may assume that a schedule endpoint costs one call
   until live response metadata proves it.
+- OpenLigaDB qualification uses three unauthenticated requests per complete
+  competition observation. No published quota permits aggressive polling;
+  retain the shared six-hour default and bounded retries.
 - Sources must honor `Retry-After` where provided, use bounded backoff, avoid
   overlapping jobs, and fail closed without advancing removal evidence.
 - A stale, partial, malformed, empty, throttled, timed-out, or failed snapshot
@@ -302,7 +313,7 @@ a job.
 | --- | --- |
 | Bundesliga | Complete isolated staging evidence for the implemented #114 path, including attribution and unchanged-cycle idempotency. |
 | DFB-Pokal | Complete issue #119 with an isolated OpenLigaDB staging import and Outlook verification; retain permanent-partial scope and ODbL attribution. |
-| Championship and 2. Bundesliga | Create the Championship regular-season implementation issue from qualified #123 while keeping play-offs separate and non-destructive. Qualify 2. Bundesliga independently, including the paid-plan decision. |
+| Championship and 2. Bundesliga | Create separate implementation issues from qualified #123 and #124. Keep Championship play-offs separate and the initial OpenLigaDB 2. Bundesliga path removal-disabled. |
 | Austrian Bundesliga and domestic cups | Operator provider/plan decision; Sportmonks adapter qualification; stage/round and placeholder policy; non-destructive import first; later destructive reconciliation only under a new ADR. |
 | UEFA competitions | Hybrid competition-capability ADR and model implementation; then repeat source and live qualification. |
 | All new competitions | Explicit source assignment with exactly one authority; scheduler isolation; credential-free unit/integration coverage; release documentation that distinguishes planned, qualified, implemented, staged, and released. |

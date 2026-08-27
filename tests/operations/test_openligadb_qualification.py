@@ -7,10 +7,12 @@ from typing import Any
 import pytest
 from app.operations import openligadb_qualification as qualification
 from app.operations.openligadb_qualification import (
+    SECOND_BUNDESLIGA_PROFILE,
     OpenLigaDBQualificationError,
     OpenLigaDBQualificationResponse,
     StdlibOpenLigaDBQualificationTransport,
     qualify_dfb_pokal,
+    qualify_second_bundesliga,
     render_qualification_evidence,
 )
 
@@ -106,6 +108,68 @@ def valid_responses() -> list[OpenLigaDBQualificationResponse]:
     ]
 
 
+def second_bundesliga_league() -> dict[str, Any]:
+    return {
+        "leagueId": 4938,
+        "leagueName": "2. Fußball-Bundesliga 2026/2027",
+        "leagueShortcut": "bl2",
+        "leagueSeason": "2026",
+        "sport": {"sportId": 1, "sportName": "Fußball"},
+    }
+
+
+def second_bundesliga_groups() -> list[dict[str, Any]]:
+    return [
+        {
+            "groupName": f"{order}. Spieltag",
+            "groupOrderID": order,
+            "groupID": 60000 + order,
+        }
+        for order in range(1, 35)
+    ]
+
+
+def second_bundesliga_fixtures() -> list[dict[str, Any]]:
+    team_ids = list(range(2000, 2018))
+    rotation = team_ids.copy()
+    first_half: list[list[tuple[int, int]]] = []
+    for _ in range(17):
+        first_half.append(
+            [(rotation[index], rotation[-1 - index]) for index in range(9)]
+        )
+        rotation = [rotation[0], rotation[-1], *rotation[1:-1]]
+    second_half = [[(away, home) for home, away in matchday] for matchday in first_half]
+    matchdays = [*first_half, *second_half]
+
+    fixtures: list[dict[str, Any]] = []
+    for matchday, pairings in enumerate(matchdays, start=1):
+        for slot, (home_id, away_id) in enumerate(pairings):
+            item = fixture((matchday - 1) * 9 + slot)
+            item.update(
+                matchID=90000 + (matchday - 1) * 9 + slot,
+                leagueId=4938,
+                leagueName="2. Fußball-Bundesliga 2026/2027",
+                leagueShortcut="bl2",
+                group=second_bundesliga_groups()[matchday - 1],
+                matchDateTimeUTC="2026-08-07T18:30:00Z",
+                lastUpdateDateTime="2026-08-16T15:26:22.460",
+            )
+            item["team1"].update(teamId=home_id, teamName=f"Team {home_id}")
+            item["team2"].update(teamId=away_id, teamName=f"Team {away_id}")
+            if len(fixtures) < 18:
+                item["timeZoneID"] = ""
+            fixtures.append(item)
+    return fixtures
+
+
+def valid_second_bundesliga_responses() -> list[OpenLigaDBQualificationResponse]:
+    return [
+        response([second_bundesliga_league()]),
+        response(second_bundesliga_groups()),
+        response(second_bundesliga_fixtures()),
+    ]
+
+
 def run_qualification(
     responses: list[OpenLigaDBQualificationResponse],
 ) -> tuple[qualification.OpenLigaDBQualificationEvidence, StubTransport]:
@@ -140,6 +204,84 @@ def test_qualification_collects_bounded_partial_evidence() -> None:
         "/getavailablegroups/dfb/2026",
         "/getmatchdata/dfb/2026",
     ]
+
+
+def test_second_bundesliga_qualification_proves_complete_season() -> None:
+    transport = StubTransport(valid_second_bundesliga_responses())
+
+    evidence = qualify_second_bundesliga(
+        transport=transport,
+        clock=lambda: OBSERVED_AT,
+    )
+    rendered = render_qualification_evidence(evidence)
+
+    assert evidence.qualification_profile == "2-bundesliga"
+    assert evidence.authoritative_scope == "complete_season"
+    assert evidence.league_id == 4938
+    assert evidence.league_shortcut == "bl2"
+    assert evidence.fixture_count == 306
+    assert evidence.unique_fixture_ids == 306
+    assert evidence.participant_count == 18
+    assert evidence.missing_timezone_declarations == 18
+    assert len(evidence.rounds) == 34
+    assert {item.fixture_count for item in evidence.rounds} == {9}
+    assert "90000" not in rendered
+    assert "Team 2000" not in rendered
+    assert transport.calls == [
+        "/getavailableleagues/2026",
+        "/getavailablegroups/bl2/2026",
+        "/getmatchdata/bl2/2026",
+    ]
+
+
+def test_second_bundesliga_qualification_rejects_incomplete_season() -> None:
+    fixtures = second_bundesliga_fixtures()
+    fixtures.pop()
+    responses = valid_second_bundesliga_responses()
+    responses[2] = response(fixtures)
+
+    with pytest.raises(OpenLigaDBQualificationError, match="exactly 306"):
+        qualify_second_bundesliga(
+            transport=StubTransport(responses),
+            clock=lambda: OBSERVED_AT,
+        )
+
+
+def test_second_bundesliga_qualification_rejects_duplicate_pairing() -> None:
+    fixtures = second_bundesliga_fixtures()
+    fixtures[-1]["team1"] = deepcopy(fixtures[0]["team1"])
+    fixtures[-1]["team2"] = deepcopy(fixtures[0]["team2"])
+    responses = valid_second_bundesliga_responses()
+    responses[2] = response(fixtures)
+
+    with pytest.raises(OpenLigaDBQualificationError, match="directed pairing"):
+        qualify_second_bundesliga(
+            transport=StubTransport(responses),
+            clock=lambda: OBSERVED_AT,
+        )
+
+
+def test_second_bundesliga_missing_timezone_exception_is_narrow() -> None:
+    fixtures = second_bundesliga_fixtures()
+    fixtures[0]["timeZoneID"] = "UTC"
+    responses = valid_second_bundesliga_responses()
+    responses[2] = response(fixtures)
+
+    with pytest.raises(OpenLigaDBQualificationError, match="unexpected provider"):
+        qualify_second_bundesliga(
+            transport=StubTransport(responses),
+            clock=lambda: OBSERVED_AT,
+        )
+
+
+def test_dfb_pokal_still_rejects_missing_timezone_declaration() -> None:
+    item = fixture()
+    item["timeZoneID"] = ""
+    responses = valid_responses()
+    responses[2] = response([item])
+
+    with pytest.raises(OpenLigaDBQualificationError, match="timeZoneID"):
+        run_qualification(responses)
 
 
 @pytest.mark.parametrize(
@@ -324,6 +466,16 @@ def test_qualification_rejects_non_utc_clock() -> None:
         )
 
 
+def test_qualification_rejects_future_source_update() -> None:
+    item = fixture()
+    item["lastUpdateDateTime"] = "2026-08-19T21:00:00"
+    responses = valid_responses()
+    responses[2] = response([item])
+
+    with pytest.raises(OpenLigaDBQualificationError, match="future"):
+        run_qualification(responses)
+
+
 def test_transport_rejects_query_and_external_paths() -> None:
     transport = StdlibOpenLigaDBQualificationTransport()
 
@@ -338,6 +490,20 @@ def test_main_prints_evidence(monkeypatch: pytest.MonkeyPatch, capsys: Any) -> N
 
     assert qualification.main([]) == 0
     assert json.loads(capsys.readouterr().out)["league_id"] == 4945
+
+
+def test_main_selects_second_bundesliga(
+    monkeypatch: pytest.MonkeyPatch, capsys: Any
+) -> None:
+    transport = StubTransport(valid_second_bundesliga_responses())
+    evidence = qualify_second_bundesliga(
+        transport=transport,
+        clock=lambda: OBSERVED_AT,
+    )
+    monkeypatch.setattr(qualification, "qualify_second_bundesliga", lambda: evidence)
+
+    assert qualification.main(["--competition", SECOND_BUNDESLIGA_PROFILE.key]) == 0
+    assert json.loads(capsys.readouterr().out)["league_id"] == 4938
 
 
 def test_main_exits_cleanly_on_qualification_error(
