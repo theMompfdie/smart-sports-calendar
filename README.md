@@ -118,6 +118,8 @@ complete season snapshot validates. Bundesliga live staging remains a separate
 operator gate. The 2026/27 DFB-Pokal uses the public OpenLigaDB API through a
 separate knockout-cup profile. Its observations are permanently partial: they
 may create or update known fixtures but never infer cancellation or removal.
+The same public provider is qualified as the preferred no-cost 2026/27
+2. Bundesliga authority; it is not implemented or enabled.
 
 Phase 4 documentation:
 
@@ -148,7 +150,10 @@ Phase 5 decision records:
 - [football-data.org Bundesliga selection ADR](docs/adr/0006-select-football-data-for-bundesliga.md)
 - [football-data.org Bundesliga import](docs/football-data-bundesliga-import.md)
 - [OpenLigaDB DFB-Pokal selection ADR](docs/adr/0007-select-openligadb-for-dfb-pokal.md)
+- [OpenLigaDB DFB-Pokal qualification](docs/openligadb-dfb-pokal-qualification.md)
 - [OpenLigaDB DFB-Pokal import](docs/openligadb-dfb-pokal-import.md)
+- [OpenLigaDB 2. Bundesliga qualification](docs/openligadb-2-bundesliga-qualification.md)
+- [OpenLigaDB 2. Bundesliga selection ADR](docs/adr/0009-select-openligadb-for-2-bundesliga.md)
 - [Phase 5 multi-competition staging validation](docs/phase-5-multi-competition-staging-validation.md)
 
 ### Database and Persistence
