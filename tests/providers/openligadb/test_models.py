@@ -130,9 +130,36 @@ def test_second_bundesliga_incomplete_or_duplicate_pairing_fails_closed() -> Non
         )
 
 
-def test_missing_timezone_remains_rejected_for_dfb_pokal() -> None:
+@pytest.mark.parametrize("missing_timezone", [None, ""])
+def test_dfb_pokal_accepts_missing_timezone_with_explicit_utc_kickoff(
+    missing_timezone: object,
+) -> None:
     leagues, groups, matches = payloads()
-    matches[0]["timeZoneID"] = ""
+    matches[0]["timeZoneID"] = missing_timezone
 
-    with pytest.raises(OpenLigaDBIntegrityError, match="no permitted"):
+    result = parse(leagues, groups, matches)
+
+    assert result.matches[0].kickoff_utc.isoformat() == "2026-08-21T18:00:00+00:00"
+
+
+def test_dfb_pokal_missing_timezone_still_requires_explicit_utc_kickoff() -> None:
+    leagues, groups, matches = payloads()
+    matches[0]["timeZoneID"] = None
+    matches[0]["matchDateTimeUTC"] = "2026-08-21T16:00:00"
+
+    with pytest.raises(OpenLigaDBSchemaError, match="must be UTC"):
+        parse(leagues, groups, matches)
+
+
+@pytest.mark.parametrize(
+    "invalid_timezone",
+    ["UTC", " W. Europe Standard Time", 42],
+)
+def test_dfb_pokal_rejects_unexpected_or_malformed_timezone(
+    invalid_timezone: object,
+) -> None:
+    leagues, groups, matches = payloads()
+    matches[0]["timeZoneID"] = invalid_timezone
+
+    with pytest.raises((OpenLigaDBIntegrityError, OpenLigaDBSchemaError)):
         parse(leagues, groups, matches)

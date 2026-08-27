@@ -35,6 +35,7 @@ DFB_POKAL_PROFILE = OpenLigaDBCompetitionProfile(
     round_capacities=(32, 16, 8, 4, 2, 1),
     normalized_stage="knockout",
     round_prefix="round",
+    allow_missing_timezone_id=True,
 )
 
 SECOND_BUNDESLIGA_PROFILE = OpenLigaDBCompetitionProfile(

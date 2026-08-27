@@ -274,13 +274,29 @@ def test_second_bundesliga_missing_timezone_exception_is_narrow() -> None:
         )
 
 
-def test_dfb_pokal_still_rejects_missing_timezone_declaration() -> None:
+@pytest.mark.parametrize("missing_timezone", [None, ""])
+def test_dfb_pokal_accepts_missing_timezone_with_explicit_utc_kickoff(
+    missing_timezone: object,
+) -> None:
     item = fixture()
-    item["timeZoneID"] = ""
+    item["timeZoneID"] = missing_timezone
     responses = valid_responses()
     responses[2] = response([item])
 
-    with pytest.raises(OpenLigaDBQualificationError, match="timeZoneID"):
+    evidence, _ = run_qualification(responses)
+
+    assert evidence.fixture_count == 1
+    assert evidence.missing_timezone_declarations == 1
+
+
+def test_dfb_pokal_missing_timezone_still_requires_explicit_utc_kickoff() -> None:
+    item = fixture()
+    item["timeZoneID"] = None
+    item["matchDateTimeUTC"] = "2026-08-21T16:00:00"
+    responses = valid_responses()
+    responses[2] = response([item])
+
+    with pytest.raises(OpenLigaDBQualificationError, match="not UTC"):
         run_qualification(responses)
 
 
@@ -342,6 +358,8 @@ def test_qualification_rejects_duplicate_round_identity(duplicate_field: str) ->
         ("leagueSeason", 2025, "wrong competition"),
         ("leagueShortcut", "other", "wrong competition"),
         ("timeZoneID", "UTC", "unexpected provider timezone"),
+        ("timeZoneID", " W. Europe Standard Time", "invalid timeZoneID"),
+        ("timeZoneID", 42, "invalid timeZoneID"),
         ("matchDateTimeUTC", "2025-08-21T16:00:00Z", "outside"),
         ("matchDateTimeUTC", "2026-08-21T16:00:00", "not UTC"),
         ("lastUpdateDateTime", "not-a-date", "update datetime"),

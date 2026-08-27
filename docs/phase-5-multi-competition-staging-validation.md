@@ -95,9 +95,12 @@ python -m app.operations.openligadb_qualification --competition 2-bundesliga
 Retain only the generated aggregate JSON. Compare counts, season boundaries,
 status totals, request counts, and SHA-256 fingerprints with the approved
 qualification records. The 2. Bundesliga observation must retain its exact
-306-fixture, 18-participant, 34-matchday contract. A changed DFB-Pokal count can be valid as later rounds
-become known, but its competition, season, six-group inventory, participant
-mapping, and permanent-partial boundary must remain valid.
+306-fixture, 18-participant, 34-matchday contract. The DFB-Pokal observation
+may report missing timezone declarations only when every affected fixture
+retains an explicit UTC kickoff; an unexpected non-empty timezone must fail.
+A changed DFB-Pokal count can be valid as later rounds become known, but its
+competition, season, six-group inventory, participant mapping, and
+permanent-partial boundary must remain valid.
 
 ## Read-only candidate evidence
 

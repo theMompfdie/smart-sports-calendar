@@ -61,6 +61,16 @@ Qualification authorizes a separate implementation issue. It does not add a
 catalog entry, source assignment, adapter, job, database write, staging action,
 calendar operation, production deployment, or release claim.
 
+## Implementation note — 2026-08-27
+
+Issue #134 recorded that the DFB-Pokal response later omitted `timeZoneID` on
+29 of 32 fixtures while retaining explicit UTC kickoffs. The implementation
+therefore no longer treats the missing-field allowance as exclusive to this
+profile. Both reviewed OpenLigaDB profiles apply the same bounded rule: null or
+empty is acceptable only with a valid explicit UTC kickoff, while every
+unexpected non-empty timezone remains fail-closed. This does not change the 2.
+Bundesliga identity, completeness, or removal decision.
+
 ## Consequences
 
 ### Positive

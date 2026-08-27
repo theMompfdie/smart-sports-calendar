@@ -27,9 +27,11 @@ matchdays, nine fixtures and one appearance per participant per matchday, 306
 unique fixture IDs, and one fixture for every directed participant pairing.
 Any identity-set change fails closed for operator review.
 
-Exactly 18 reviewed finished fixtures omit `timeZoneID`. This profile alone may
-accept the missing declaration because every fixture still contains an
-explicit UTC kickoff. DFB-Pokal timezone validation remains strict.
+Exactly 18 reviewed finished fixtures omit `timeZoneID`. The missing
+declaration is accepted only because every fixture still contains an explicit
+UTC kickoff. Issue #134 later applied the same bounded rule to DFB-Pokal after
+its live response began omitting the optional field; neither profile accepts an
+unexpected non-empty timezone.
 
 ## Configuration
 
