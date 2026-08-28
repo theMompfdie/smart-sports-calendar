@@ -5,10 +5,10 @@
 Issue #74 introduces the provider-neutral authority and scheduling boundary for
 `v0.4.5-beta.1`. Issue #76 uses this boundary for the implemented
 football-data.org Premier League transport and canonical import. Phase 5 issue
-#114 extends the same boundary with a strict Bundesliga profile and
+ #114 extends the same boundary with a strict Bundesliga profile and
 competition-scoped runtime dispatch. Issue #119 adds the isolated OpenLigaDB
 DFB-Pokal writer with an invariant permanent-partial observation scope. Issue
-#132 reuses that provider boundary for an independent removal-disabled 2.
+ #132 reuses that provider boundary for an independent removal-disabled 2.
 Bundesliga job. Issue #135 adds the qualified EFL Championship regular-season
 stage without admitting the separate play-off stage.
 
@@ -169,6 +169,16 @@ mapping boundaries.
 Phase 6.1 adds `hybrid_tournament` for competitions that combine qualifying,
 league-phase, and knockout lifecycle segments. It does not register or enable a
 UEFA authority.
+
+Phase 6.2 issue #154 evaluates a zero-cost UEFA Champions League 2026/27
+authority. On 2026-08-28 the operator selected football-data.org `CL` / 2001
+for continued qualification and approved a release boundary beginning with
+the league phase. The 2026/27 qualifying rounds are deliberately excluded
+because the provider separates them into paid `CLQ` / 2174. Credentialed
+2026/27 main-competition evidence is still pending, so no Champions League
+catalog profile, authoritative source assignment, job, credential, or runtime
+support is approved. API-Football and Sportmonks are rejected as authoritative
+candidates under the current rights and zero-cost constraints respectively.
 
 Hybrid observations use the same source-job, import, repository,
 reconciliation, and synchronization path as released competitions. A typed

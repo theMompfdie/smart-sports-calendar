@@ -550,8 +550,16 @@ delivery order and operational boundaries.
 **Status:** _In progress through master issue
 [#150](https://github.com/theMompfdie/smart-sports-calendar/issues/150)_
 
-- provider-neutral hybrid lifecycle and identity contract tracked by
+- provider-neutral hybrid lifecycle and identity contract completed by
   [#151](https://github.com/theMompfdie/smart-sports-calendar/issues/151)
+- UEFA Champions League 2026/27 delivery tracked by
+  [#153](https://github.com/theMompfdie/smart-sports-calendar/issues/153)
+- zero-cost source qualification tracked by
+  [#154](https://github.com/theMompfdie/smart-sports-calendar/issues/154):
+  football-data.org is the operator-selected conditional candidate for the
+  league phase and later stages; the 2026/27 qualifying rounds are explicitly
+  excluded, and no authority is assigned until credentialed qualification is
+  complete
 - Champions League
 - Europa League
 - Conference League
