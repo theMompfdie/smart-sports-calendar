@@ -10,11 +10,11 @@ Issue #128 evaluates one permitted authoritative source for the 2026/27
 calendar is preferred over paid aggregators even though it requires a new,
 bounded iCalendar provider integration.
 
-Qualification assigns the official ÖFB calendar as the only proposed
-authoritative writer for `oefb_cup` / `2026_27`. It does not implement or
-enable the source. A separate issue must add the adapter, catalog, reviewed
-mappings, source job, tests, and isolated staging proof before any release
-claim.
+Qualification assigns the official ÖFB calendar as the only authoritative
+writer for `oefb_cup` / `2026_27`. Issue #145 implements the adapter, catalog,
+reviewed mappings, source job, and credential-free regression coverage. The
+source remains disabled by default, and isolated staging proof is still
+required before any release claim.
 
 ## Competition lifecycle boundary
 
