@@ -33,6 +33,7 @@ class SafeRunSummary:
     scope_kind: str | None
     removal_eligible: bool | None
     error_category: str | None
+    scope_stage: str | None = None
 
 
 @dataclass(frozen=True)
@@ -99,6 +100,14 @@ PHASE_5_AUTHORITIES = {
         True,
         True,
         306,
+    ),
+    "football-data-championship": (
+        "football_data",
+        "championship",
+        "complete_stage",
+        True,
+        True,
+        552,
     ),
     "openligadb-dfb-pokal": (
         "openligadb",
@@ -406,6 +415,7 @@ def _safe_run_summary(row: sqlite3.Row) -> SafeRunSummary:
         scope_kind=_safe_identifier(metadata.get("scope_kind")),
         removal_eligible=_safe_bool(metadata.get("removal_eligible")),
         error_category=_safe_identifier(metadata.get("error_category")),
+        scope_stage=_safe_identifier(metadata.get("scope_stage")),
     )
 
 
@@ -556,6 +566,8 @@ def validate_phase_5_candidate(evidence: StagingEvidence) -> None:
             or provider_run.complete is not complete
             or provider_run.scope_kind != scope_kind
             or provider_run.removal_eligible is not removal_eligible
+            or provider_run.scope_stage
+            != ("REGULAR_SEASON" if competition_key == "championship" else None)
             or provider_run.items_failed != 0
         ):
             errors.append(f"latest provider run is invalid for {competition_key}")
@@ -607,8 +619,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--validate-phase-5-candidate",
         action="store_true",
         help=(
-            "Require the exact Premier League, Bundesliga, and permanently partial "
-            "DFB-Pokal staging candidate to be fully converged."
+            "Require the exact Premier League, Bundesliga, Championship regular "
+            "season, and permanently partial OpenLigaDB Phase 5 staging candidate "
+            "to be fully converged."
         ),
     )
     arguments = parser.parse_args(argv)

@@ -21,7 +21,6 @@ from app.database.fixture_import_repository import (
 from app.database.sync_runs_repository import SyncRun, SyncRunsRepository
 from app.domain.competition_lifecycle import (
     CompetitionLifecycleScope,
-    FixtureObservationScopeKind,
 )
 from app.providers.contracts import (
     NormalizedFixtureBatch,
@@ -125,8 +124,7 @@ class FootballDataImportOrchestrator:
         """Backward-compatible entry point for the original release adapter."""
         return self.import_current_competition()
 
-    @staticmethod
-    def _scope(batch: NormalizedFixtureBatch) -> FixtureImportScope:
+    def _scope(self, batch: NormalizedFixtureBatch) -> FixtureImportScope:
         observed_at = batch.fetched_at_utc.astimezone(UTC)
         fingerprint = sha256(
             "\n".join(fixture.external_id for fixture in batch.fixtures).encode()
@@ -147,7 +145,8 @@ class FootballDataImportOrchestrator:
             observed_at_utc=observed_at,
             lifecycle=CompetitionLifecycleScope(
                 competition_format=batch.competition_format,
-                scope_kind=FixtureObservationScopeKind.COMPLETE_SEASON,
+                scope_kind=self._competition_service.profile.lifecycle_scope_kind,
+                stage=self._competition_service.profile.match_stage_filter,
             ),
             window_start_utc=datetime.combine(
                 batch.season_start_date, time.min, tzinfo=UTC

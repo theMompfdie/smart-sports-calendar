@@ -31,6 +31,13 @@ SEASON_CATALOG = (
         end_date="2027-05-22",
     ),
     SeasonCatalogEntry(
+        competition_key="championship",
+        season_key="2026_27",
+        name="2026/27",
+        start_date="2026-08-14",
+        end_date="2027-05-01",
+    ),
+    SeasonCatalogEntry(
         competition_key="second_bundesliga",
         season_key="2026_27",
         name="2026/27",

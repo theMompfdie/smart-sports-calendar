@@ -39,6 +39,15 @@ COMPETITION_CATALOG = (
         calendar_category="SMART | Germany",
     ),
     CompetitionCatalogEntry(
+        competition_key="championship",
+        name="EFL Championship",
+        short_name="EFL",
+        country_code="GB-ENG",
+        competition_format=CompetitionFormat.LEAGUE,
+        region="England",
+        calendar_category="SMART | England",
+    ),
+    CompetitionCatalogEntry(
         competition_key="second_bundesliga",
         name="2. Bundesliga",
         short_name="2BL",

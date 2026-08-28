@@ -4,11 +4,14 @@ from typing import Any
 from app.providers.contracts import RateLimitSnapshot
 from app.providers.football_data.models import FootballDataSnapshot, parse_snapshot
 from app.providers.football_data.profiles import (
+    BUNDESLIGA_PROFILE,
+    CHAMPIONSHIP_PROFILE,
     PREMIER_LEAGUE_PROFILE,
     FootballDataCompetitionProfile,
 )
 from app.providers.football_data.team_mappings import (
     BUNDESLIGA_TEAM_NAME_MAPPING,
+    CHAMPIONSHIP_TEAM_NAME_MAPPING,
     PREMIER_LEAGUE_TEAM_NAME_MAPPING,
 )
 
@@ -39,12 +42,16 @@ def _schedule(team_ids: list[int]) -> list[tuple[int, int, int]]:
 def payloads(
     profile: FootballDataCompetitionProfile = PREMIER_LEAGUE_PROFILE,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
-    team_mapping = (
-        PREMIER_LEAGUE_TEAM_NAME_MAPPING
-        if profile.competition_key == "premier_league"
-        else BUNDESLIGA_TEAM_NAME_MAPPING
-    )
-    provider_id_base = 100 if profile.competition_key == "premier_league" else 1000
+    team_mapping = {
+        PREMIER_LEAGUE_PROFILE.competition_key: PREMIER_LEAGUE_TEAM_NAME_MAPPING,
+        BUNDESLIGA_PROFILE.competition_key: BUNDESLIGA_TEAM_NAME_MAPPING,
+        CHAMPIONSHIP_PROFILE.competition_key: CHAMPIONSHIP_TEAM_NAME_MAPPING,
+    }[profile.competition_key]
+    provider_id_base = {
+        PREMIER_LEAGUE_PROFILE.competition_key: 100,
+        BUNDESLIGA_PROFILE.competition_key: 1000,
+        CHAMPIONSHIP_PROFILE.competition_key: 2000,
+    }[profile.competition_key]
     teams = [
         {
             "id": provider_id_base + index,
@@ -55,14 +62,22 @@ def payloads(
         for index, name in enumerate(team_mapping, start=1)
     ]
     matches: list[dict[str, Any]] = []
-    match_id = 1000 if profile.competition_key == "premier_league" else 2000
-    start_date = (
-        "2026-08-21" if profile.competition_key == "premier_league" else "2026-08-28"
-    )
-    end_date = (
-        "2027-05-30" if profile.competition_key == "premier_league" else "2027-05-22"
-    )
+    match_id = {
+        PREMIER_LEAGUE_PROFILE.competition_key: 1000,
+        BUNDESLIGA_PROFILE.competition_key: 2000,
+        CHAMPIONSHIP_PROFILE.competition_key: 3000,
+    }[profile.competition_key]
+    start_date, end_date = {
+        PREMIER_LEAGUE_PROFILE.competition_key: ("2026-08-21", "2027-05-30"),
+        BUNDESLIGA_PROFILE.competition_key: ("2026-08-28", "2027-05-22"),
+        CHAMPIONSHIP_PROFILE.competition_key: ("2026-08-14", "2027-05-01"),
+    }[profile.competition_key]
     kickoff = datetime.fromisoformat(f"{start_date}T19:00:00+00:00")
+    kickoff_step = (
+        timedelta(hours=8)
+        if profile.competition_key == CHAMPIONSHIP_PROFILE.competition_key
+        else timedelta(hours=12)
+    )
     teams_by_id = {team["id"]: team for team in teams}
     for home_id, away_id, matchday in _schedule(list(teams_by_id)):
         matches.append(
@@ -80,7 +95,7 @@ def payloads(
             }
         )
         match_id += 1
-        kickoff += timedelta(hours=12)
+        kickoff += kickoff_step
     return (
         {
             "id": profile.external_id,

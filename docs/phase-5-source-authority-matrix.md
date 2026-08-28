@@ -15,12 +15,12 @@ plan, or claim that a new competition is released. The existing
 football-data.org Premier League job remains the only released authoritative
 writer.
 
-Implementation status update, 2026-08-18: issue #114 implements the qualified
-Bundesliga adapter and runtime boundary with credential-free tests. Bundesliga
-is not yet live-staged or released; those operator gates remain outstanding.
-Issue #118 qualifies OpenLigaDB rather than the rejected paid Sportmonks
-candidate for the DFB-Pokal. ADR 0007 permanently limits that authority to
-non-destructive `partial` observations.
+Implementation status update, 2026-08-28: the qualified Bundesliga, DFB-Pokal,
+and 2. Bundesliga paths have passed isolated live staging and unchanged-cycle
+validation. They are implemented and staged but not yet released. Issue #118
+qualifies OpenLigaDB rather than the rejected paid Sportmonks candidate for the
+DFB-Pokal. ADR 0007 permanently limits that authority to non-destructive
+`partial` observations.
 
 Cost-policy update, 2026-08-27: issue #124 evaluates the no-cost OpenLigaDB
 `bl2` / 4938 candidate before the paid football-data.org fallback. A permitted,
@@ -169,13 +169,13 @@ non-authoritative and cannot advance removal evidence.
 | Competition | Intended season | Phase 5.1 format and maximum safe observation | Proposed authority | Outcome | Blocking reason or operating condition |
 | --- | --- | --- | --- | --- | --- |
 | English Premier League | 2026/27 | `league`; authoritative unfiltered `complete_season` | football-data.org `PL` / 2021 | **Qualified** | Existing ADR 0003 and two-observation live evidence apply; 20 teams and 380 unique fixtures; visible attribution and cancellation cleanup remain mandatory. |
-| EFL Championship | 2026/27 | `league`; authoritative `complete_stage` for `REGULAR_SEASON`; play-offs remain a separate `partial` scope | football-data.org `ELC` / 2016 | **Qualified for regular season** | Two stable live observations proved 24 teams, 46 matchdays, 552 unique fixtures, and one exact complete response despite the ignored 500-item limit. A future adapter must also support documented `500 + 52` pagination and fail closed otherwise. The seven play-off fixtures require later qualification and cannot provide removal evidence. |
-| German Bundesliga | 2026/27 | `league`; authoritative unfiltered `complete_season` | football-data.org `BL1` / 2002 | **Implemented; staging pending** | ADR 0006 and issue #114 provide the qualified profile, reviewed 18-team mapping, complete-season runtime, and offline SQLite-to-Graph proof. Isolated live staging remains a separate gate. |
-| German 2. Bundesliga | 2026/27 | `league`; structurally `complete_season`, initially removal-disabled | OpenLigaDB league 4938 / `bl2` / 2026; football-data.org only as paid fallback | **Implemented; staging pending** | Issue #132 adds the reviewed 18-team catalog/mapping, multi-job runtime, strict 306-fixture contract, and offline SQLite-to-Graph proof. ADR 0009 requires review of identity-set changes and keeps initial operation non-destructive. |
+| EFL Championship | 2026/27 | `league`; authoritative `complete_stage` for `REGULAR_SEASON`; play-offs remain a separate `partial` scope | football-data.org `ELC` / 2016 | **Implemented; staging pending** | Two stable live observations proved 24 teams, 46 matchdays, and 552 unique fixtures. The runtime accepts only one exact 552-match response or documented `500 + 52` pagination and fails closed otherwise. The seven play-off fixtures require later qualification and cannot provide removal evidence. |
+| German Bundesliga | 2026/27 | `league`; authoritative unfiltered `complete_season` | football-data.org `BL1` / 2002 | **Implemented and staged** | ADR 0006 and issue #114 provide the qualified profile, reviewed 18-team mapping, complete-season runtime, offline SQLite-to-Graph proof, and isolated live staging evidence. Release remains a separate gate. |
+| German 2. Bundesliga | 2026/27 | `league`; structurally `complete_season`, initially removal-disabled | OpenLigaDB league 4938 / `bl2` / 2026; football-data.org only as paid fallback | **Implemented and staged** | Issue #132 adds the reviewed 18-team catalog/mapping, multi-job runtime, strict 306-fixture contract, offline SQLite-to-Graph proof, and isolated live staging evidence. ADR 0009 requires review of identity-set changes and keeps operation non-destructive. |
 | Austrian Bundesliga | 2026/27 | `league`; `partial` for the 22-round ground phase, then explicit stage scopes | Sportmonks league 181 | **Conditional** | A paid selection and new adapter are required. Live evidence must prove the split into championship/relegation groups, placeholder behavior, stable IDs across the split, and a safe stage-completeness boundary. football-data.org exposes only ground-round dates publicly and is not removal-capable for the full season. |
 | FA Cup | 2026/27 | `knockout_cup`; `partial` until a specific round is complete | Sportmonks league 24, subject to live lookup | **Conditional** | Current-season coverage, round/leg identifiers, placeholders, replay policy, identity across draws/reschedules, and complete-round evidence require live proof. Generic bounded reconciliation exists, but this competition remains removal-disabled until qualification passes. |
 | EFL Cup | 2026/27 | `knockout_cup`; `partial` until a specific round is complete | Sportmonks league 27 | **Conditional** | Current-season coverage, two-legged round semantics, placeholders, stable identity, and complete-round evidence require live proof. Generic bounded reconciliation exists, but this competition remains removal-disabled until qualification passes. |
-| DFB-Pokal | 2026/27 | `knockout_cup`; permanently `partial` with this provider | OpenLigaDB league 4945 / `dfb` / 2026 | **Implemented; staging pending** | ADR 0007 records two stable live observations and issue #119 adds the catalog, reviewed 64-team mapping, runtime, offline SQLite-to-Graph proof, exact attribution, and permanent removal disablement. |
+| DFB-Pokal | 2026/27 | `knockout_cup`; permanently `partial` with this provider | OpenLigaDB league 4945 / `dfb` / 2026 | **Implemented and staged** | ADR 0007 records two stable live observations and issue #119 adds the catalog, reviewed 64-team mapping, runtime, offline SQLite-to-Graph proof, exact attribution, permanent removal disablement, and isolated live staging evidence. |
 | ÖFB Cup | 2026/27 | `knockout_cup`; `partial` until a specific round is complete | Sportmonks league 187 | **Conditional** | A paid selection, current-season live coverage, stable identity, stage/round mapping, and complete-round evidence are required. football-data.org is rejected for this competition because its public catalog is stale at 2020/21. |
 | UEFA Champions League | 2026/27 | not representable by one Phase 5.1 format; qualifying, league, and knockout scopes | Sportmonks league 2 as future candidate | **Deferred** | The hybrid lifecycle exceeds ADR 0004, participants and fixtures are incremental, and current authority evidence is incomplete. No `v0.5.0-beta.1` release claim. |
 | UEFA Europa League | 2026/27 | not representable by one Phase 5.1 format; qualifying, league, and knockout scopes | Sportmonks league 5 as future candidate | **Deferred** | Same hybrid-model gap and incremental completeness risk as the Champions League. No `v0.5.0-beta.1` release claim. |
@@ -227,16 +227,14 @@ qualification can complete.
 
 ## First implementation wave
 
-The approved first implementation candidate is the **2026/27 German
-Bundesliga only**, using football-data.org `BL1` / 2002. Catalog, mapping,
-adapter-generalization, scheduler, and staging work may now proceed only in a
-separate implementation issue. Qualification does not enable a source or make
-a release claim.
+The first approved implementation candidate was the **2026/27 German
+Bundesliga**, using football-data.org `BL1` / 2002. Its completed implementation
+established the reusable multi-competition runtime used by later slices.
 
-The EFL Championship regular-season qualification is complete under #123. A
-separate implementation issue may now add only its catalog, mapping, runtime,
-and staging path. Play-off ingestion remains out of that implementation scope
-until separate live qualification succeeds.
+The EFL Championship regular-season qualification is complete under #123 and
+its bounded implementation is delivered by #135. Isolated staging remains the
+release gate. Play-off ingestion remains out of scope until separate live
+qualification succeeds.
 
 No domestic cup, Austrian competition, or UEFA competition is part of the
 first implementation wave.
@@ -311,9 +309,9 @@ a job.
 
 | Outcome group | Required work before release |
 | --- | --- |
-| Bundesliga | Complete isolated staging evidence for the implemented #114 path, including attribution and unchanged-cycle idempotency. |
-| DFB-Pokal | Complete issue #119 with an isolated OpenLigaDB staging import and Outlook verification; retain permanent-partial scope and ODbL attribution. |
-| Championship and 2. Bundesliga | Implement the qualified Championship regular season separately. Complete isolated staging for the removal-disabled OpenLigaDB 2. Bundesliga path from #132. |
+| Bundesliga | Isolated staging, attribution, and unchanged-cycle idempotency are complete; retain the evidence through the release gate. |
+| DFB-Pokal | Isolated OpenLigaDB staging and Outlook verification are complete; retain permanent-partial scope and ODbL attribution. |
+| Championship and 2. Bundesliga | Complete isolated staging for the implemented Championship regular-season scope. The removal-disabled OpenLigaDB 2. Bundesliga path from #132 is implemented and staged. |
 | Austrian Bundesliga and domestic cups | Operator provider/plan decision; Sportmonks adapter qualification; stage/round and placeholder policy; non-destructive import first; later destructive reconciliation only under a new ADR. |
 | UEFA competitions | Hybrid competition-capability ADR and model implementation; then repeat source and live qualification. |
 | All new competitions | Explicit source assignment with exactly one authority; scheduler isolation; credential-free unit/integration coverage; release documentation that distinguishes planned, qualified, implemented, staged, and released. |

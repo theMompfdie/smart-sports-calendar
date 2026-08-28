@@ -21,6 +21,7 @@ class ParticipantCatalogEntry:
     participant_key: str
     name: str
     short_name: str
+    country_code: str | None = None
 
 
 @dataclass(frozen=True)
@@ -77,6 +78,38 @@ BUNDESLIGA_2026_27_TEAMS = (
     ("werder_bremen", "SV Werder Bremen", "Bremen"),
     ("tsg_hoffenheim", "TSG 1899 Hoffenheim", "Hoffenheim"),
     ("vfb_stuttgart", "VfB Stuttgart", "Stuttgart"),
+)
+
+CHAMPIONSHIP_2026_27_TEAMS = (
+    ("birmingham_city", "Birmingham City", "Birmingham", "GB-ENG"),
+    ("blackburn_rovers", "Blackburn Rovers", "Blackburn", "GB-ENG"),
+    ("bolton_wanderers", "Bolton Wanderers", "Bolton", "GB-ENG"),
+    ("bristol_city", "Bristol City", "Bristol City", "GB-ENG"),
+    ("burnley", "Burnley", "Burnley", "GB-ENG"),
+    ("cardiff_city", "Cardiff City", "Cardiff", "GB-WLS"),
+    ("charlton_athletic", "Charlton Athletic", "Charlton", "GB-ENG"),
+    ("derby_county", "Derby County", "Derby County", "GB-ENG"),
+    ("lincoln_city", "Lincoln City", "Lincoln City", "GB-ENG"),
+    ("middlesbrough", "Middlesbrough", "Middlesbrough", "GB-ENG"),
+    ("millwall", "Millwall", "Millwall", "GB-ENG"),
+    ("norwich_city", "Norwich City", "Norwich", "GB-ENG"),
+    ("portsmouth", "Portsmouth", "Portsmouth", "GB-ENG"),
+    ("preston_north_end", "Preston North End", "Preston NE", "GB-ENG"),
+    ("queens_park_rangers", "Queens Park Rangers", "QPR", "GB-ENG"),
+    ("sheffield_united", "Sheffield United", "Sheffield Utd", "GB-ENG"),
+    ("southampton", "Southampton", "Southampton", "GB-ENG"),
+    ("stoke_city", "Stoke City", "Stoke", "GB-ENG"),
+    ("swansea_city", "Swansea City", "Swansea", "GB-WLS"),
+    ("watford", "Watford", "Watford", "GB-ENG"),
+    ("west_bromwich_albion", "West Bromwich Albion", "West Brom", "GB-ENG"),
+    ("west_ham_united", "West Ham United", "West Ham", "GB-ENG"),
+    (
+        "wolverhampton_wanderers",
+        "Wolverhampton Wanderers",
+        "Wolverhampton",
+        "GB-ENG",
+    ),
+    ("wrexham", "Wrexham", "Wrexham", "GB-WLS"),
 )
 
 SECOND_BUNDESLIGA_2026_27_TEAMS = (
@@ -199,6 +232,22 @@ SEASON_PARTICIPANTS_CATALOG = (
         ),
     ),
     SeasonParticipantsCatalogEntry(
+        competition_key="championship",
+        season_key="2026_27",
+        country_code="GB-ENG",
+        participants=tuple(
+            ParticipantCatalogEntry(
+                participant_key=participant_key,
+                name=name,
+                short_name=short_name,
+                country_code=country_code,
+            )
+            for participant_key, name, short_name, country_code in (
+                CHAMPIONSHIP_2026_27_TEAMS
+            )
+        ),
+    ),
+    SeasonParticipantsCatalogEntry(
         competition_key="second_bundesliga",
         season_key="2026_27",
         country_code="DE",
@@ -268,7 +317,7 @@ def initialize_participants_catalog(
                 participant_type="team",
                 name=entry.name,
                 short_name=entry.short_name,
-                country_code=catalog_entry.country_code,
+                country_code=entry.country_code or catalog_entry.country_code,
             )
             for entry in catalog_entry.participants
         ]

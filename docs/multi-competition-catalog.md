@@ -12,15 +12,17 @@ The catalog contains:
 | --- | --- | --- | --- | --- |
 | Premier League | `premier_league` | 2026/27 | `league` | Existing implemented baseline |
 | Bundesliga | `bundesliga` | 2026/27 | `league` | Implemented by issue #114 |
+| EFL Championship | `championship` | 2026/27 | `league` | Regular season implemented by issue #135; play-offs excluded |
 | DFB-Pokal | `dfb_pokal` | 2026/27 | `knockout_cup` | Added by issue #119 |
+| 2. Bundesliga | `second_bundesliga` | 2026/27 | `league` | Added by issue #132; removal disabled |
 
 Bundesliga season dates are the qualified 2026-08-28 through 2027-05-22
 boundaries recorded by issue #110 and ADR 0006.
 
-Subsequent Phase 5 slices completed the Bundesliga participant/runtime path
-and added the DFB-Pokal competition, season, and 64 reviewed 2026/27
-participants. Shared clubs retain one canonical participant identity across
-Bundesliga and DFB-Pokal memberships.
+Subsequent Phase 5 slices completed the Bundesliga participant/runtime path and
+added the DFB-Pokal and 2. Bundesliga catalogs. DFB-Pokal has 64 reviewed
+2026/27 participants; 2. Bundesliga has 18. Shared clubs retain one canonical
+participant identity across competition memberships.
 
 ## Identity boundaries
 
@@ -31,12 +33,15 @@ football-data.org identities are:
 | --- | --- | ---: |
 | `premier_league` | `PL` | 2021 |
 | `bundesliga` | `BL1` | 2002 |
+| `championship` | `ELC` | 2016 |
 
 Provider team-name resolution is also competition-scoped. A name registered
 for one competition cannot resolve through another competition's mapping.
-The Bundesliga mapping is implemented by issue #114. DFB-Pokal uses a separate
-reviewed OpenLigaDB `teamId` plus provider-name mapping; it does not reuse the
-football-data.org name resolver.
+The Bundesliga mapping is implemented by issue #114. The Championship mapping
+contains exactly the 24 reviewed 2026/27 regular-season participants, including
+country-specific identities for Cardiff City, Swansea City, and Wrexham.
+DFB-Pokal and 2. Bundesliga use separate reviewed OpenLigaDB `teamId` plus
+provider-name mappings; they do not reuse the football-data.org name resolver.
 
 ## Initialization behavior
 

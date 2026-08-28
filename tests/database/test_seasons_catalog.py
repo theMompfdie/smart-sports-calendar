@@ -58,7 +58,7 @@ def test_initialize_seasons_catalog_creates_reviewed_seasons(
         sports_repository=sports_repository,
     )
 
-    assert len(seasons) == 4
+    assert len(seasons) == 5
     football = sports_repository.get_by_key("football")
 
     assert football is not None
@@ -74,6 +74,11 @@ def test_initialize_seasons_catalog_creates_reviewed_seasons(
         competition_key="bundesliga",
     )
     assert bundesliga is not None
+    championship = competitions_repository.get_by_key(
+        sport_id=football.id,
+        competition_key="championship",
+    )
+    assert championship is not None
     second_bundesliga = competitions_repository.get_by_key(
         sport_id=football.id,
         competition_key="second_bundesliga",
@@ -101,6 +106,14 @@ def test_initialize_seasons_catalog_creates_reviewed_seasons(
     assert bundesliga_season.end_date == "2027-05-22"
     assert bundesliga_season.is_current is True
     assert bundesliga_season.metadata is None
+
+    championship_season = by_competition[championship.id]
+    assert championship_season.season_key == "2026_27"
+    assert championship_season.name == "2026/27"
+    assert championship_season.start_date == "2026-08-14"
+    assert championship_season.end_date == "2027-05-01"
+    assert championship_season.is_current is True
+    assert championship_season.metadata is None
 
     second_bundesliga_season = by_competition[second_bundesliga.id]
     assert second_bundesliga_season.season_key == "2026_27"

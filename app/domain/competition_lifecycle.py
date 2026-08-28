@@ -44,10 +44,6 @@ class CompetitionLifecycleScope:
                     "A complete-season scope cannot declare a stage or round."
                 )
         elif scope_kind is FixtureObservationScopeKind.COMPLETE_STAGE:
-            if competition_format is not CompetitionFormat.KNOCKOUT_CUP:
-                raise CompetitionLifecycleError(
-                    "A complete-stage scope requires knockout/cup format."
-                )
             if self.stage is None or self.round_name is not None:
                 raise CompetitionLifecycleError(
                     "A complete-stage scope requires exactly one stage identifier."
@@ -69,7 +65,10 @@ class CompetitionLifecycleScope:
     @property
     def removal_reconciliation_supported(self) -> bool:
         if self.competition_format is CompetitionFormat.LEAGUE:
-            return self.scope_kind is FixtureObservationScopeKind.COMPLETE_SEASON
+            return self.scope_kind in {
+                FixtureObservationScopeKind.COMPLETE_SEASON,
+                FixtureObservationScopeKind.COMPLETE_STAGE,
+            }
         return self.scope_kind in {
             FixtureObservationScopeKind.COMPLETE_STAGE,
             FixtureObservationScopeKind.COMPLETE_ROUND,

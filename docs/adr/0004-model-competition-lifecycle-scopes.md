@@ -58,6 +58,12 @@ is also part of that boundary. Two distinct successful observations remain
 mandatory. Empty, mixed, contradictory, filtered, or non-authoritative claims
 cannot create removal evidence.
 
+Issue #135 applies `complete_stage` to a league for the first time. This is
+valid only because the provider exposes the 552-fixture Championship double
+round robin as a stable typed `REGULAR_SEASON` stage while the seven play-off
+fixtures form a separate progressive scope. The format alone does not grant
+stage completeness; the provider/competition qualification remains mandatory.
+
 ## Persistence
 
 No schema migration is required for this decision.
@@ -84,7 +90,7 @@ sources of truth without adding a released behavior.
 - Existing Premier League CREATE, UPDATE, SKIP, CANCEL, DEFER, and two-complete-
   observation removal behavior remains unchanged.
 - Qualified providers can use the same two-observation algorithm for an exact
-  cup stage or round without affecting events in other stages or rounds.
+  stage or cup round without affecting events in other stages or rounds.
 - The generic capability does not qualify or enable any concrete cup; provider
   and competition completeness evidence remains a separate gate.
 

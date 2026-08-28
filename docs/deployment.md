@@ -136,7 +136,8 @@ The complete provider settings are:
 The JSON value must remain on one line in `.env` or Portainer. Adapter and job
 enablement must agree. The existing API-Football adapter supports only the
 `authoritative` role because it writes canonical data. `football_data` supports
-the authoritative 2026/27 Premier League and Bundesliga scopes. `openligadb`
+the authoritative 2026/27 Premier League and Bundesliga complete-season scopes
+and the Championship `REGULAR_SEASON` complete-stage scope. `openligadb`
 supports the authoritative 2026/27 DFB-Pokal and 2. Bundesliga scopes and
 requires no credential. Keep the football-data.org token in Portainer or another ignored
 operator secret store. See [source orchestration](source-orchestration.md).
@@ -494,7 +495,7 @@ For issue #63, open the `calendar-sync` container console for
 python -m app.operations.staging_evidence --database /data/sports.db
 ```
 
-For the Phase 5 Premier League, Bundesliga, and DFB-Pokal candidate, follow
+For the Phase 5 five-competition candidate, follow
 [`phase-5-multi-competition-staging-validation.md`](phase-5-multi-competition-staging-validation.md)
 and run the strict read-only profile after convergence:
 

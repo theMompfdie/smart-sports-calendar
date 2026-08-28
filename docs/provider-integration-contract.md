@@ -62,15 +62,17 @@ Competition lifecycle and observation scope are provider-neutral typed values.
 The canonical competition format is `league` or `knockout_cup`. Each fixture
 observation declares one scope kind: `partial`, `complete_season`,
 `complete_stage`, or `complete_round`. A complete season scope is currently
-valid only for a league. Complete stage and round scopes require knockout/cup
-format and a normalized stable stage or round identifier.
+valid only for a league. A complete stage scope is valid for a qualified,
+stable stage of either format. A complete round scope requires knockout/cup
+format. Stage and round scopes require normalized stable identifiers.
 
 Removal evidence is permitted for an authoritative, unfiltered, bounded
-`complete_season` league observation. A knockout/cup `complete_stage` or
-`complete_round` observation may contribute evidence only when it is non-empty,
-every fixture matches the exact normalized boundary, and repository selection
-is restricted to the same source, competition, season, and stage/round. The
-generic behavior does not qualify any provider or concrete cup. See
+`complete_season` league observation. An exact `complete_stage` observation or
+a knockout/cup `complete_round` observation may contribute evidence only when
+it is non-empty, every fixture matches the exact normalized boundary, and
+repository selection is restricted to the same source, competition, season,
+and stage/round. The generic behavior does not qualify any provider or concrete
+competition scope. See
 [`adr/0004-model-competition-lifecycle-scopes.md`](adr/0004-model-competition-lifecycle-scopes.md).
 
 For iCalendar sources, `UID` is the only acceptable provider event identity.
