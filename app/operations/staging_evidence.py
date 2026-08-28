@@ -125,6 +125,14 @@ PHASE_5_AUTHORITIES = {
         False,
         306,
     ),
+    "oefb-ical-oefb-cup": (
+        "oefb_ical",
+        "oefb_cup",
+        "partial",
+        False,
+        False,
+        48,
+    ),
 }
 
 

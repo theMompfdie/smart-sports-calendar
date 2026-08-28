@@ -17,6 +17,7 @@ from app.application.container import ApplicationContainer
 from app.config.settings import (
     ApiFootballSettings,
     FootballDataSettings,
+    OefbIcalSettings,
     OpenLigaDBSettings,
     Settings,
 )
@@ -100,6 +101,20 @@ def openligadb_job(
         role=SourceRole.AUTHORITATIVE,
         scope=SourceScope("football", competition_key, "2026_27"),
         interval_seconds=21600,
+    )
+
+
+def oefb_ical_job(
+    *,
+    competition_key: str = "oefb_cup",
+    interval_seconds: int = 21600,
+) -> SourceJobDefinition:
+    return SourceJobDefinition(
+        job_key="oefb-ical-oefb-cup",
+        source_key="oefb_ical",
+        role=SourceRole.AUTHORITATIVE,
+        scope=SourceScope("football", competition_key, "2026_27"),
+        interval_seconds=interval_seconds,
     )
 
 
@@ -302,6 +317,75 @@ def test_container_rejects_unsupported_openligadb_scope(tmp_path: Path) -> None:
     )
 
     with pytest.raises(SourceConfigurationError, match="supported authoritative"):
+        ApplicationContainer(settings=settings)
+
+
+def test_container_requires_matching_oefb_ical_job(tmp_path: Path) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        oefb_ical=OefbIcalSettings(
+            enabled=True,
+            feed_url="https://www.fussballoesterreich.at/private.ics",
+        ),
+    )
+
+    with pytest.raises(SourceConfigurationError, match="OEFB_ICAL_ENABLED"):
+        ApplicationContainer(settings=settings)
+
+
+@patch("app.application.container.OefbIcalClient")
+def test_container_registers_authoritative_oefb_ical_runtime(
+    client_type: MagicMock, tmp_path: Path
+) -> None:
+    client_type.return_value = MagicMock()
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        oefb_ical=OefbIcalSettings(
+            enabled=True,
+            feed_url="https://www.fussballoesterreich.at/private.ics",
+        ),
+        source_jobs=(oefb_ical_job(),),
+    )
+
+    container = ApplicationContainer(settings=settings)
+
+    assert container.oefb_ical_import_runtime_service is not None
+    assert [job.job_key for job in container.source_scheduled_jobs] == [
+        "oefb-ical-oefb-cup"
+    ]
+    assert [
+        (job.job_key, job.interval_seconds) for job in container.scheduled_jobs
+    ] == [
+        ("oefb-ical-oefb-cup", 21600),
+        ("system:calendar-synchronization", 300),
+    ]
+
+
+def test_container_rejects_unsupported_oefb_ical_scope(tmp_path: Path) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        oefb_ical=OefbIcalSettings(
+            enabled=True,
+            feed_url="https://www.fussballoesterreich.at/private.ics",
+        ),
+        source_jobs=(oefb_ical_job(competition_key="bundesliga"),),
+    )
+
+    with pytest.raises(SourceConfigurationError, match="exactly one authoritative"):
+        ApplicationContainer(settings=settings)
+
+
+def test_container_rejects_oefb_ical_polling_below_minimum(tmp_path: Path) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        oefb_ical=OefbIcalSettings(
+            enabled=True,
+            feed_url="https://www.fussballoesterreich.at/private.ics",
+        ),
+        source_jobs=(oefb_ical_job(interval_seconds=3600),),
+    )
+
+    with pytest.raises(SourceConfigurationError, match="must not be shorter"):
         ApplicationContainer(settings=settings)
 
 

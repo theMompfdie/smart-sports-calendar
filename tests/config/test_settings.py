@@ -58,6 +58,14 @@ def configure_required_environment(
         "OPENLIGADB_RETRY_BASE_DELAY_SECONDS",
         "OPENLIGADB_RETRY_MAX_DELAY_SECONDS",
         "OPENLIGADB_MINIMUM_REQUEST_INTERVAL_SECONDS",
+        "OEFB_ICAL_ENABLED",
+        "OEFB_ICAL_FEED_URL",
+        "OEFB_ICAL_CONNECT_TIMEOUT_SECONDS",
+        "OEFB_ICAL_READ_TIMEOUT_SECONDS",
+        "OEFB_ICAL_MAX_ATTEMPTS",
+        "OEFB_ICAL_RETRY_BASE_DELAY_SECONDS",
+        "OEFB_ICAL_RETRY_MAX_DELAY_SECONDS",
+        "OEFB_ICAL_MINIMUM_POLL_INTERVAL_SECONDS",
     ):
         monkeypatch.delenv(name, raising=False)
 
@@ -120,6 +128,60 @@ def test_load_settings_rejects_unsafe_openligadb_base_url(
     monkeypatch.setenv("OPENLIGADB_BASE_URL", "http://api.openligadb.de")
 
     with pytest.raises(ProviderConfigurationError, match="HTTPS URL"):
+        load_settings()
+
+
+def test_load_settings_validates_secret_oefb_ical_feed_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    feed_url = "https://www.fussballoesterreich.at/Calendar/opaque-token.ics"
+    monkeypatch.setenv("OEFB_ICAL_ENABLED", "true")
+    monkeypatch.setenv("OEFB_ICAL_FEED_URL", feed_url)
+
+    settings = load_settings().oefb_ical
+
+    assert settings.enabled is True
+    assert settings.feed_url == feed_url
+    assert settings.minimum_poll_interval_seconds == 21600
+    assert feed_url not in repr(settings)
+
+
+def test_load_settings_requires_oefb_ical_feed_url_when_enabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OEFB_ICAL_ENABLED", "true")
+
+    with pytest.raises(ProviderConfigurationError, match="OEFB_ICAL_FEED_URL"):
+        load_settings()
+
+
+@pytest.mark.parametrize(
+    "feed_url",
+    [
+        "http://www.fussballoesterreich.at/Calendar/token.ics",
+        "https://example.test/Calendar/token.ics",
+        "https://user:secret@www.fussballoesterreich.at/Calendar/token.ics",
+        "https://www.fussballoesterreich.at/Calendar/token.ics?secret=value",
+        "https://www.fussballoesterreich.at/Calendar/token.ics#fragment",
+        "https://www.fussballoesterreich.at/",
+    ],
+)
+def test_load_settings_rejects_unsafe_oefb_ical_feed_url(
+    monkeypatch: pytest.MonkeyPatch,
+    feed_url: str,
+) -> None:
+    monkeypatch.setenv("OEFB_ICAL_FEED_URL", feed_url)
+
+    with pytest.raises(ProviderConfigurationError, match="approved HTTPS ÖFB URL"):
+        load_settings()
+
+
+def test_load_settings_enforces_oefb_ical_polling_floor(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OEFB_ICAL_MINIMUM_POLL_INTERVAL_SECONDS", "21599")
+
+    with pytest.raises(ProviderConfigurationError, match="at least 21600"):
         load_settings()
 
 

@@ -51,6 +51,13 @@ SEASON_CATALOG = (
         start_date="2026-08-21",
         end_date="2027-05-29",
     ),
+    SeasonCatalogEntry(
+        competition_key="oefb_cup",
+        season_key="2026_27",
+        name="2026/27",
+        start_date="2026-07-01",
+        end_date="2027-06-30",
+    ),
 )
 
 

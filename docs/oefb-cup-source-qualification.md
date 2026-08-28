@@ -10,11 +10,11 @@ Issue #128 evaluates one permitted authoritative source for the 2026/27
 calendar is preferred over paid aggregators even though it requires a new,
 bounded iCalendar provider integration.
 
-Qualification assigns the official ÖFB calendar as the only proposed
-authoritative writer for `oefb_cup` / `2026_27`. It does not implement or
-enable the source. A separate issue must add the adapter, catalog, reviewed
-mappings, source job, tests, and isolated staging proof before any release
-claim.
+Qualification assigns the official ÖFB calendar as the only authoritative
+writer for `oefb_cup` / `2026_27`. Issue #145 implements the adapter, catalog,
+reviewed mappings, source job, and credential-free regression coverage. The
+source remains disabled by default, and isolated staging proof is still
+required before any release claim.
 
 ## Competition lifecycle boundary
 
@@ -73,8 +73,9 @@ Both reported:
 - 96 populated participant references resolving to 64 unique numeric
   participant identities across those current fixtures;
 - one UTC `DTSTART` and `DTSTAMP` per event;
-- one `SUMMARY`, `DESCRIPTION`, `LOCATION`, `URL`, home identity, and away
-  identity per event;
+- one `SUMMARY`, `DESCRIPTION`, `LOCATION`, `URL`, `DURATION`, `X-CATEGORY`,
+  home identity, and away identity per event;
+- present but consistently blank `X-HOMEABC` and `X-AWAYABC` hint fields;
 - no recurrence rules or recurrence instances; and
 - the six-hour publication TTL.
 
@@ -90,16 +91,25 @@ This establishes provider-issued fixture identity independently of mutable
 titles, teams, kickoff times, venues, and report URLs.
 
 The feed contained no `STATUS`, `SEQUENCE`, `LAST-MODIFIED`, or `CREATED`
-properties. `DTSTAMP` is an update hint only. Content comparison by stable UID
-is mandatory, explicit cancellation is unavailable, and missing events cannot
-be interpreted destructively.
+properties. `DTSTAMP` is an update hint only. Event links consistently used
+HTTPS on `www.oefb.at` below `/cup`, with query parameters and no fragments.
+Current summaries consistently separated the two display names with ` : `.
+Content comparison by stable UID is mandatory, explicit cancellation is
+unavailable, and missing events cannot be interpreted destructively.
 
-No subscription URL, event details, raw payload, participant list, fixture ID,
-venue, result, or account value is retained in this repository or GitHub
-tracking. The evidence above contains only approved aggregates, boundaries,
-timestamps, and a SHA-256 identity fingerprint.
+No subscription URL, raw payload, fixture list, venue, result, or account value
+is retained in this repository or GitHub tracking. Qualification evidence
+contains only approved aggregates, boundaries, timestamps, and a SHA-256
+identity fingerprint. The implementation catalog contains only the reviewed
+64 public team identities and provider mappings required for deterministic
+correlation.
 
-## Required implementation contract
+## Implementation contract
+
+The credential-free provider, normalization, runtime, scheduling, persistence,
+and SQLite-to-mocked-Graph implementation satisfies this contract. Isolated
+live staging with the operator-managed feed secret remains required before the
+competition can be accepted as complete.
 
 The follow-up implementation must satisfy all of these rules:
 

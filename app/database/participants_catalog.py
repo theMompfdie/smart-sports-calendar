@@ -204,6 +204,105 @@ DFB_POKAL_2026_27_TEAMS = (
     ("hamburg_eimsbuetteler_bc", "Hamburg Eimsbütteler BC", "HEBC"),
 )
 
+OEFB_CUP_2026_27_TEAMS = (
+    ("wiener_viktoria", "Wiener Viktoria", "Wiener Viktoria"),
+    ("fac_wien", "FAC Wien", "FAC Wien"),
+    ("fk_austria_wien", "FK Austria Wien", "Austria Wien"),
+    ("sv_wienerberg_1921", "SV Wienerberg 1921", "SV Wienerberg"),
+    ("sk_rapid", "SK Rapid", "SK Rapid"),
+    ("wiener_sport_club", "Wiener Sport-Club", "Wiener Sport-Club"),
+    ("first_vienna_fc_1894", "First Vienna FC 1894", "First Vienna"),
+    ("sr_donaufeld", "SR Donaufeld", "SR Donaufeld"),
+    ("sv_leobendorf", "SV Leobendorf", "SV Leobendorf"),
+    ("admira_wacker", "Admira Wacker", "Admira Wacker"),
+    ("fcm_traiskirchen", "FCM Traiskirchen", "Traiskirchen"),
+    (
+        "scheiblingkirchen_warth",
+        "Scheiblingkirchen-Warth",
+        "Scheiblingkirchen-Warth",
+    ),
+    ("wieselburg", "Wieselburg", "Wieselburg"),
+    (
+        "spg_krems_sc_getzersdorf",
+        "SPG Krems SC / Getzersdorf KM",
+        "SPG Krems/Getzersdorf",
+    ),
+    ("sv_horn", "SV Horn", "SV Horn"),
+    ("sku_amstetten", "SKU Ertl Glas Amstetten", "SKU Amstetten"),
+    ("skn_st_poelten", "SKN St. Pölten", "SKN St. Pölten"),
+    ("scr_altach", "SCR Altach", "SCR Altach"),
+    ("vfb_hohenems", "VfB Hohenems", "VfB Hohenems"),
+    ("fc_lustenau_1907", "FC Lustenau 1907", "FC Lustenau"),
+    ("fc_lauterach", "intemann FC Lauterach", "FC Lauterach"),
+    ("fc_dornbirn_1913", "FC Dornbirn 1913", "FC Dornbirn"),
+    ("sc_austria_lustenau", "SC Austria Lustenau", "Austria Lustenau"),
+    ("sw_bregenz", "SW Bregenz", "SW Bregenz"),
+    ("lask", "LASK", "LASK"),
+    ("fc_blau_weiss_linz", "FC Blau Weiss Linz", "Blau-Weiss Linz"),
+    (
+        "spg_bad_leonfelden_schenkenfelden",
+        "SPG VORTUNA Bad Leonfelden/Schenkenfelden",
+        "SPG Bad Leonfelden/Schenkenfelden",
+    ),
+    ("sk_vorwaerts_steyr", "SK Vorwärts Steyr", "Vorwärts Steyr"),
+    ("union_dietach", "Union PROCON Dietach", "Union Dietach"),
+    ("fc_hertha_wels", "FC Hertha Wels", "Hertha Wels"),
+    (
+        "spg_wallern_st_marienkirchen",
+        "SPG Wallern / St. Marienk./P KM",
+        "SPG Wallern/St. Marienkirchen",
+    ),
+    ("sv_ried", "SV Oberbank Ried", "SV Ried"),
+    ("union_gurten", "Gurten", "Gurten"),
+    (
+        "sk_bischofshofen",
+        "Bischofshofen Sportklub 1933",
+        "SK Bischofshofen",
+    ),
+    ("sv_wals_gruenau", "SV Wals-Grünau", "SV Wals-Grünau"),
+    ("sv_kuchl", "SV Kuchl", "SV Kuchl"),
+    ("fc_red_bull_salzburg", "FC Red Bull Salzburg", "Salzburg"),
+    ("sv_seekirchen", "SV teampool Seekirchen", "SV Seekirchen"),
+    ("sv_austria_salzburg", "SV Austria Salzburg", "Austria Salzburg"),
+    ("sc_schwaz", "SC EGLO Schwaz", "SC Schwaz"),
+    ("sc_imst", "SC Imst", "SC Imst"),
+    ("fc_kitzbuehel", "FC Powerspine Kitzbühel", "FC Kitzbühel"),
+    ("svg_reichenau", "SVG Reichenau", "SVG Reichenau"),
+    ("wsg_tirol", "WSG Tirol", "WSG Tirol"),
+    ("fc_wacker_innsbruck", "FC Wacker Innsbruck", "Wacker Innsbruck"),
+    (
+        "sv_leithaprodersdorf",
+        "SV Leithaprodersdorf",
+        "SV Leithaprodersdorf",
+    ),
+    ("sc_esv_parndorf_1919", "SC/ESV Parndorf 1919", "Parndorf"),
+    ("sv_oberwart", "SV Klöcher Bau Oberwart", "SV Oberwart"),
+    (
+        "mattersburger_sv_2020",
+        "Mattersburger Sportverein 2020",
+        "Mattersburger SV",
+    ),
+    ("sk_sturm_graz", "SK Puntigamer Sturm Graz", "Sturm Graz"),
+    ("grazer_ak_1902", "Grazer AK 1902", "Grazer AK"),
+    ("tsv_hartberg", "TSV Egger Glas Hartberg", "TSV Hartberg"),
+    ("sv_lafnitz", "Lafnitz", "Lafnitz"),
+    ("sc_kalsdorf", "Kalsdorf", "Kalsdorf"),
+    ("deutschlandsberger_sc", "Deutschlandsberg", "Deutschlandsberg"),
+    ("ask_voitsberg", "Voitsberg", "Voitsberg"),
+    ("dsv_leoben", "DSV Leoben", "DSV Leoben"),
+    ("ksv_1919", "KSV 1919", "KSV 1919"),
+    (
+        "sv_tillmitsch",
+        "SV Fleischereimaschinen Schenk Tillmitsch",
+        "SV Tillmitsch",
+    ),
+    ("svg_bleiburg", "Bleiburg", "Bleiburg"),
+    ("sv_velden", "Velden", "Velden"),
+    ("sk_treibach", "Treibach", "Treibach"),
+    ("sk_austria_klagenfurt", "Austria Klagenfurt", "Austria Klagenfurt"),
+    ("wolfsberger_ac", "RZ Pellets WAC", "Wolfsberger AC"),
+)
+
 SEASON_PARTICIPANTS_CATALOG = (
     SeasonParticipantsCatalogEntry(
         competition_key="premier_league",
@@ -271,6 +370,19 @@ SEASON_PARTICIPANTS_CATALOG = (
                 short_name=short_name,
             )
             for participant_key, name, short_name in DFB_POKAL_2026_27_TEAMS
+        ),
+    ),
+    SeasonParticipantsCatalogEntry(
+        competition_key="oefb_cup",
+        season_key="2026_27",
+        country_code="AT",
+        participants=tuple(
+            ParticipantCatalogEntry(
+                participant_key=participant_key,
+                name=name,
+                short_name=short_name,
+            )
+            for participant_key, name, short_name in OEFB_CUP_2026_27_TEAMS
         ),
     ),
 )
