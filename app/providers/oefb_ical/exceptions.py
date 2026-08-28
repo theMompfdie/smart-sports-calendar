@@ -20,3 +20,7 @@ class OefbIcalSchemaError(OefbIcalError):
 
 class OefbIcalIntegrityError(OefbIcalError):
     """An ÖFB iCalendar snapshot is structurally valid but unsafe to import."""
+
+
+class OefbIcalResolutionError(OefbIcalError):
+    """ÖFB iCalendar data cannot be resolved to the canonical catalog."""
