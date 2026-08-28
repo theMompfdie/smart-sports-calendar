@@ -7,13 +7,17 @@ from app.application.oefb_ical_competition_service import (
     OEFB_ICAL_ATTRIBUTION,
     OefbIcalCompetitionService,
 )
+from app.database.competitions_catalog import initialize_competitions_catalog
 from app.database.competitions_repository import CompetitionsRepository
 from app.database.data_sources_repository import DataSourcesRepository
 from app.database.database import Database
+from app.database.participants_catalog import initialize_participants_catalog
 from app.database.participants_repository import ParticipantsRepository
 from app.database.season_participants_repository import SeasonParticipantsRepository
+from app.database.seasons_catalog import initialize_seasons_catalog
 from app.database.seasons_repository import SeasonsRepository
 from app.database.source_mappings_repository import SourceMappingsRepository
+from app.database.sports_catalog import initialize_sports_catalog
 from app.database.sports_repository import SportsRepository
 from app.domain.competition_lifecycle import CompetitionFormat
 from app.providers.oefb_ical.exceptions import (
@@ -122,7 +126,7 @@ def test_service_normalizes_permanent_partial_snapshot_and_catalog(
     assert fixture.round_name == "round-1"
     assert fixture.sequence_number == 1
     assert fixture.metadata == {
-        "official_url": "https://www.fussballoesterreich.at/Spiel/1000000"
+        "official_url": "https://www.oefb.at/cup/Spiel/1000000?synthetic=true"
     }
     with sqlite3.connect(database_path) as connection:
         source = connection.execute(
@@ -214,3 +218,41 @@ def test_service_keeps_snapshot_observation_timestamp(tmp_path: Path) -> None:
     batch = service.fetch_normalized_snapshot()
 
     assert batch.fetched_at_utc == datetime(2026, 8, 28, 12, 0, tzinfo=UTC)
+
+
+def test_service_resolves_reviewed_production_catalog_mapping(tmp_path: Path) -> None:
+    database_path = tmp_path / "reviewed-catalog.db"
+    Database(database_path).initialize()
+    sports = SportsRepository(database_path)
+    competitions = CompetitionsRepository(database_path)
+    seasons = SeasonsRepository(database_path)
+    participants = ParticipantsRepository(database_path)
+    memberships = SeasonParticipantsRepository(database_path)
+    initialize_sports_catalog(sports)
+    initialize_competitions_catalog(competitions, sports)
+    initialize_seasons_catalog(seasons, competitions, sports)
+    initialize_participants_catalog(
+        participants, memberships, sports, competitions, seasons
+    )
+    payload = (
+        calendar_payload()
+        .replace(b"X-HOMENR:2000", b"X-HOMENR:1027")
+        .replace(b"X-AWAYNR:2001", b"X-AWAYNR:1031")
+        .replace(b"SUMMARY:Home 0 : Away 0", b"SUMMARY:Wiener Viktoria : FAC Wien")
+    )
+    service = OefbIcalCompetitionService(
+        settings=settings(),
+        adapter=SnapshotAdapter(payload),
+        sports_repository=sports,
+        competitions_repository=competitions,
+        seasons_repository=seasons,
+        participants_repository=participants,
+        season_participants_repository=memberships,
+        data_sources_repository=DataSourcesRepository(database_path),
+        source_mappings_repository=SourceMappingsRepository(database_path),
+    )
+
+    batch = service.fetch_normalized_snapshot()
+
+    assert len(batch.fixtures) == 1
+    assert batch.fixtures[0].title == "Wiener Viktoria vs FAC Wien"

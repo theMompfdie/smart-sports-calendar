@@ -1,6 +1,7 @@
 import re
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from unicodedata import category as unicode_category
 from urllib.parse import urlsplit
 
 from icalendar import Calendar
@@ -10,9 +11,12 @@ from app.providers.oefb_ical.exceptions import (
     OefbIcalIntegrityError,
     OefbIcalSchemaError,
 )
-from app.providers.oefb_ical.transport import ALLOWED_HOST
 
 MAX_EVENT_COUNT = 256
+MAX_AUXILIARY_TEXT_LENGTH = 128
+MAX_URL_LENGTH = 2048
+ALLOWED_EVENT_HOST = "www.oefb.at"
+ALLOWED_EVENT_PATH_PREFIX = "/cup/"
 UID_PATTERN = re.compile(r"^\d{7}$")
 CALENDAR_PROPERTIES = frozenset(
     {
@@ -32,12 +36,16 @@ EVENT_PROPERTIES = frozenset(
         "UID",
         "DTSTAMP",
         "DTSTART",
+        "DURATION",
         "SUMMARY",
         "DESCRIPTION",
         "LOCATION",
         "URL",
         "X-HOMENR",
         "X-AWAYNR",
+        "X-HOMEABC",
+        "X-AWAYABC",
+        "X-CATEGORY",
     }
 )
 
@@ -47,12 +55,16 @@ class OefbIcalEvent:
     uid: str
     dtstamp_utc: datetime
     kickoff_utc: datetime
+    duration: timedelta
     summary: str
     description: str
     location: str
     url: str
     home_provider_id: int
     away_provider_id: int
+    home_provider_code: str | None
+    away_provider_code: str | None
+    provider_category: str
 
 
 @dataclass(frozen=True)
@@ -120,6 +132,7 @@ def _parse_event(component: Component) -> OefbIcalEvent:
         raise OefbIcalIntegrityError("Provider event has an invalid UID.")
     dtstamp = _required_datetime(component, "DTSTAMP")
     kickoff = _required_datetime(component, "DTSTART")
+    duration = _required_duration(component)
     home_provider_id = _required_positive_integer(component, "X-HOMENR")
     away_provider_id = _required_positive_integer(component, "X-AWAYNR")
     if home_provider_id == away_provider_id:
@@ -128,11 +141,21 @@ def _parse_event(component: Component) -> OefbIcalEvent:
         )
     url = _required_text(component, "URL")
     parsed_url = urlsplit(url)
+    try:
+        port = parsed_url.port
+    except ValueError as error:
+        raise OefbIcalIntegrityError(
+            "Provider event has an unsafe official URL."
+        ) from error
     if (
-        parsed_url.scheme != "https"
-        or parsed_url.hostname != ALLOWED_HOST
+        len(url) > MAX_URL_LENGTH
+        or any(unicode_category(character).startswith("C") for character in url)
+        or parsed_url.scheme != "https"
+        or parsed_url.hostname != ALLOWED_EVENT_HOST
+        or port not in (None, 443)
         or parsed_url.username is not None
         or parsed_url.password is not None
+        or not parsed_url.path.startswith(ALLOWED_EVENT_PATH_PREFIX)
         or parsed_url.fragment
     ):
         raise OefbIcalIntegrityError("Provider event has an unsafe official URL.")
@@ -140,12 +163,16 @@ def _parse_event(component: Component) -> OefbIcalEvent:
         uid=uid,
         dtstamp_utc=dtstamp,
         kickoff_utc=kickoff,
+        duration=duration,
         summary=_required_text(component, "SUMMARY"),
         description=_required_text(component, "DESCRIPTION"),
         location=_required_text(component, "LOCATION"),
         url=url,
         home_provider_id=home_provider_id,
         away_provider_id=away_provider_id,
+        home_provider_code=_optional_auxiliary_text(component, "X-HOMEABC"),
+        away_provider_code=_optional_auxiliary_text(component, "X-AWAYABC"),
+        provider_category=_required_auxiliary_text(component, "X-CATEGORY"),
     )
 
 
@@ -172,6 +199,49 @@ def _required_datetime(component: Component, name: str) -> datetime:
     if not isinstance(decoded, datetime):
         raise OefbIcalSchemaError("Provider event date-time must include a time.")
     return _require_utc(decoded, name)
+
+
+def _required_duration(component: Component) -> timedelta:
+    value = component.get("DURATION")
+    if value is None or isinstance(value, list):
+        raise OefbIcalSchemaError("Provider event has an invalid property count.")
+    try:
+        decoded = component.decoded("DURATION")
+    except (KeyError, ValueError, TypeError) as error:
+        raise OefbIcalSchemaError(
+            "Provider event has an invalid duration property."
+        ) from error
+    if (
+        not isinstance(decoded, timedelta)
+        or decoded <= timedelta(0)
+        or decoded > timedelta(days=1)
+    ):
+        raise OefbIcalIntegrityError("Provider event has an unsafe duration.")
+    return decoded
+
+
+def _required_auxiliary_text(component: Component, name: str) -> str:
+    text = _required_text(component, name)
+    _validate_auxiliary_text(text)
+    return text
+
+
+def _optional_auxiliary_text(component: Component, name: str) -> str | None:
+    value = component.get(name)
+    if value is None or isinstance(value, list):
+        raise OefbIcalSchemaError("Provider event has an invalid property count.")
+    text = str(value).strip()
+    if not text:
+        return None
+    _validate_auxiliary_text(text)
+    return text
+
+
+def _validate_auxiliary_text(text: str) -> None:
+    if len(text) > MAX_AUXILIARY_TEXT_LENGTH or any(
+        unicode_category(character).startswith("C") for character in text
+    ):
+        raise OefbIcalIntegrityError("Provider event has an unsafe auxiliary property.")
 
 
 def _required_positive_integer(component: Component, name: str) -> int:

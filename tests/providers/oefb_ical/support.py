@@ -51,12 +51,16 @@ def calendar_payload(
             f"UID:{uid}",
             "DTSTAMP:20260828T115500Z",
             "DTSTART:20260828T180000Z",
-            f"SUMMARY:Home {index} - Away {index}",
+            "DURATION:PT2H",
+            f"SUMMARY:Home {index} : Away {index}",
             "DESCRIPTION:1. Runde",
             "LOCATION:Test Stadium",
-            f"URL:https://www.fussballoesterreich.at/Spiel/{uid}",
+            f"URL:https://www.oefb.at/cup/Spiel/{uid}?synthetic=true",
             f"X-HOMENR:{2000 + index * 2}",
             f"X-AWAYNR:{2001 + index * 2}",
+            f"X-HOMEABC:H{index:02d}",
+            f"X-AWAYABC:A{index:02d}",
+            "X-CATEGORY:UNIQA ÖFB Cup",
         ]
         if index == 0:
             properties.extend(event_overrides)

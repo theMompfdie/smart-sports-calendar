@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from app.providers.oefb_ical.exceptions import (
@@ -34,8 +34,12 @@ def test_parser_accepts_qualified_synthetic_calendar() -> None:
     assert event.uid == "1000000"
     assert event.kickoff_utc == datetime(2026, 8, 28, 18, 0, tzinfo=UTC)
     assert event.dtstamp_utc == datetime(2026, 8, 28, 11, 55, tzinfo=UTC)
+    assert event.duration == timedelta(hours=2)
     assert event.home_provider_id == 2000
     assert event.away_provider_id == 2001
+    assert event.home_provider_code == "H00"
+    assert event.away_provider_code == "A00"
+    assert event.provider_category == "UNIQA ÖFB Cup"
     assert event.description == "1. Runde"
 
 
@@ -54,7 +58,7 @@ def test_parser_rejects_duplicate_uid() -> None:
         (b"X-AWAYNR:2001", b"X-AWAYNR:2000", "same participant"),
         (b"X-HOMENR:2000", b"X-HOMENR:not-numeric", "participant ID"),
         (
-            b"URL:https://www.fussballoesterreich.at/Spiel/1000000",
+            b"URL:https://www.oefb.at/cup/Spiel/1000000?synthetic=true",
             b"URL:https://example.test/Spiel/1000000",
             "unsafe official URL",
         ),
@@ -88,6 +92,61 @@ def test_parser_rejects_missing_required_property() -> None:
     payload = calendar_payload().replace(b"LOCATION:Test Stadium\r\n", b"")
 
     with pytest.raises(OefbIcalSchemaError, match="missing required"):
+        parse(payload)
+
+
+@pytest.mark.parametrize(
+    "duration",
+    ["PT0S", "P2D"],
+)
+def test_parser_rejects_unsafe_duration(duration: str) -> None:
+    payload = calendar_payload().replace(
+        b"DURATION:PT2H", f"DURATION:{duration}".encode()
+    )
+
+    with pytest.raises(OefbIcalIntegrityError, match="unsafe duration"):
+        parse(payload)
+
+
+def test_parser_rejects_oversized_auxiliary_property() -> None:
+    payload = calendar_payload().replace(
+        b"X-HOMEABC:H00",
+        f"X-HOMEABC:{'A' * 129}".encode(),
+    )
+
+    with pytest.raises(OefbIcalIntegrityError, match="unsafe auxiliary"):
+        parse(payload)
+
+
+def test_parser_accepts_blank_unused_provider_codes() -> None:
+    payload = (
+        calendar_payload()
+        .replace(b"X-HOMEABC:H00", b"X-HOMEABC:")
+        .replace(b"X-AWAYABC:A00", b"X-AWAYABC:")
+    )
+
+    event = parse(payload).events[0]
+
+    assert event.home_provider_code is None
+    assert event.away_provider_code is None
+
+
+@pytest.mark.parametrize(
+    "unsafe_url",
+    [
+        "https://www.oefb.at:444/cup/Spiel/1000000",
+        "https://www.oefb.at/oefb/Spiel/1000000",
+        "https://user@www.oefb.at/cup/Spiel/1000000",
+        "https://www.oefb.at/cup/Spiel/1000000#fragment",
+    ],
+)
+def test_parser_rejects_unsafe_official_url_shape(unsafe_url: str) -> None:
+    payload = calendar_payload().replace(
+        b"URL:https://www.oefb.at/cup/Spiel/1000000?synthetic=true",
+        f"URL:{unsafe_url}".encode(),
+    )
+
+    with pytest.raises(OefbIcalIntegrityError, match="unsafe official URL"):
         parse(payload)
 
 

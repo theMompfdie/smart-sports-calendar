@@ -12,7 +12,7 @@ from app.providers.oefb_ical.models import OefbIcalSnapshot
 from app.providers.oefb_ical.profiles import OEFB_CUP_PROFILE
 
 EXPECTED_PARTICIPANT_COUNT = 64
-SUMMARY_SEPARATOR = " - "
+SUMMARY_SEPARATOR = " : "
 
 
 class OefbIcalCatalogCandidateError(RuntimeError):

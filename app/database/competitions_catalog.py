@@ -65,6 +65,15 @@ COMPETITION_CATALOG = (
         region="Germany",
         calendar_category="SMART | Germany",
     ),
+    CompetitionCatalogEntry(
+        competition_key="oefb_cup",
+        name="UNIQA ÖFB Cup",
+        short_name="ÖFB Cup",
+        country_code="AT",
+        competition_format=CompetitionFormat.KNOCKOUT_CUP,
+        region="Austria",
+        calendar_category="SMART | Austria",
+    ),
 )
 
 

@@ -68,7 +68,7 @@ def test_catalog_observation_rejects_incomplete_participant_set() -> None:
 
 def test_catalog_observation_rejects_ambiguous_summary() -> None:
     payload = calendar_payload(event_count=32).replace(
-        b"SUMMARY:Home 0 - Away 0",
+        b"SUMMARY:Home 0 : Away 0",
         b"SUMMARY:Home 0 vs Away 0",
     )
 
@@ -88,9 +88,20 @@ def test_catalog_observation_rejects_name_change_for_stable_id() -> None:
 
 def test_catalog_observation_rejects_same_name_for_different_ids() -> None:
     payload = calendar_payload(event_count=32).replace(
-        b"SUMMARY:Home 1 - Away 1",
-        b"SUMMARY:Home 0 - Away 1",
+        b"SUMMARY:Home 1 : Away 1",
+        b"SUMMARY:Home 0 : Away 1",
     )
 
     with pytest.raises(OefbIcalCatalogCandidateError, match="inconsistent identities"):
         observe_oefb_ical_catalog(snapshot(payload=payload))
+
+
+def test_catalog_observation_preserves_hyphens_inside_team_names() -> None:
+    payload = calendar_payload(event_count=32).replace(
+        b"SUMMARY:Home 0 : Away 0",
+        b"SUMMARY:Home - United : Away 0",
+    )
+
+    evidence = observe_oefb_ical_catalog(snapshot(payload=payload))
+
+    assert evidence.participants[0].provider_name == "Home - United"
