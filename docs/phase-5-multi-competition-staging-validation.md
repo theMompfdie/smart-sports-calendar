@@ -65,7 +65,10 @@ FOOTBALL_DATA_REQUESTS_PER_MINUTE=10
 FOOTBALL_DATA_MINIMUM_REQUEST_INTERVAL_SECONDS=6.1
 OPENLIGADB_ENABLED=true
 OPENLIGADB_MINIMUM_REQUEST_INTERVAL_SECONDS=1
-SOURCE_JOBS_JSON=[{"job_key":"football-data-premier-league","source_key":"football_data","sport_key":"football","competition_key":"premier_league","season_key":"2026_27","role":"authoritative","interval_seconds":21600},{"job_key":"football-data-bundesliga","source_key":"football_data","sport_key":"football","competition_key":"bundesliga","season_key":"2026_27","role":"authoritative","interval_seconds":21600},{"job_key":"football-data-championship","source_key":"football_data","sport_key":"football","competition_key":"championship","season_key":"2026_27","role":"authoritative","interval_seconds":21600},{"job_key":"openligadb-dfb-pokal","source_key":"openligadb","sport_key":"football","competition_key":"dfb_pokal","season_key":"2026_27","role":"authoritative","interval_seconds":21600},{"job_key":"openligadb-second-bundesliga","source_key":"openligadb","sport_key":"football","competition_key":"second_bundesliga","season_key":"2026_27","role":"authoritative","interval_seconds":21600}]
+OEFB_ICAL_ENABLED=true
+OEFB_ICAL_FEED_URL=<deployment-secret>
+OEFB_ICAL_MINIMUM_POLL_INTERVAL_SECONDS=21600
+SOURCE_JOBS_JSON=[{"job_key":"football-data-premier-league","source_key":"football_data","sport_key":"football","competition_key":"premier_league","season_key":"2026_27","role":"authoritative","interval_seconds":21600},{"job_key":"football-data-bundesliga","source_key":"football_data","sport_key":"football","competition_key":"bundesliga","season_key":"2026_27","role":"authoritative","interval_seconds":21600},{"job_key":"football-data-championship","source_key":"football_data","sport_key":"football","competition_key":"championship","season_key":"2026_27","role":"authoritative","interval_seconds":21600},{"job_key":"openligadb-dfb-pokal","source_key":"openligadb","sport_key":"football","competition_key":"dfb_pokal","season_key":"2026_27","role":"authoritative","interval_seconds":21600},{"job_key":"openligadb-second-bundesliga","source_key":"openligadb","sport_key":"football","competition_key":"second_bundesliga","season_key":"2026_27","role":"authoritative","interval_seconds":21600},{"job_key":"oefb-ical-oefb-cup","source_key":"oefb_ical","sport_key":"football","competition_key":"oefb_cup","season_key":"2026_27","role":"authoritative","interval_seconds":21600}]
 ```
 
 Keep the official provider base URLs unchanged except during the controlled
@@ -93,6 +96,7 @@ python -m app.operations.football_data_qualification --competition bundesliga --
 python -m app.operations.football_data_qualification --competition championship --season 2026
 python -m app.operations.openligadb_qualification
 python -m app.operations.openligadb_qualification --competition 2-bundesliga
+python -m app.operations.oefb_ical_catalog_candidates
 ```
 
 Retain only the generated aggregate JSON. Compare counts, season boundaries,
@@ -104,6 +108,9 @@ retains an explicit UTC kickoff; an unexpected non-empty timezone must fail.
 A changed DFB-Pokal count can be valid as later rounds become known, but its
 competition, season, six-group inventory, participant mapping, and
 permanent-partial boundary must remain valid.
+The ÖFB observation must contain exactly 48 current-season fixtures and the 64
+reviewed participant identities. The operator enters the opaque feed URL only
+at the interactive prompt; the URL and raw payload must not be retained.
 
 ## Read-only candidate evidence
 
@@ -114,10 +121,10 @@ calendar cycles have completed:
 docker compose exec -T calendar-sync python -m app.operations.staging_evidence --database /data/sports.db --limit 50 --validate-phase-5-candidate
 ```
 
-The command fails unless it finds exactly the five approved authorities, 380
+The command fails unless it finds exactly the six approved authorities, 380
 Premier League fixtures, 306 Bundesliga fixtures, 552 Championship
-regular-season fixtures, 306 2. Bundesliga fixtures, a non-empty DFB-Pokal
-scope, one source mapping and one synchronized calendar
+regular-season fixtures, 306 2. Bundesliga fixtures, 48 ÖFB-Cup fixtures, a
+non-empty DFB-Pokal scope, one source mapping and one synchronized calendar
 mapping per fixture, zero revision-pending mappings, one calendar target per
 competition, and safe lifecycle flags on the latest run of each job. It emits
 only aggregate counts, public canonical keys, timestamps, status totals,
@@ -208,7 +215,7 @@ candidate validator. Confirm `database_quick_check=ok`, the expected authority
 and fixture aggregates, and stable fingerprints. Then stop the temporary
 recovery container. Volume removal remains a separate explicit operator action.
 
-## Evidence template for #122, #119, and #132
+## Evidence template for #122, #119, #132, and #145
 
 ```markdown
 ### Phase 5 multi-competition staging record
@@ -216,11 +223,12 @@ recovery container. Volume removal remains a separate explicit operator action.
 - Candidate commit/tag: `<public Git reference>`
 - Validation window (UTC): `<start>` to `<end>`
 - Staging/production isolation: `<pass/fail>`
-- Exact five-authority configuration: `<pass/fail>`
+- Exact six-authority configuration: `<pass/fail>`
 - Fresh Premier League qualification: `<pass/fail and aggregate comparison>`
 - Fresh Bundesliga qualification: `<pass/fail and aggregate comparison>`
 - Fresh DFB-Pokal qualification: `<pass/fail and aggregate comparison>`
 - Fresh 2. Bundesliga qualification: `<pass/fail and aggregate comparison>`
+- Fresh ÖFB-Cup contract observation: `<pass/fail and aggregate comparison>`
 - Initial SQLite and Outlook convergence: `<pass/fail>`
 - Provider attribution: `<pass/fail>`
 - Unchanged-cycle idempotency: `<pass/fail>`
@@ -228,6 +236,7 @@ recovery container. Volume removal remains a separate explicit operator action.
 - Interrupted-run deterministic evidence: `<test names and result>`
 - football-data.org failure and recovery: `<pass/fail>`
 - OpenLigaDB failure and recovery: `<pass/fail>`
+- ÖFB iCalendar failure and recovery: `<pass/fail>`
 - Backup integrity and isolated restore: `<pass/fail>`
 - Secret and identifier review: `<pass/fail>`
 - Follow-up defects: `<issue numbers or none>`

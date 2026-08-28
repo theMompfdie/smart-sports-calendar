@@ -6,8 +6,13 @@ import pytest
 from app.application.football_data_premier_league_service import (
     register_football_data_source,
 )
+from app.application.oefb_ical_competition_service import register_oefb_ical_source
 from app.application.openligadb_competition_service import register_openligadb_source
-from app.config.settings import FootballDataSettings, OpenLigaDBSettings
+from app.config.settings import (
+    FootballDataSettings,
+    OefbIcalSettings,
+    OpenLigaDBSettings,
+)
 from app.database.calendar_event_mappings_repository import (
     CalendarEventMappingsRepository,
 )
@@ -94,6 +99,15 @@ def phase_5_candidate_evidence() -> StagingEvidence:
             False,
             False,
             306,
+        ),
+        (
+            "oefb-ical-oefb-cup",
+            "oefb_ical",
+            "oefb_cup",
+            "partial",
+            False,
+            False,
+            48,
         ),
     )
     return StagingEvidence(
@@ -378,7 +392,7 @@ def test_collect_staging_evidence_reports_safe_authoritative_fixture_scope(
         assert excluded_value not in rendered
 
 
-def test_collect_staging_evidence_keeps_five_authorities_isolated(
+def test_collect_staging_evidence_keeps_six_authorities_isolated(
     tmp_path: Path,
 ) -> None:
     database_path = create_database(tmp_path)
@@ -396,6 +410,13 @@ def test_collect_staging_evidence_keeps_five_authorities_isolated(
         FootballDataSettings(enabled=True, api_key="provider-secret"), sources
     )
     openligadb = register_openligadb_source(OpenLigaDBSettings(enabled=True), sources)
+    oefb_ical = register_oefb_ical_source(
+        OefbIcalSettings(
+            enabled=True,
+            feed_url="https://www.fussballoesterreich.at/private.ics",
+        ),
+        sources,
+    )
     scopes = (
         ("premier_league", "football-data-premier-league", football_data.id),
         ("bundesliga", "football-data-bundesliga", football_data.id),
@@ -406,6 +427,7 @@ def test_collect_staging_evidence_keeps_five_authorities_isolated(
             "openligadb-second-bundesliga",
             openligadb.id,
         ),
+        ("oefb_cup", "oefb-ical-oefb-cup", oefb_ical.id),
     )
     assignments: list[SourceAssignmentWrite] = []
     events = SportsEventsRepository(database_path)
@@ -461,6 +483,7 @@ def test_collect_staging_evidence_keeps_five_authorities_isolated(
         "football-data-bundesliga",
         "football-data-championship",
         "openligadb-dfb-pokal",
+        "oefb-ical-oefb-cup",
         "football-data-premier-league",
         "openligadb-second-bundesliga",
     ]
@@ -470,18 +493,20 @@ def test_collect_staging_evidence_keeps_five_authorities_isolated(
         "bundesliga",
         "championship",
         "dfb_pokal",
+        "oefb_cup",
         "second_bundesliga",
     }
     assert fixture_scopes["premier_league"].source_key == "football_data"
     assert fixture_scopes["bundesliga"].source_key == "football_data"
     assert fixture_scopes["championship"].source_key == "football_data"
     assert fixture_scopes["dfb_pokal"].source_key == "openligadb"
+    assert fixture_scopes["oefb_cup"].source_key == "oefb_ical"
     assert fixture_scopes["second_bundesliga"].source_key == "openligadb"
     assert all(scope.source_event_mappings == 1 for scope in fixture_scopes.values())
     assert all(scope.calendar_mappings == 1 for scope in fixture_scopes.values())
     assert all(scope.calendar_targets == 1 for scope in fixture_scopes.values())
     assert (
-        len({scope.source_event_ids_sha256 for scope in fixture_scopes.values()}) == 5
+        len({scope.source_event_ids_sha256 for scope in fixture_scopes.values()}) == 6
     )
 
 
@@ -522,6 +547,22 @@ def test_validate_phase_5_candidate_rejects_destructive_dfb_pokal_scope() -> Non
     with pytest.raises(
         StagingEvidenceValidationError,
         match="latest provider run is invalid for dfb_pokal",
+    ):
+        validate_phase_5_candidate(replace(evidence, recent_runs=runs))
+
+
+def test_validate_phase_5_candidate_rejects_destructive_oefb_cup_scope() -> None:
+    evidence = phase_5_candidate_evidence()
+    runs = tuple(
+        replace(run, complete=True, removal_eligible=True)
+        if run.job_key == "oefb-ical-oefb-cup"
+        else run
+        for run in evidence.recent_runs
+    )
+
+    with pytest.raises(
+        StagingEvidenceValidationError,
+        match="latest provider run is invalid for oefb_cup",
     ):
         validate_phase_5_candidate(replace(evidence, recent_runs=runs))
 
