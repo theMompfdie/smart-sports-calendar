@@ -14,7 +14,13 @@ from app.application.api_football_import_runtime_service import (
     ApiFootballImportRuntimeService,
 )
 from app.application.container import ApplicationContainer
-from app.config.settings import ApiFootballSettings, FootballDataSettings, Settings
+from app.config.settings import (
+    ApiFootballSettings,
+    FootballDataSettings,
+    OefbIcalSettings,
+    OpenLigaDBSettings,
+    Settings,
+)
 from app.database.fixture_import_repository import FixtureImportRepository
 from app.database.synchronization_query_repository import (
     SynchronizationQueryRepository,
@@ -73,13 +79,42 @@ def api_football_job(
     )
 
 
-def football_data_job() -> SourceJobDefinition:
+def football_data_job(
+    competition_key: str = "premier_league",
+    interval_seconds: int = 3600,
+) -> SourceJobDefinition:
     return SourceJobDefinition(
-        job_key="football-data-premier-league",
+        job_key=f"football-data-{competition_key.replace('_', '-')}",
         source_key="football_data",
         role=SourceRole.AUTHORITATIVE,
-        scope=SourceScope("football", "premier_league", "2026_27"),
-        interval_seconds=3600,
+        scope=SourceScope("football", competition_key, "2026_27"),
+        interval_seconds=interval_seconds,
+    )
+
+
+def openligadb_job(
+    competition_key: str = "dfb_pokal",
+) -> SourceJobDefinition:
+    return SourceJobDefinition(
+        job_key=f"openligadb-{competition_key.replace('_', '-')}",
+        source_key="openligadb",
+        role=SourceRole.AUTHORITATIVE,
+        scope=SourceScope("football", competition_key, "2026_27"),
+        interval_seconds=21600,
+    )
+
+
+def oefb_ical_job(
+    *,
+    competition_key: str = "oefb_cup",
+    interval_seconds: int = 21600,
+) -> SourceJobDefinition:
+    return SourceJobDefinition(
+        job_key="oefb-ical-oefb-cup",
+        source_key="oefb_ical",
+        role=SourceRole.AUTHORITATIVE,
+        scope=SourceScope("football", competition_key, "2026_27"),
+        interval_seconds=interval_seconds,
     )
 
 
@@ -116,6 +151,242 @@ def test_container_registers_authoritative_football_data_runtime(
         ("football-data-premier-league", 3600),
         ("system:calendar-synchronization", 300),
     ]
+
+
+@patch("app.application.container.FootballDataClient")
+def test_container_builds_isolated_competition_runtimes_with_shared_client(
+    client_type: MagicMock, tmp_path: Path
+) -> None:
+    shared_client = MagicMock()
+    client_type.return_value = shared_client
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        football_data=FootballDataSettings(enabled=True, api_key="secret"),
+        source_jobs=(
+            football_data_job(),
+            football_data_job("bundesliga", 21600),
+            football_data_job("championship", 21600),
+        ),
+    )
+
+    container = ApplicationContainer(settings=settings)
+
+    assert set(container.football_data_import_runtime_services) == {
+        "football-data-premier-league",
+        "football-data-bundesliga",
+        "football-data-championship",
+    }
+    assert all(
+        adapter._client is shared_client
+        for adapter in container.football_data_adapters.values()
+    )
+    assert [job.job_key for job in container.source_scheduled_jobs] == [
+        "football-data-premier-league",
+        "football-data-bundesliga",
+        "football-data-championship",
+    ]
+    assert [job.interval_seconds for job in container.source_scheduled_jobs] == [
+        3600,
+        21600,
+        21600,
+    ]
+    premier_league_runtime = container.football_data_import_runtime_services[
+        "football-data-premier-league"
+    ]
+    bundesliga_runtime = container.football_data_import_runtime_services[
+        "football-data-bundesliga"
+    ]
+    championship_runtime = container.football_data_import_runtime_services[
+        "football-data-championship"
+    ]
+    with (
+        patch.object(premier_league_runtime, "run") as premier_league_run,
+        patch.object(bundesliga_runtime, "run") as bundesliga_run,
+        patch.object(championship_runtime, "run") as championship_run,
+    ):
+        for scheduled_job in container.source_scheduled_jobs:
+            scheduled_job.task()
+
+    premier_league_run.assert_called_once_with()
+    bundesliga_run.assert_called_once_with()
+    championship_run.assert_called_once_with()
+
+
+def test_container_rejects_unsupported_football_data_profile(tmp_path: Path) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        football_data=FootballDataSettings(enabled=True, api_key="secret"),
+        source_jobs=(football_data_job("fa_cup"),),
+    )
+
+    with pytest.raises(SourceConfigurationError, match="supported authoritative"):
+        ApplicationContainer(settings=settings)
+
+
+def test_container_requires_matching_openligadb_job(tmp_path: Path) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        openligadb=OpenLigaDBSettings(enabled=True),
+    )
+
+    with pytest.raises(SourceConfigurationError, match="OPENLIGADB_ENABLED"):
+        ApplicationContainer(settings=settings)
+
+
+@patch("app.application.container.OpenLigaDBClient")
+def test_container_registers_authoritative_openligadb_runtime(
+    client_type: MagicMock, tmp_path: Path
+) -> None:
+    client_type.return_value = MagicMock()
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        openligadb=OpenLigaDBSettings(enabled=True),
+        source_jobs=(openligadb_job(),),
+    )
+
+    container = ApplicationContainer(settings=settings)
+
+    assert container.openligadb_import_runtime_service is not None
+    assert [job.job_key for job in container.source_scheduled_jobs] == [
+        "openligadb-dfb-pokal"
+    ]
+    assert [
+        (job.job_key, job.interval_seconds) for job in container.scheduled_jobs
+    ] == [
+        ("openligadb-dfb-pokal", 21600),
+        ("system:calendar-synchronization", 300),
+    ]
+
+
+@patch("app.application.container.OpenLigaDBClient")
+def test_container_builds_isolated_openligadb_competition_runtimes(
+    client_type: MagicMock, tmp_path: Path
+) -> None:
+    shared_client = MagicMock()
+    client_type.return_value = shared_client
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        openligadb=OpenLigaDBSettings(enabled=True),
+        source_jobs=(
+            openligadb_job(),
+            openligadb_job("second_bundesliga"),
+        ),
+    )
+
+    container = ApplicationContainer(settings=settings)
+
+    assert set(container.openligadb_import_runtime_services) == {
+        "openligadb-dfb-pokal",
+        "openligadb-second-bundesliga",
+    }
+    assert all(
+        adapter._client is shared_client
+        for adapter in container.openligadb_adapters.values()
+    )
+    assert [job.job_key for job in container.source_scheduled_jobs] == [
+        "openligadb-dfb-pokal",
+        "openligadb-second-bundesliga",
+    ]
+    dfb_runtime = container.openligadb_import_runtime_services["openligadb-dfb-pokal"]
+    second_bundesliga_runtime = container.openligadb_import_runtime_services[
+        "openligadb-second-bundesliga"
+    ]
+    with (
+        patch.object(dfb_runtime, "run") as dfb_run,
+        patch.object(second_bundesliga_runtime, "run") as second_bundesliga_run,
+    ):
+        for scheduled_job in container.source_scheduled_jobs:
+            scheduled_job.task()
+
+    dfb_run.assert_called_once_with()
+    second_bundesliga_run.assert_called_once_with()
+    assert [
+        (job.job_key, job.interval_seconds) for job in container.scheduled_jobs
+    ] == [
+        ("openligadb-dfb-pokal", 21600),
+        ("openligadb-second-bundesliga", 21600),
+        ("system:calendar-synchronization", 300),
+    ]
+
+
+def test_container_rejects_unsupported_openligadb_scope(tmp_path: Path) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        openligadb=OpenLigaDBSettings(enabled=True),
+        source_jobs=(openligadb_job("bundesliga"),),
+    )
+
+    with pytest.raises(SourceConfigurationError, match="supported authoritative"):
+        ApplicationContainer(settings=settings)
+
+
+def test_container_requires_matching_oefb_ical_job(tmp_path: Path) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        oefb_ical=OefbIcalSettings(
+            enabled=True,
+            feed_url="https://www.fussballoesterreich.at/private.ics",
+        ),
+    )
+
+    with pytest.raises(SourceConfigurationError, match="OEFB_ICAL_ENABLED"):
+        ApplicationContainer(settings=settings)
+
+
+@patch("app.application.container.OefbIcalClient")
+def test_container_registers_authoritative_oefb_ical_runtime(
+    client_type: MagicMock, tmp_path: Path
+) -> None:
+    client_type.return_value = MagicMock()
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        oefb_ical=OefbIcalSettings(
+            enabled=True,
+            feed_url="https://www.fussballoesterreich.at/private.ics",
+        ),
+        source_jobs=(oefb_ical_job(),),
+    )
+
+    container = ApplicationContainer(settings=settings)
+
+    assert container.oefb_ical_import_runtime_service is not None
+    assert [job.job_key for job in container.source_scheduled_jobs] == [
+        "oefb-ical-oefb-cup"
+    ]
+    assert [
+        (job.job_key, job.interval_seconds) for job in container.scheduled_jobs
+    ] == [
+        ("oefb-ical-oefb-cup", 21600),
+        ("system:calendar-synchronization", 300),
+    ]
+
+
+def test_container_rejects_unsupported_oefb_ical_scope(tmp_path: Path) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        oefb_ical=OefbIcalSettings(
+            enabled=True,
+            feed_url="https://www.fussballoesterreich.at/private.ics",
+        ),
+        source_jobs=(oefb_ical_job(competition_key="bundesliga"),),
+    )
+
+    with pytest.raises(SourceConfigurationError, match="exactly one authoritative"):
+        ApplicationContainer(settings=settings)
+
+
+def test_container_rejects_oefb_ical_polling_below_minimum(tmp_path: Path) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        oefb_ical=OefbIcalSettings(
+            enabled=True,
+            feed_url="https://www.fussballoesterreich.at/private.ics",
+        ),
+        source_jobs=(oefb_ical_job(interval_seconds=3600),),
+    )
+
+    with pytest.raises(SourceConfigurationError, match="must not be shorter"):
+        ApplicationContainer(settings=settings)
 
 
 def test_run_initializes_sports_catalog(

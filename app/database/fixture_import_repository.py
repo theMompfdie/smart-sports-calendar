@@ -1,10 +1,16 @@
 import json
 import sqlite3
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
+
+from app.domain.competition_lifecycle import (
+    CompetitionFormat,
+    CompetitionLifecycleScope,
+    FixtureObservationScopeKind,
+)
 
 
 class FixtureImportDecision(StrEnum):
@@ -57,8 +63,18 @@ class FixtureImportScopeRecord:
     window_start_utc: datetime | None
     window_end_utc: datetime | None
     authoritative: bool
+    lifecycle: CompetitionLifecycleScope
+    filtered: bool
     observation_id: str
     observed_at_utc: datetime
+
+    @property
+    def removal_eligible(self) -> bool:
+        return (
+            self.authoritative
+            and not self.filtered
+            and self.lifecycle.removal_reconciliation_supported
+        )
 
 
 @dataclass(frozen=True)
@@ -95,6 +111,7 @@ class FixtureImportRepository:
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             try:
+                self._validate_scope(connection, scope)
                 for fixture in fixtures:
                     result = self._import_fixture(
                         connection=connection,
@@ -106,7 +123,7 @@ class FixtureImportRepository:
                     if result.event_id is not None:
                         observed_event_ids.add(result.event_id)
 
-                if scope.authoritative:
+                if scope.removal_eligible:
                     results.extend(
                         self._reconcile_missing(
                             connection=connection,
@@ -121,6 +138,86 @@ class FixtureImportRepository:
                 raise
 
         return FixtureImportResult(items=tuple(results))
+
+    @staticmethod
+    def _validate_scope(
+        connection: sqlite3.Connection,
+        scope: FixtureImportScopeRecord,
+    ) -> None:
+        if scope.competition_id <= 0 or scope.season_id <= 0:
+            raise FixtureImportConflictError(
+                "Fixture import scope IDs must be positive."
+            )
+        if not scope.observation_id.strip():
+            raise FixtureImportConflictError(
+                "Fixture import observation ID must not be blank."
+            )
+        if (
+            scope.observed_at_utc.tzinfo is None
+            or scope.observed_at_utc.utcoffset() != UTC.utcoffset(scope.observed_at_utc)
+        ):
+            raise FixtureImportConflictError(
+                "Fixture import observation time must be timezone-aware UTC."
+            )
+        if scope.filtered and scope.lifecycle.complete:
+            raise FixtureImportConflictError(
+                "A filtered fixture observation cannot declare a complete scope."
+            )
+        if (
+            scope.lifecycle.scope_kind is FixtureObservationScopeKind.COMPLETE_SEASON
+            and (scope.window_start_utc is None or scope.window_end_utc is None)
+        ):
+            raise FixtureImportConflictError(
+                "A complete-season fixture observation requires a bounded UTC window."
+            )
+        for field_name, value in (
+            ("window_start_utc", scope.window_start_utc),
+            ("window_end_utc", scope.window_end_utc),
+        ):
+            if value is not None and (
+                value.tzinfo is None or value.utcoffset() != UTC.utcoffset(value)
+            ):
+                raise FixtureImportConflictError(
+                    f"Fixture import {field_name} must be timezone-aware UTC."
+                )
+        if (
+            scope.window_start_utc is not None
+            and scope.window_end_utc is not None
+            and scope.window_start_utc > scope.window_end_utc
+        ):
+            raise FixtureImportConflictError(
+                "Fixture import window start must not follow its end."
+            )
+        row = connection.execute(
+            """
+            SELECT competition.competition_type
+            FROM competitions AS competition
+            JOIN seasons AS season ON season.competition_id = competition.id
+            WHERE competition.id = ? AND season.id = ?
+            """,
+            (scope.competition_id, scope.season_id),
+        ).fetchone()
+        if row is None:
+            raise FixtureImportConflictError(
+                "Fixture import scope does not resolve to one canonical "
+                "competition and season."
+            )
+        persisted_type = row["competition_type"]
+        if persisted_type is None:
+            raise FixtureImportConflictError(
+                "Canonical competition format is required for fixture import."
+            )
+        try:
+            competition_format = CompetitionFormat(persisted_type)
+        except ValueError as error:
+            raise FixtureImportConflictError(
+                f"Canonical competition format is unknown: {persisted_type!r}."
+            ) from error
+        if competition_format is not scope.lifecycle.competition_format:
+            raise FixtureImportConflictError(
+                "Fixture import lifecycle format conflicts with the canonical "
+                "competition format."
+            )
 
     def _import_fixture(
         self,
@@ -488,16 +585,23 @@ class FixtureImportRepository:
         scope: FixtureImportScopeRecord,
     ) -> list[FixtureImportItemResult]:
         timestamp = scope.observed_at_utc.isoformat()
+        boundary_sql, boundary_parameters = self._reconciliation_boundary(scope)
         rows = connection.execute(
-            """
+            f"""
             SELECT sm.external_id, event.*
             FROM source_mappings AS sm
             JOIN sports_events AS event ON event.id = sm.internal_id
             WHERE sm.source_id = ? AND sm.object_type = 'event'
               AND event.competition_id = ? AND event.season_id = ?
+              {boundary_sql}
             ORDER BY event.id
             """,
-            (source_id, scope.competition_id, scope.season_id),
+            (
+                source_id,
+                scope.competition_id,
+                scope.season_id,
+                *boundary_parameters,
+            ),
         ).fetchall()
         results: list[FixtureImportItemResult] = []
         for event in rows:
@@ -566,6 +670,34 @@ class FixtureImportRepository:
                     )
                 )
         return results
+
+    @staticmethod
+    def _reconciliation_boundary(
+        scope: FixtureImportScopeRecord,
+    ) -> tuple[str, tuple[str, ...]]:
+        lifecycle = scope.lifecycle
+        if lifecycle.scope_kind is FixtureObservationScopeKind.COMPLETE_SEASON:
+            return "", ()
+        if lifecycle.scope_kind is FixtureObservationScopeKind.COMPLETE_STAGE:
+            if lifecycle.stage is None:
+                raise FixtureImportConflictError(
+                    "Complete-stage reconciliation requires a stage identifier."
+                )
+            return "AND event.stage = ?", (lifecycle.stage,)
+        if lifecycle.scope_kind is FixtureObservationScopeKind.COMPLETE_ROUND:
+            if lifecycle.round_name is None:
+                raise FixtureImportConflictError(
+                    "Complete-round reconciliation requires a round identifier."
+                )
+            if lifecycle.stage is None:
+                return "AND event.round_name = ?", (lifecycle.round_name,)
+            return (
+                "AND event.round_name = ? AND event.stage = ?",
+                (lifecycle.round_name, lifecycle.stage),
+            )
+        raise FixtureImportConflictError(
+            "Removal reconciliation requires a complete supported lifecycle scope."
+        )
 
     @staticmethod
     def _in_window(event: sqlite3.Row, scope: FixtureImportScopeRecord) -> bool:

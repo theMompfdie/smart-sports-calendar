@@ -16,6 +16,22 @@ class ParticipantsCatalogResult:
     season_participants: list[SeasonParticipant]
 
 
+@dataclass(frozen=True)
+class ParticipantCatalogEntry:
+    participant_key: str
+    name: str
+    short_name: str
+    country_code: str | None = None
+
+
+@dataclass(frozen=True)
+class SeasonParticipantsCatalogEntry:
+    competition_key: str
+    season_key: str
+    country_code: str
+    participants: tuple[ParticipantCatalogEntry, ...]
+
+
 PREMIER_LEAGUE_2026_27_TEAMS = (
     ("arsenal", "Arsenal", "Arsenal"),
     ("aston_villa", "Aston Villa", "Aston Villa"),
@@ -39,6 +55,338 @@ PREMIER_LEAGUE_2026_27_TEAMS = (
     ("tottenham_hotspur", "Tottenham Hotspur", "Spurs"),
 )
 
+BUNDESLIGA_2026_27_TEAMS = (
+    ("fc_koeln", "1. FC Köln", "1. FC Köln"),
+    ("fc_union_berlin", "1. FC Union Berlin", "Union Berlin"),
+    ("fsv_mainz_05", "1. FSV Mainz 05", "Mainz"),
+    ("bayer_04_leverkusen", "Bayer 04 Leverkusen", "Leverkusen"),
+    ("borussia_dortmund", "Borussia Dortmund", "Dortmund"),
+    (
+        "borussia_moenchengladbach",
+        "Borussia Mönchengladbach",
+        "M'gladbach",
+    ),
+    ("eintracht_frankfurt", "Eintracht Frankfurt", "Frankfurt"),
+    ("fc_augsburg", "FC Augsburg", "Augsburg"),
+    ("fc_bayern_muenchen", "FC Bayern München", "Bayern"),
+    ("fc_schalke_04", "FC Schalke 04", "Schalke"),
+    ("hamburger_sv", "Hamburger SV", "HSV"),
+    ("rb_leipzig", "RB Leipzig", "RB Leipzig"),
+    ("sc_freiburg", "SC Freiburg", "Freiburg"),
+    ("sc_paderborn_07", "SC Paderborn 07", "SC Paderborn"),
+    ("sv_elversberg", "SV 07 Elversberg", "Elversberg"),
+    ("werder_bremen", "SV Werder Bremen", "Bremen"),
+    ("tsg_hoffenheim", "TSG 1899 Hoffenheim", "Hoffenheim"),
+    ("vfb_stuttgart", "VfB Stuttgart", "Stuttgart"),
+)
+
+CHAMPIONSHIP_2026_27_TEAMS = (
+    ("birmingham_city", "Birmingham City", "Birmingham", "GB-ENG"),
+    ("blackburn_rovers", "Blackburn Rovers", "Blackburn", "GB-ENG"),
+    ("bolton_wanderers", "Bolton Wanderers", "Bolton", "GB-ENG"),
+    ("bristol_city", "Bristol City", "Bristol City", "GB-ENG"),
+    ("burnley", "Burnley", "Burnley", "GB-ENG"),
+    ("cardiff_city", "Cardiff City", "Cardiff", "GB-WLS"),
+    ("charlton_athletic", "Charlton Athletic", "Charlton", "GB-ENG"),
+    ("derby_county", "Derby County", "Derby County", "GB-ENG"),
+    ("lincoln_city", "Lincoln City", "Lincoln City", "GB-ENG"),
+    ("middlesbrough", "Middlesbrough", "Middlesbrough", "GB-ENG"),
+    ("millwall", "Millwall", "Millwall", "GB-ENG"),
+    ("norwich_city", "Norwich City", "Norwich", "GB-ENG"),
+    ("portsmouth", "Portsmouth", "Portsmouth", "GB-ENG"),
+    ("preston_north_end", "Preston North End", "Preston NE", "GB-ENG"),
+    ("queens_park_rangers", "Queens Park Rangers", "QPR", "GB-ENG"),
+    ("sheffield_united", "Sheffield United", "Sheffield Utd", "GB-ENG"),
+    ("southampton", "Southampton", "Southampton", "GB-ENG"),
+    ("stoke_city", "Stoke City", "Stoke", "GB-ENG"),
+    ("swansea_city", "Swansea City", "Swansea", "GB-WLS"),
+    ("watford", "Watford", "Watford", "GB-ENG"),
+    ("west_bromwich_albion", "West Bromwich Albion", "West Brom", "GB-ENG"),
+    ("west_ham_united", "West Ham United", "West Ham", "GB-ENG"),
+    (
+        "wolverhampton_wanderers",
+        "Wolverhampton Wanderers",
+        "Wolverhampton",
+        "GB-ENG",
+    ),
+    ("wrexham", "Wrexham", "Wrexham", "GB-WLS"),
+)
+
+SECOND_BUNDESLIGA_2026_27_TEAMS = (
+    ("vfl_osnabrueck", "VfL Osnabrück", "Osnabrück"),
+    ("hertha_bsc", "Hertha BSC", "Hertha"),
+    ("hannover_96", "Hannover 96", "Hannover"),
+    ("eintracht_braunschweig", "Eintracht Braunschweig", "Braunschweig"),
+    ("fc_kaiserslautern", "1. FC Kaiserslautern", "Kaiserslautern"),
+    ("fc_magdeburg", "1. FC Magdeburg", "Magdeburg"),
+    ("fc_nuernberg", "1. FC Nürnberg", "Nürnberg"),
+    ("arminia_bielefeld", "DSC Arminia Bielefeld", "Bielefeld"),
+    ("energie_cottbus", "Energie Cottbus", "Cottbus"),
+    ("fc_st_pauli", "FC St. Pauli", "St. Pauli"),
+    ("holstein_kiel", "Holstein Kiel", "Kiel"),
+    ("karlsruher_sc", "Karlsruher SC", "Karlsruhe"),
+    ("greuther_fuerth", "SpVgg Greuther Fürth", "Fürth"),
+    ("sv_darmstadt_98", "SV Darmstadt 98", "Darmstadt"),
+    ("vfl_bochum", "VfL Bochum", "Bochum"),
+    ("vfl_wolfsburg", "VfL Wolfsburg", "Wolfsburg"),
+    ("dynamo_dresden", "Dynamo Dresden", "Dresden"),
+    ("fc_heidenheim", "1. FC Heidenheim 1846", "Heidenheim"),
+)
+
+DFB_POKAL_2026_27_TEAMS = (
+    ("bayer_04_leverkusen", "Bayer 04 Leverkusen", "Leverkusen"),
+    ("borussia_dortmund", "Borussia Dortmund", "Dortmund"),
+    ("fc_schalke_04", "FC Schalke 04", "Schalke"),
+    ("vfb_stuttgart", "VfB Stuttgart", "Stuttgart"),
+    ("sc_paderborn_07", "SC Paderborn 07", "SC Paderborn"),
+    ("vfl_osnabrueck", "VfL Osnabrück", "Osnabrück"),
+    ("fc_bayern_muenchen", "FC Bayern München", "Bayern"),
+    ("hertha_bsc", "Hertha BSC", "Hertha"),
+    ("hannover_96", "Hannover 96", "Hannover"),
+    ("fc_koeln", "1. FC Köln", "1. FC Köln"),
+    ("erzgebirge_aue", "Erzgebirge Aue", "Aue"),
+    ("carl_zeiss_jena", "FC Carl Zeiss Jena", "Jena"),
+    ("eintracht_braunschweig", "Eintracht Braunschweig", "Braunschweig"),
+    ("fc_kaiserslautern", "1. FC Kaiserslautern", "Kaiserslautern"),
+    ("fc_magdeburg", "1. FC Magdeburg", "Magdeburg"),
+    ("fc_nuernberg", "1. FC Nürnberg", "Nürnberg"),
+    ("fc_union_berlin", "1. FC Union Berlin", "Union Berlin"),
+    ("fsv_mainz_05", "1. FSV Mainz 05", "Mainz"),
+    ("arminia_bielefeld", "DSC Arminia Bielefeld", "Bielefeld"),
+    (
+        "borussia_moenchengladbach",
+        "Borussia Mönchengladbach",
+        "M'gladbach",
+    ),
+    ("eintracht_frankfurt", "Eintracht Frankfurt", "Frankfurt"),
+    ("energie_cottbus", "Energie Cottbus", "Cottbus"),
+    ("fc_augsburg", "FC Augsburg", "Augsburg"),
+    ("fc_st_pauli", "FC St. Pauli", "St. Pauli"),
+    ("hamburger_sv", "Hamburger SV", "HSV"),
+    ("hansa_rostock", "Hansa Rostock", "Rostock"),
+    ("holstein_kiel", "Holstein Kiel", "Kiel"),
+    ("karlsruher_sc", "Karlsruher SC", "Karlsruhe"),
+    ("msv_duisburg", "MSV Duisburg", "Duisburg"),
+    ("rot_weiss_essen", "Rot-Weiss Essen", "Rot-Weiss Essen"),
+    ("sc_freiburg", "SC Freiburg", "Freiburg"),
+    ("sc_verl", "SC Verl", "Verl"),
+    ("greuther_fuerth", "SpVgg Greuther Fürth", "Fürth"),
+    ("sv_darmstadt_98", "SV Darmstadt 98", "Darmstadt"),
+    ("tsv_1860_muenchen", "TSV 1860 München", "1860 München"),
+    ("vfl_bochum", "VfL Bochum", "Bochum"),
+    ("vfl_wolfsburg", "VfL Wolfsburg", "Wolfsburg"),
+    ("werder_bremen", "SV Werder Bremen", "Bremen"),
+    ("wehen_wiesbaden", "SV Wehen Wiesbaden", "Wiesbaden"),
+    ("tsg_hoffenheim", "TSG 1899 Hoffenheim", "Hoffenheim"),
+    ("dynamo_dresden", "Dynamo Dresden", "Dresden"),
+    ("fortuna_duesseldorf", "Fortuna Düsseldorf", "Düsseldorf"),
+    ("preussen_muenster", "Preußen Münster", "Münster"),
+    ("sv_elversberg", "SV 07 Elversberg", "Elversberg"),
+    ("fc_heidenheim", "1. FC Heidenheim 1846", "Heidenheim"),
+    ("hallescher_fc", "Hallescher FC", "Halle"),
+    ("sonnenhof_grossaspach", "SG Sonnenhof Großaspach", "Großaspach"),
+    ("waldhof_mannheim", "SV Waldhof Mannheim", "Mannheim"),
+    ("eintracht_trier", "Eintracht Trier", "Trier"),
+    ("rb_leipzig", "RB Leipzig", "RB Leipzig"),
+    ("viktoria_koeln", "Viktoria Köln", "Viktoria Köln"),
+    ("bahlinger_sc", "Bahlinger SC", "Bahlinger SC"),
+    ("fc_saarbruecken", "1. FC Saarbrücken", "Saarbrücken"),
+    ("lueneburger_sk_hansa", "Lüneburger SK Hansa", "LSK"),
+    ("tsv_schott_mainz", "TSV Schott Mainz", "SCHOTT"),
+    ("westfalia_rhynern", "SV Westfalia Rhynern", "Rhynern"),
+    ("vsg_altglienicke", "VSG Altglienicke Berlin", "Altglienicke"),
+    ("ssv_jeddeloh", "SSV Jeddeloh 2", "SSV Jeddeloh"),
+    ("wuerzburger_kickers", "Würzburger Kickers", "Würzburg"),
+    ("sc_st_toenis", "SC St. Tönis", "St. Tönis"),
+    ("phoenix_luebeck", "1. FC Phönix Lübeck", "Phönix Lübeck"),
+    ("sv_hemelingen", "SV Hemelingen", "Hemelingen"),
+    ("vfb_krieschow", "VfB 1921 Krieschow", "Krieschow"),
+    ("hamburg_eimsbuetteler_bc", "Hamburg Eimsbütteler BC", "HEBC"),
+)
+
+OEFB_CUP_2026_27_TEAMS = (
+    ("wiener_viktoria", "Wiener Viktoria", "Wiener Viktoria"),
+    ("fac_wien", "FAC Wien", "FAC Wien"),
+    ("fk_austria_wien", "FK Austria Wien", "Austria Wien"),
+    ("sv_wienerberg_1921", "SV Wienerberg 1921", "SV Wienerberg"),
+    ("sk_rapid", "SK Rapid", "SK Rapid"),
+    ("wiener_sport_club", "Wiener Sport-Club", "Wiener Sport-Club"),
+    ("first_vienna_fc_1894", "First Vienna FC 1894", "First Vienna"),
+    ("sr_donaufeld", "SR Donaufeld", "SR Donaufeld"),
+    ("sv_leobendorf", "SV Leobendorf", "SV Leobendorf"),
+    ("admira_wacker", "Admira Wacker", "Admira Wacker"),
+    ("fcm_traiskirchen", "FCM Traiskirchen", "Traiskirchen"),
+    (
+        "scheiblingkirchen_warth",
+        "Scheiblingkirchen-Warth",
+        "Scheiblingkirchen-Warth",
+    ),
+    ("wieselburg", "Wieselburg", "Wieselburg"),
+    (
+        "spg_krems_sc_getzersdorf",
+        "SPG Krems SC / Getzersdorf KM",
+        "SPG Krems/Getzersdorf",
+    ),
+    ("sv_horn", "SV Horn", "SV Horn"),
+    ("sku_amstetten", "SKU Ertl Glas Amstetten", "SKU Amstetten"),
+    ("skn_st_poelten", "SKN St. Pölten", "SKN St. Pölten"),
+    ("scr_altach", "SCR Altach", "SCR Altach"),
+    ("vfb_hohenems", "VfB Hohenems", "VfB Hohenems"),
+    ("fc_lustenau_1907", "FC Lustenau 1907", "FC Lustenau"),
+    ("fc_lauterach", "intemann FC Lauterach", "FC Lauterach"),
+    ("fc_dornbirn_1913", "FC Dornbirn 1913", "FC Dornbirn"),
+    ("sc_austria_lustenau", "SC Austria Lustenau", "Austria Lustenau"),
+    ("sw_bregenz", "SW Bregenz", "SW Bregenz"),
+    ("lask", "LASK", "LASK"),
+    ("fc_blau_weiss_linz", "FC Blau Weiss Linz", "Blau-Weiss Linz"),
+    (
+        "spg_bad_leonfelden_schenkenfelden",
+        "SPG VORTUNA Bad Leonfelden/Schenkenfelden",
+        "SPG Bad Leonfelden/Schenkenfelden",
+    ),
+    ("sk_vorwaerts_steyr", "SK Vorwärts Steyr", "Vorwärts Steyr"),
+    ("union_dietach", "Union PROCON Dietach", "Union Dietach"),
+    ("fc_hertha_wels", "FC Hertha Wels", "Hertha Wels"),
+    (
+        "spg_wallern_st_marienkirchen",
+        "SPG Wallern / St. Marienk./P KM",
+        "SPG Wallern/St. Marienkirchen",
+    ),
+    ("sv_ried", "SV Oberbank Ried", "SV Ried"),
+    ("union_gurten", "Gurten", "Gurten"),
+    (
+        "sk_bischofshofen",
+        "Bischofshofen Sportklub 1933",
+        "SK Bischofshofen",
+    ),
+    ("sv_wals_gruenau", "SV Wals-Grünau", "SV Wals-Grünau"),
+    ("sv_kuchl", "SV Kuchl", "SV Kuchl"),
+    ("fc_red_bull_salzburg", "FC Red Bull Salzburg", "Salzburg"),
+    ("sv_seekirchen", "SV teampool Seekirchen", "SV Seekirchen"),
+    ("sv_austria_salzburg", "SV Austria Salzburg", "Austria Salzburg"),
+    ("sc_schwaz", "SC EGLO Schwaz", "SC Schwaz"),
+    ("sc_imst", "SC Imst", "SC Imst"),
+    ("fc_kitzbuehel", "FC Powerspine Kitzbühel", "FC Kitzbühel"),
+    ("svg_reichenau", "SVG Reichenau", "SVG Reichenau"),
+    ("wsg_tirol", "WSG Tirol", "WSG Tirol"),
+    ("fc_wacker_innsbruck", "FC Wacker Innsbruck", "Wacker Innsbruck"),
+    (
+        "sv_leithaprodersdorf",
+        "SV Leithaprodersdorf",
+        "SV Leithaprodersdorf",
+    ),
+    ("sc_esv_parndorf_1919", "SC/ESV Parndorf 1919", "Parndorf"),
+    ("sv_oberwart", "SV Klöcher Bau Oberwart", "SV Oberwart"),
+    (
+        "mattersburger_sv_2020",
+        "Mattersburger Sportverein 2020",
+        "Mattersburger SV",
+    ),
+    ("sk_sturm_graz", "SK Puntigamer Sturm Graz", "Sturm Graz"),
+    ("grazer_ak_1902", "Grazer AK 1902", "Grazer AK"),
+    ("tsv_hartberg", "TSV Egger Glas Hartberg", "TSV Hartberg"),
+    ("sv_lafnitz", "Lafnitz", "Lafnitz"),
+    ("sc_kalsdorf", "Kalsdorf", "Kalsdorf"),
+    ("deutschlandsberger_sc", "Deutschlandsberg", "Deutschlandsberg"),
+    ("ask_voitsberg", "Voitsberg", "Voitsberg"),
+    ("dsv_leoben", "DSV Leoben", "DSV Leoben"),
+    ("ksv_1919", "KSV 1919", "KSV 1919"),
+    (
+        "sv_tillmitsch",
+        "SV Fleischereimaschinen Schenk Tillmitsch",
+        "SV Tillmitsch",
+    ),
+    ("svg_bleiburg", "Bleiburg", "Bleiburg"),
+    ("sv_velden", "Velden", "Velden"),
+    ("sk_treibach", "Treibach", "Treibach"),
+    ("sk_austria_klagenfurt", "Austria Klagenfurt", "Austria Klagenfurt"),
+    ("wolfsberger_ac", "RZ Pellets WAC", "Wolfsberger AC"),
+)
+
+SEASON_PARTICIPANTS_CATALOG = (
+    SeasonParticipantsCatalogEntry(
+        competition_key="premier_league",
+        season_key="2026_27",
+        country_code="GB-ENG",
+        participants=tuple(
+            ParticipantCatalogEntry(
+                participant_key=participant_key,
+                name=name,
+                short_name=short_name,
+            )
+            for participant_key, name, short_name in PREMIER_LEAGUE_2026_27_TEAMS
+        ),
+    ),
+    SeasonParticipantsCatalogEntry(
+        competition_key="bundesliga",
+        season_key="2026_27",
+        country_code="DE",
+        participants=tuple(
+            ParticipantCatalogEntry(
+                participant_key=participant_key,
+                name=name,
+                short_name=short_name,
+            )
+            for participant_key, name, short_name in BUNDESLIGA_2026_27_TEAMS
+        ),
+    ),
+    SeasonParticipantsCatalogEntry(
+        competition_key="championship",
+        season_key="2026_27",
+        country_code="GB-ENG",
+        participants=tuple(
+            ParticipantCatalogEntry(
+                participant_key=participant_key,
+                name=name,
+                short_name=short_name,
+                country_code=country_code,
+            )
+            for participant_key, name, short_name, country_code in (
+                CHAMPIONSHIP_2026_27_TEAMS
+            )
+        ),
+    ),
+    SeasonParticipantsCatalogEntry(
+        competition_key="second_bundesliga",
+        season_key="2026_27",
+        country_code="DE",
+        participants=tuple(
+            ParticipantCatalogEntry(
+                participant_key=participant_key,
+                name=name,
+                short_name=short_name,
+            )
+            for participant_key, name, short_name in SECOND_BUNDESLIGA_2026_27_TEAMS
+        ),
+    ),
+    SeasonParticipantsCatalogEntry(
+        competition_key="dfb_pokal",
+        season_key="2026_27",
+        country_code="DE",
+        participants=tuple(
+            ParticipantCatalogEntry(
+                participant_key=participant_key,
+                name=name,
+                short_name=short_name,
+            )
+            for participant_key, name, short_name in DFB_POKAL_2026_27_TEAMS
+        ),
+    ),
+    SeasonParticipantsCatalogEntry(
+        competition_key="oefb_cup",
+        season_key="2026_27",
+        country_code="AT",
+        participants=tuple(
+            ParticipantCatalogEntry(
+                participant_key=participant_key,
+                name=name,
+                short_name=short_name,
+            )
+            for participant_key, name, short_name in OEFB_CUP_2026_27_TEAMS
+        ),
+    ),
+)
+
 
 def initialize_participants_catalog(
     repository: ParticipantsRepository,
@@ -53,42 +401,46 @@ def initialize_participants_catalog(
             "Required sport not found for participants catalog: football"
         )
 
-    premier_league = competitions_repository.get_by_key(
-        sport_id=football.id,
-        competition_key="premier_league",
-    )
-    if premier_league is None:
-        raise RuntimeError(
-            "Required competition not found for participants catalog: premier_league"
-        )
-
-    season = seasons_repository.get_by_key(
-        competition_id=premier_league.id,
-        season_key="2026_27",
-    )
-    if season is None:
-        raise RuntimeError(
-            "Required season not found for participants catalog: 2026_27"
-        )
-
-    participants = [
-        repository.upsert(
+    participants: list[Participant] = []
+    memberships: list[SeasonParticipant] = []
+    for catalog_entry in SEASON_PARTICIPANTS_CATALOG:
+        competition = competitions_repository.get_by_key(
             sport_id=football.id,
-            participant_key=participant_key,
-            participant_type="team",
-            name=name,
-            short_name=short_name,
-            country_code="GB-ENG",
+            competition_key=catalog_entry.competition_key,
         )
-        for participant_key, name, short_name in PREMIER_LEAGUE_2026_27_TEAMS
-    ]
-    memberships = [
-        season_participants_repository.upsert(
-            season_id=season.id,
-            participant_id=participant.id,
+        if competition is None:
+            raise RuntimeError(
+                "Required competition not found for participants catalog: "
+                f"{catalog_entry.competition_key}"
+            )
+        season = seasons_repository.get_by_key(
+            competition_id=competition.id,
+            season_key=catalog_entry.season_key,
         )
-        for participant in participants
-    ]
+        if season is None:
+            raise RuntimeError(
+                "Required season not found for participants catalog: "
+                f"{catalog_entry.competition_key}/{catalog_entry.season_key}"
+            )
+        catalog_participants = [
+            repository.upsert(
+                sport_id=football.id,
+                participant_key=entry.participant_key,
+                participant_type="team",
+                name=entry.name,
+                short_name=entry.short_name,
+                country_code=entry.country_code or catalog_entry.country_code,
+            )
+            for entry in catalog_entry.participants
+        ]
+        participants.extend(catalog_participants)
+        memberships.extend(
+            season_participants_repository.upsert(
+                season_id=season.id,
+                participant_id=participant.id,
+            )
+            for participant in catalog_participants
+        )
 
     return ParticipantsCatalogResult(
         participants=participants,

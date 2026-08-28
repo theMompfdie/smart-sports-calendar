@@ -1,6 +1,6 @@
-# football-data.org Premier League Qualification
+# football-data.org Source Qualification
 
-## Status
+## Premier League status
 
 **Approved with mandatory operating conditions.** `football-data.org` API v4
 is the selected authoritative Premier League source for the 2026/27 season.
@@ -35,7 +35,7 @@ individual match ID. The source-update time predates qualification by about one
 month, but the season had not started and both complete snapshots were
 identical; production freshness must still be monitored per run.
 
-## Public evidence reviewed on 2026-08-09
+## Premier League public evidence reviewed on 2026-08-09
 
 - The free plan is EUR 0/month, includes fixtures, delayed schedules, and 10
   calls per minute.
@@ -69,45 +69,212 @@ football-data.org-derived events from the Outlook calendar. Provider mappings
 and any retained provider-derived data must then be removed through an
 explicit, scoped, backed-up operation. No automatic purge is authorized.
 
-## Secret-safe live qualification command
+## Bundesliga status
 
-The repository includes a read-only command that performs exactly three HTTPS
-requests: competition, teams, and matches. It emits only aggregate identifiers,
-counts, UTC boundaries, status counts, API version, a SHA-256 fingerprint of
-the sorted match IDs, the latest source-update timestamp, and the minimum
-remaining request count. It never emits the API token, raw body, authorization
-header, account identifier, team names, match IDs, or fixture details.
+**Qualified with mandatory operating conditions; not implemented or
+released.** football-data.org API v4 is the selected sole proposed authority
+for the 2026/27 German Bundesliga. The live qualification passed on
+2026-08-17, authorizing a separate implementation slice but not enabling a
+source assignment, import, scheduler, database write, or Outlook operation.
+
+Two complete secret-safe observations at
+`2026-08-17T19:58:26.583334+00:00` and
+`2026-08-17T20:22:07.312859+00:00`, separated by about 23 minutes and 41
+seconds, both reported:
+
+- API version `v4`, competition code `BL1`, and competition ID `2002`;
+- season ID `2522`, from 2026-08-28 through 2027-05-22;
+- 18 distinct teams;
+- 306 matches with 306 distinct positive match IDs;
+- 261 `SCHEDULED` and 45 `TIMED` matches;
+- kickoff coverage from 2026-08-28T18:30:00Z through
+  2027-05-22T13:30:00Z;
+- latest source update `2026-08-17T05:20:33Z`;
+- one complete match page and three read-only requests; and
+- `match_ids_sha256` =
+  `034542c2c3c5df368547f2e54108ca4810a68eed44b06860204be0e945c116a9`.
+
+The provider omitted both the optional match-limit echo and remaining-quota
+header. Missing limit metadata is accepted only because the request is fixed
+to 500 and the qualifier independently proves page size, response count,
+total count, unique identities, participants, matchdays, and the complete
+double round robin. A present wrong limit still fails closed.
+
+The operator confirmed the active Free plan with its documented limit of 10
+requests per minute. No token, account identifier, header, team name, fixture
+detail, individual match ID, raw payload, or secret-bearing URL was retained.
+
+## Bundesliga public evidence reviewed on 2026-08-17
+
+- Bundesliga is explicitly included in football-data.org's free-tier coverage.
+- API v4 identifies the competition as code `BL1` and numeric ID `2002`.
+- The official 2026/27 Bundesliga fixture announcement confirms 18 clubs, 34
+  matchdays, and 306 fixtures.
+- The documented match collection limit is 500, so a complete 306-match season
+  fits in one response. The qualifier nevertheless supports and validates
+  pagination rather than relying on that assumption.
+- The public pricing page lists 10 requests per minute for the free plan. Where
+  public provider pages disagree about a paid-plan limit, operation must use
+  the lower documented limit until the provider clarifies it.
+- The credential, attribution, fair-use, cancellation, and media-rights
+  conditions documented for Premier League use apply unchanged.
+
+The approved initial Bundesliga polling interval is six hours. At four
+snapshots per day and normally three requests per complete snapshot, that is
+12 requests per day with a three-request burst. Against the documented free
+plan limit of 10 requests per minute, one immediate complete retry would still
+leave four requests of per-minute headroom. Both live observations confirmed
+three requests. The quota header was absent, so the operator separately
+confirmed only the sanitized Free-plan name and 10-request-per-minute limit.
+
+## Championship regular-season status
+
+**Qualified for the 2026/27 `REGULAR_SEASON` stage with mandatory operating
+conditions; play-offs remain unqualified.** football-data.org API v4 is the
+selected sole proposed authority for the 552-match Championship regular
+season. The live qualification passed on 2026-08-19, authorizing a separate
+implementation issue but not enabling a source assignment, import, scheduler,
+database write, removal decision, or Outlook operation.
+
+Two complete secret-safe observations at
+`2026-08-19T16:22:19.452504+00:00` and
+`2026-08-19T16:24:32.575705+00:00`, separated by about two minutes and 13
+seconds, both reported:
+
+- API version `v4`, competition code `ELC`, and competition ID `2016`;
+- season ID `2509`, from 2026-08-14 through 2027-05-01;
+- 24 distinct teams;
+- 552 matches with 552 distinct positive match IDs;
+- all 552 matches in `REGULAR_SEASON` across matchdays 1 through 46;
+- 12 `FINISHED`, 276 `TIMED`, and 264 `SCHEDULED` matches;
+- kickoff coverage from 2026-08-14T19:00:00Z through
+  2027-05-01T00:00:00Z;
+- latest source update `2026-08-19T05:20:30Z`;
+- one complete match response and three read-only requests; and
+- `match_ids_sha256` =
+  `9fdf11360da92e14748234d2ab2a37a79b6176adf9e756e54d19b129a21e1842`; and
+- `team_ids_sha256` =
+  `b73d761a2a6f382be662cce9377af728c503a99cd322ca1eccb8b0e846812de9`.
+
+The provider returned all 552 matches in one response despite the requested
+documented maximum limit of 500. The declared count, actual count, unique-ID
+count, stage distribution, matchday range, and complete double round robin all
+agreed. The qualifier accepts only this exact complete first response or the
+documented `500 + 52` pagination form; any other oversized, incomplete, or
+wrong-scope response fails closed. The optional remaining-quota header was
+absent, consistently with the other Free-plan observations.
+
+The seven revised 2026/27 Championship play-off fixtures are not present in
+the observed regular-season scope. Their participants become known only after
+the league table is complete, so they remain a separate progressive lifecycle
+scope comparable to a cup draw. They require later stage-specific live
+qualification and must not contribute removal evidence under this decision.
+
+## Secret-safe live qualification commands
+
+The repository includes a read-only command with curated profiles for Premier
+League, Bundesliga, and the Championship regular season. It makes two metadata
+requests plus one or more paged match requests. Premier League and Bundesliga
+normally make three requests. The Championship endpoint was observed returning
+all 552 regular-season fixtures in one response despite the requested limit of
+500, so its current observation also makes three requests. The qualifier still
+supports pages of 500 and 52 if the provider starts honoring its documented
+pagination contract. Free-form competition IDs and expected counts are
+deliberately unsupported.
+
+The command emits only the qualification profile, observation time, aggregate
+identifiers, counts, pagination/request counts, UTC boundaries, status counts,
+stage counts, API version, SHA-256 fingerprints of the sorted match and team
+IDs, the latest source-update timestamp, and the minimum remaining request
+count. It never emits the API token, raw body, authorization header, account
+identifier, team names, individual IDs, or fixture details.
 
 In PowerShell, enter the token without echoing it or storing it in shell
-history:
+history. For the already approved Premier League profile:
 
 ```powershell
 $env:FOOTBALL_DATA_API_KEY = Read-Host -MaskInput "football-data.org API token"
-python -m app.operations.football_data_qualification --season 2026
+python -m app.operations.football_data_qualification --competition premier-league --season 2026
 Remove-Item Env:FOOTBALL_DATA_API_KEY
 ```
 
+For Bundesliga requalification, run the following command once, review the
+output locally, wait at least 60 seconds, and repeat the complete command. The
+`finally` block removes the token after each observation, including failures:
+
+```powershell
+$env:FOOTBALL_DATA_API_KEY = Read-Host -MaskInput "football-data.org API token"
+try {
+    python -m app.operations.football_data_qualification --competition bundesliga --season 2026
+}
+finally {
+    Remove-Item Env:FOOTBALL_DATA_API_KEY -ErrorAction SilentlyContinue
+}
+```
+
+For issue #123, the Championship candidate is deliberately restricted to the
+documented `REGULAR_SEASON` stage. Run this command once, review the output
+locally, wait at least 60 seconds, and repeat the complete command:
+
+```powershell
+$env:FOOTBALL_DATA_API_KEY = Read-Host -MaskInput "football-data.org API token"
+try {
+    python -m app.operations.football_data_qualification --competition championship --season 2026
+}
+finally {
+    Remove-Item Env:FOOTBALL_DATA_API_KEY -ErrorAction SilentlyContinue
+}
+```
+
+This stage filter establishes a stable 552-fixture regular-season boundary.
+The seven 2026/27 Championship play-off fixtures are not part of that
+observation and remain a separate, unqualified, non-destructive lifecycle
+scope. The provider's stage-filter echo is non-authoritative and can use a
+different representation from the match resources. Qualification therefore
+checks the stage on every returned match and must fail if either page has the
+wrong offset or the response is not the complete 24-team double round robin.
+An exact 552-match first response is accepted within the configured byte limit;
+any other response above the requested 500-item page limit fails closed.
+
 The command fails closed unless it observes:
 
-- API version `v4` on all three responses;
-- competition code `PL` and a current season starting in 2026;
-- exactly 20 distinct team IDs;
-- exactly 380 matches and 380 distinct positive match IDs;
-- a deterministic SHA-256 fingerprint over the sorted match IDs;
+- API version `v4` on every response;
+- the selected profile's exact competition code and ID;
+- a current season starting in 2026 with valid start and end dates;
+- the selected profile's exact distinct-team and match counts;
+- complete offset-based pagination without overlaps or gaps;
+- distinct positive match IDs;
+- deterministic SHA-256 fingerprints over the sorted match and team IDs;
 - the same competition and season identity on every match;
 - two distinct known participants on every match;
+- a complete double round-robin schedule with one appearance per team per
+  matchday and exactly one match in each directed pairing;
+- stage `REGULAR_SEASON` and the selected profile's exact matchday range;
 - UTC `utcDate` and `lastUpdated` values; and
-- only the documented supported status vocabulary.
+- only the documented supported status vocabulary; and
+- a source-update age within the profile-independent freshness policy.
 
-The output may be attached to issue #79 only after manual review. The token,
-raw response, request headers, account dashboard, and `.env` contents must never
-be copied into GitHub.
+The curated invariants are:
+
+| Profile | Code | ID | Teams | Matches | Matchdays |
+| --- | --- | ---: | ---: | ---: | ---: |
+| `premier-league` | `PL` | 2021 | 20 | 380 | 38 |
+| `bundesliga` | `BL1` | 2002 | 18 | 306 | 34 |
+| `championship` | `ELC` | 2016 | 24 | 552 | 46 |
+
+Premier League output belongs to issue #79, Bundesliga output to issue #110,
+and Championship output to issue #123, in every case only after manual review.
+The token, raw response, request headers, account dashboard, and `.env`
+contents must never be copied into GitHub.
 
 ## Approved operating conditions
 
 - Absence becomes removal evidence only after two complete, successful
-  380-match authoritative snapshots. A filtered, short, stale, empty,
-  malformed, failed, or wrong-scope response is never authoritative.
+  authoritative snapshots for the selected profile: 380 Premier League
+  matches, 306 Bundesliga matches, or the explicitly bounded 552-match
+  Championship `REGULAR_SEASON` stage. Championship play-offs remain
+  non-destructive. A short, stale, empty, malformed, failed, or wrong-scope
+  response is never authoritative.
 - Visible attribution is mandatory while provider-derived data is served.
 - Credentials remain in the operator secret store and never enter GitHub,
   logs, screenshots, run metadata, or test artifacts.
@@ -120,7 +287,15 @@ be copied into GitHub.
 - Cancellation requires the scoped re-source-or-remove procedure above before
   provider-derived data may continue to be served.
 
+These conditions qualify the Premier League, Bundesliga, and Championship
+regular-season profiles. Qualification is not implementation: no Championship
+source assignment, catalog entry, mapping, runtime collection, scheduler job,
+database write, or Outlook operation is authorized by this command. The
+Championship play-off scope remains unqualified.
+
 ## Sources
+
+- [Championship authority decision](adr/0008-select-football-data-for-championship-regular-season.md)
 
 - [Pricing](https://www.football-data.org/pricing)
 - [Coverage](https://www.football-data.org/coverage)
@@ -131,3 +306,6 @@ be copied into GitHub.
 - [API policies and throttling](https://docs.football-data.org/general/v4/policies.html)
 - [Lookup tables and response headers](https://docs.football-data.org/general/v4/lookup_tables.html)
 - [Errors](https://docs.football-data.org/general/v4/errors.html)
+- [Official 2026/27 Bundesliga fixture announcement](https://www.bundesliga.com/en/bundesliga/news/2026-27-fixture-lists-now-available-38068)
+- [EFL Championship competition](https://www.efl.com/competitions/efl-championship/)
+- [2026/27 Championship play-off format](https://www.efl.com/news/2026/march/05/efl-statement--sky-bet-championship-play-off-format/)

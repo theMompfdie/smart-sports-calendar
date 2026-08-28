@@ -45,6 +45,30 @@ class FootballDataSettings:
 
 
 @dataclass(frozen=True)
+class OpenLigaDBSettings:
+    enabled: bool
+    base_url: str = "https://api.openligadb.de"
+    connect_timeout_seconds: float = 5.0
+    read_timeout_seconds: float = 30.0
+    max_attempts: int = 3
+    retry_base_delay_seconds: float = 1.0
+    retry_max_delay_seconds: float = 30.0
+    minimum_request_interval_seconds: float = 1.0
+
+
+@dataclass(frozen=True)
+class OefbIcalSettings:
+    enabled: bool
+    feed_url: str = field(default="", repr=False)
+    connect_timeout_seconds: float = 5.0
+    read_timeout_seconds: float = 30.0
+    max_attempts: int = 3
+    retry_base_delay_seconds: float = 1.0
+    retry_max_delay_seconds: float = 30.0
+    minimum_poll_interval_seconds: int = 21600
+
+
+@dataclass(frozen=True)
 class Settings:
     database_path: Path
     log_level: str
@@ -66,6 +90,12 @@ class Settings:
     )
     football_data: FootballDataSettings = field(
         default_factory=lambda: FootballDataSettings(enabled=False, api_key="")
+    )
+    openligadb: OpenLigaDBSettings = field(
+        default_factory=lambda: OpenLigaDBSettings(enabled=False)
+    )
+    oefb_ical: OefbIcalSettings = field(
+        default_factory=lambda: OefbIcalSettings(enabled=False)
     )
     source_jobs: tuple[SourceJobDefinition, ...] = ()
     instance_name: str = "default"
@@ -332,6 +362,142 @@ def load_football_data_settings() -> FootballDataSettings:
     )
 
 
+def load_openligadb_settings() -> OpenLigaDBSettings:
+    try:
+        enabled = get_boolean_environment_variable("OPENLIGADB_ENABLED", default=False)
+    except ValueError as error:
+        raise ProviderConfigurationError(str(error)) from error
+    base_url = os.getenv("OPENLIGADB_BASE_URL", "https://api.openligadb.de").rstrip("/")
+    parsed_url = urlsplit(base_url)
+    try:
+        _ = parsed_url.port
+    except ValueError as error:
+        raise ProviderConfigurationError(
+            "OPENLIGADB_BASE_URL must be an HTTPS URL with a valid port."
+        ) from error
+    if (
+        parsed_url.scheme != "https"
+        or not parsed_url.hostname
+        or parsed_url.username is not None
+        or parsed_url.password is not None
+        or parsed_url.query
+        or parsed_url.fragment
+    ):
+        raise ProviderConfigurationError(
+            "OPENLIGADB_BASE_URL must be an HTTPS URL without credentials, "
+            "query parameters, or fragments."
+        )
+    try:
+        max_attempts = get_positive_integer_environment_variable(
+            "OPENLIGADB_MAX_ATTEMPTS", default=3
+        )
+    except ValueError as error:
+        raise ProviderConfigurationError(str(error)) from error
+    if max_attempts > 10:
+        raise ProviderConfigurationError("OPENLIGADB_MAX_ATTEMPTS must not exceed 10.")
+    retry_base = get_positive_float_environment_variable(
+        "OPENLIGADB_RETRY_BASE_DELAY_SECONDS", default=1.0
+    )
+    retry_max = get_positive_float_environment_variable(
+        "OPENLIGADB_RETRY_MAX_DELAY_SECONDS", default=30.0
+    )
+    if retry_max < retry_base:
+        raise ProviderConfigurationError(
+            "OPENLIGADB_RETRY_MAX_DELAY_SECONDS must be greater than or equal "
+            "to OPENLIGADB_RETRY_BASE_DELAY_SECONDS."
+        )
+    return OpenLigaDBSettings(
+        enabled=enabled,
+        base_url=base_url,
+        connect_timeout_seconds=get_positive_float_environment_variable(
+            "OPENLIGADB_CONNECT_TIMEOUT_SECONDS", default=5.0
+        ),
+        read_timeout_seconds=get_positive_float_environment_variable(
+            "OPENLIGADB_READ_TIMEOUT_SECONDS", default=30.0
+        ),
+        max_attempts=max_attempts,
+        retry_base_delay_seconds=retry_base,
+        retry_max_delay_seconds=retry_max,
+        minimum_request_interval_seconds=get_positive_float_environment_variable(
+            "OPENLIGADB_MINIMUM_REQUEST_INTERVAL_SECONDS", default=1.0
+        ),
+    )
+
+
+def load_oefb_ical_settings() -> OefbIcalSettings:
+    try:
+        enabled = get_boolean_environment_variable("OEFB_ICAL_ENABLED", default=False)
+    except ValueError as error:
+        raise ProviderConfigurationError(str(error)) from error
+    feed_url = os.getenv("OEFB_ICAL_FEED_URL", "").strip()
+    if enabled and not feed_url:
+        raise ProviderConfigurationError(
+            "OEFB_ICAL_FEED_URL must be configured when OEFB_ICAL_ENABLED is true."
+        )
+    if feed_url:
+        parsed_url = urlsplit(feed_url)
+        try:
+            _ = parsed_url.port
+        except ValueError as error:
+            raise ProviderConfigurationError(
+                "OEFB_ICAL_FEED_URL must be an approved HTTPS ÖFB URL."
+            ) from error
+        if (
+            parsed_url.scheme != "https"
+            or parsed_url.hostname != "www.fussballoesterreich.at"
+            or parsed_url.username is not None
+            or parsed_url.password is not None
+            or parsed_url.query
+            or parsed_url.fragment
+            or not parsed_url.path
+            or parsed_url.path == "/"
+        ):
+            raise ProviderConfigurationError(
+                "OEFB_ICAL_FEED_URL must be an approved HTTPS ÖFB URL without "
+                "credentials, query parameters, or fragments."
+            )
+    try:
+        max_attempts = get_positive_integer_environment_variable(
+            "OEFB_ICAL_MAX_ATTEMPTS", default=3
+        )
+        minimum_poll_interval_seconds = get_positive_integer_environment_variable(
+            "OEFB_ICAL_MINIMUM_POLL_INTERVAL_SECONDS", default=21600
+        )
+    except ValueError as error:
+        raise ProviderConfigurationError(str(error)) from error
+    if max_attempts > 10:
+        raise ProviderConfigurationError("OEFB_ICAL_MAX_ATTEMPTS must not exceed 10.")
+    if minimum_poll_interval_seconds < 21600:
+        raise ProviderConfigurationError(
+            "OEFB_ICAL_MINIMUM_POLL_INTERVAL_SECONDS must be at least 21600."
+        )
+    retry_base = get_positive_float_environment_variable(
+        "OEFB_ICAL_RETRY_BASE_DELAY_SECONDS", default=1.0
+    )
+    retry_max = get_positive_float_environment_variable(
+        "OEFB_ICAL_RETRY_MAX_DELAY_SECONDS", default=30.0
+    )
+    if retry_max < retry_base:
+        raise ProviderConfigurationError(
+            "OEFB_ICAL_RETRY_MAX_DELAY_SECONDS must be greater than or equal "
+            "to OEFB_ICAL_RETRY_BASE_DELAY_SECONDS."
+        )
+    return OefbIcalSettings(
+        enabled=enabled,
+        feed_url=feed_url,
+        connect_timeout_seconds=get_positive_float_environment_variable(
+            "OEFB_ICAL_CONNECT_TIMEOUT_SECONDS", default=5.0
+        ),
+        read_timeout_seconds=get_positive_float_environment_variable(
+            "OEFB_ICAL_READ_TIMEOUT_SECONDS", default=30.0
+        ),
+        max_attempts=max_attempts,
+        retry_base_delay_seconds=retry_base,
+        retry_max_delay_seconds=retry_max,
+        minimum_poll_interval_seconds=minimum_poll_interval_seconds,
+    )
+
+
 def load_source_jobs() -> tuple[SourceJobDefinition, ...]:
     raw_value = os.getenv("SOURCE_JOBS_JSON", "[]").strip()
     try:
@@ -495,5 +661,7 @@ def load_settings() -> Settings:
         ),
         api_football=load_api_football_settings(),
         football_data=load_football_data_settings(),
+        openligadb=load_openligadb_settings(),
+        oefb_ical=load_oefb_ical_settings(),
         source_jobs=load_source_jobs(),
     )

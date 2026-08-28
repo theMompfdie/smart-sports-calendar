@@ -1,4 +1,4 @@
-from collections import Counter
+from collections import Counter, defaultdict
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
@@ -9,11 +9,15 @@ from app.providers.football_data.exceptions import (
     FootballDataIntegrityError,
     FootballDataSchemaError,
 )
+from app.providers.football_data.profiles import (
+    PREMIER_LEAGUE_PROFILE,
+    FootballDataCompetitionProfile,
+)
 
-PREMIER_LEAGUE_CODE = "PL"
-PREMIER_LEAGUE_ID = 2021
-EXPECTED_TEAM_COUNT = 20
-EXPECTED_MATCH_COUNT = 380
+PREMIER_LEAGUE_CODE = PREMIER_LEAGUE_PROFILE.external_code
+PREMIER_LEAGUE_ID = PREMIER_LEAGUE_PROFILE.external_id
+EXPECTED_TEAM_COUNT = PREMIER_LEAGUE_PROFILE.expected_team_count
+EXPECTED_MATCH_COUNT = PREMIER_LEAGUE_PROFILE.expected_match_count
 
 STATUS_MAPPING = {
     "SCHEDULED": "scheduled",
@@ -73,6 +77,7 @@ class FootballDataSnapshot:
     fetched_at_utc: datetime
     request_attempts: int
     rate_limits: RateLimitSnapshot
+    page_count: int = 1
 
 
 def parse_snapshot(
@@ -80,18 +85,25 @@ def parse_snapshot(
     teams_payload: Mapping[str, Any],
     matches_payload: Mapping[str, Any],
     *,
+    profile: FootballDataCompetitionProfile,
     expected_season_year: int,
     fetched_at_utc: datetime,
     request_attempts: int,
     rate_limits: RateLimitSnapshot,
+    page_count: int = 1,
 ) -> FootballDataSnapshot:
     competition_id = _positive_int(competition_payload, "id")
     competition_code = _string(competition_payload, "code")
-    if competition_id != PREMIER_LEAGUE_ID or competition_code != PREMIER_LEAGUE_CODE:
+    if (
+        competition_id != profile.external_id
+        or competition_code != profile.external_code
+    ):
         raise FootballDataIntegrityError("Provider returned the wrong competition.")
 
     season_payload = _mapping(competition_payload, "currentSeason")
     season_id = _positive_int(season_payload, "id")
+    if season_id != profile.external_season_id:
+        raise FootballDataIntegrityError("Provider returned the wrong season identity.")
     season_start = _date(_string(season_payload, "startDate"))
     season_end = _date(_string(season_payload, "endDate"))
     if season_start.year != expected_season_year or season_end < season_start:
@@ -107,20 +119,25 @@ def parse_snapshot(
         )
     )
     team_ids = {team.id for team in teams}
-    if len(teams) != EXPECTED_TEAM_COUNT or len(team_ids) != EXPECTED_TEAM_COUNT:
+    if (
+        len(teams) != profile.expected_team_count
+        or len(team_ids) != profile.expected_team_count
+    ):
         raise FootballDataIntegrityError(
-            "Premier League snapshot must contain exactly 20 distinct teams."
+            f"{profile.competition_name} snapshot must contain exactly "
+            f"{profile.expected_team_count} distinct teams."
         )
 
     result_set = _mapping(matches_payload, "resultSet")
     declared_count = _positive_int(result_set, "count")
     raw_matches = _list(matches_payload, "matches")
     if (
-        declared_count != EXPECTED_MATCH_COUNT
-        or len(raw_matches) != EXPECTED_MATCH_COUNT
+        declared_count != profile.expected_match_count
+        or len(raw_matches) != profile.expected_match_count
     ):
         raise FootballDataIntegrityError(
-            "Premier League snapshot must contain exactly 380 matches."
+            f"{profile.competition_name} snapshot must contain exactly "
+            f"{profile.expected_match_count} matches."
         )
     matches = tuple(
         sorted(
@@ -130,6 +147,7 @@ def parse_snapshot(
                     competition_id=competition_id,
                     season_id=season_id,
                     team_ids=team_ids,
+                    expected_matchdays=profile.expected_matchdays,
                 )
                 for item in raw_matches
             ),
@@ -137,10 +155,10 @@ def parse_snapshot(
         )
     )
     match_ids = {match.id for match in matches}
-    if len(match_ids) != EXPECTED_MATCH_COUNT:
+    if len(match_ids) != profile.expected_match_count:
         raise FootballDataIntegrityError("Provider returned duplicate match IDs.")
 
-    _validate_schedule(matches, teams)
+    _validate_schedule(matches, teams, profile=profile)
     _validate_freshness(
         matches,
         fetched_at_utc=fetched_at_utc,
@@ -158,6 +176,7 @@ def parse_snapshot(
         fetched_at_utc=_require_utc(fetched_at_utc, "fetch timestamp"),
         request_attempts=request_attempts,
         rate_limits=rate_limits,
+        page_count=page_count,
     )
 
 
@@ -176,6 +195,7 @@ def _parse_match(
     competition_id: int,
     season_id: int,
     team_ids: set[int],
+    expected_matchdays: int,
 ) -> FootballDataMatch:
     if _positive_int(_mapping(payload, "competition"), "id") != competition_id:
         raise FootballDataIntegrityError("A match belongs to the wrong competition.")
@@ -192,6 +212,12 @@ def _parse_match(
         raise FootballDataSchemaError(
             "Provider returned an unsupported match status."
         ) from error
+    stage = _optional_string(payload, "stage")
+    matchday = _optional_positive_int(payload, "matchday")
+    if stage != "REGULAR_SEASON":
+        raise FootballDataIntegrityError("A match belongs to an unsupported stage.")
+    if matchday is None or matchday > expected_matchdays:
+        raise FootballDataIntegrityError("A match belongs to an invalid matchday.")
     return FootballDataMatch(
         id=_positive_int(payload, "id"),
         competition_id=competition_id,
@@ -201,8 +227,8 @@ def _parse_match(
         kickoff_utc=_utc_datetime(_string(payload, "utcDate")),
         status=status,
         provider_status=provider_status,
-        stage=_optional_string(payload, "stage"),
-        matchday=_optional_positive_int(payload, "matchday"),
+        stage=stage,
+        matchday=matchday,
         source_updated_at=_utc_datetime(_string(payload, "lastUpdated")),
     )
 
@@ -210,23 +236,47 @@ def _parse_match(
 def _validate_schedule(
     matches: tuple[FootballDataMatch, ...],
     teams: tuple[FootballDataTeam, ...],
+    *,
+    profile: FootballDataCompetitionProfile,
 ) -> None:
     appearances = Counter[int]()
     pairings: set[tuple[int, int]] = set()
+    matchday_counts = Counter[int]()
+    matchday_participants: defaultdict[int, set[int]] = defaultdict(set)
     for match in matches:
         pairing = (match.home_team_id, match.away_team_id)
         if pairing in pairings:
             raise FootballDataIntegrityError(
-                "Premier League snapshot contains a duplicate home/away pairing."
+                f"{profile.competition_name} snapshot contains a duplicate "
+                "home/away pairing."
             )
         pairings.add(pairing)
         appearances.update(pairing)
+        if match.matchday is None:
+            raise FootballDataIntegrityError("A match has no matchday.")
+        matchday_counts[match.matchday] += 1
+        matchday_participants[match.matchday].update(pairing)
     expected_appearances = (len(teams) - 1) * 2
     if set(appearances) != {team.id for team in teams} or any(
         count != expected_appearances for count in appearances.values()
     ):
         raise FootballDataIntegrityError(
-            "Premier League snapshot does not form a complete double round robin."
+            f"{profile.competition_name} snapshot does not form a complete "
+            "double round robin."
+        )
+    expected_matchdays = set(range(1, profile.expected_matchdays + 1))
+    if set(matchday_counts) != expected_matchdays or any(
+        count != profile.expected_team_count // 2 for count in matchday_counts.values()
+    ):
+        raise FootballDataIntegrityError(
+            f"{profile.competition_name} snapshot has incomplete matchday counts."
+        )
+    team_ids = {team.id for team in teams}
+    if any(
+        matchday_participants[matchday] != team_ids for matchday in expected_matchdays
+    ):
+        raise FootballDataIntegrityError(
+            f"{profile.competition_name} snapshot has invalid matchday participants."
         )
 
 

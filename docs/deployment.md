@@ -118,18 +118,39 @@ The complete provider settings are:
 | `API_FOOTBALL_RETRY_MAX_DELAY_SECONDS` | `30` | Positive finite cap, not lower than the base delay |
 | `API_FOOTBALL_IMPORT_INTERVAL_SECONDS` | `3600` | Legacy positive provider interval; an explicit source job's `interval_seconds` is authoritative |
 | `SOURCE_JOBS_JSON` | `[]` | Provider-neutral job array; every active competition/season scope requires exactly one authority and every enabled adapter requires a matching job |
-| `FOOTBALL_DATA_ENABLED` | `false` | Enables the approved API v4 Premier League adapter; requires one matching authoritative source job |
+| `FOOTBALL_DATA_ENABLED` | `false` | Enables the approved API v4 Premier League/Bundesliga adapter; requires at least one matching authoritative job |
 | `FOOTBALL_DATA_API_KEY` | empty | Secret API token; required only when enabled and never stored in Git |
 | `FOOTBALL_DATA_BASE_URL` | `https://api.football-data.org` | HTTPS-only provider origin without credentials, query, or fragment |
 | `FOOTBALL_DATA_MAX_ATTEMPTS` | `3` | Bounded transient retry count, maximum `10` |
 | `FOOTBALL_DATA_REQUESTS_PER_MINUTE` | `10` | Must not exceed the approved free-plan limit |
 | `FOOTBALL_DATA_MINIMUM_REQUEST_INTERVAL_SECONDS` | `6.1` | Enforces the configured per-minute request budget |
+| `OPENLIGADB_ENABLED` | `false` | Enables the public API v1 DFB-Pokal and/or 2. Bundesliga adapters; requires at least one matching authoritative job |
+| `OPENLIGADB_BASE_URL` | `https://api.openligadb.de` | HTTPS-only public provider origin without credentials, query, or fragment |
+| `OPENLIGADB_CONNECT_TIMEOUT_SECONDS` | `5` | Positive finite connection timeout |
+| `OPENLIGADB_READ_TIMEOUT_SECONDS` | `30` | Positive finite response timeout |
+| `OPENLIGADB_MAX_ATTEMPTS` | `3` | Bounded transient retry count, maximum `10` |
+| `OPENLIGADB_RETRY_BASE_DELAY_SECONDS` | `1` | Positive finite first backoff delay |
+| `OPENLIGADB_RETRY_MAX_DELAY_SECONDS` | `30` | Positive finite cap, not lower than the base delay |
+| `OPENLIGADB_MINIMUM_REQUEST_INTERVAL_SECONDS` | `1` | Positive minimum spacing between public provider requests |
+| `OEFB_ICAL_ENABLED` | `false` | Enables the private official ÖFB-Cup iCalendar authority; requires its matching authoritative job |
+| `OEFB_ICAL_FEED_URL` | empty | Required only when enabled; opaque HTTPS subscription URL supplied through the deployment secret store and never logged |
+| `OEFB_ICAL_CONNECT_TIMEOUT_SECONDS` | `5` | Positive finite connection timeout |
+| `OEFB_ICAL_READ_TIMEOUT_SECONDS` | `30` | Positive finite response timeout |
+| `OEFB_ICAL_MAX_ATTEMPTS` | `3` | Bounded transient retry count, maximum `10` |
+| `OEFB_ICAL_RETRY_BASE_DELAY_SECONDS` | `1` | Positive finite first backoff delay |
+| `OEFB_ICAL_RETRY_MAX_DELAY_SECONDS` | `30` | Positive finite cap, not lower than the base delay |
+| `OEFB_ICAL_MINIMUM_POLL_INTERVAL_SECONDS` | `21600` | Minimum six-hour poll interval required by the qualified feed contract |
 
 The JSON value must remain on one line in `.env` or Portainer. Adapter and job
 enablement must agree. The existing API-Football adapter supports only the
-`authoritative` role because it writes canonical data. `football_data` is
-implemented only for the authoritative 2026/27 Premier League scope. Keep its
-token in Portainer or another ignored operator secret store. See
+`authoritative` role because it writes canonical data. `football_data` supports
+the authoritative 2026/27 Premier League and Bundesliga complete-season scopes
+and the Championship `REGULAR_SEASON` complete-stage scope. `openligadb`
+supports the authoritative 2026/27 DFB-Pokal and 2. Bundesliga scopes and
+requires no credential. `oefb_ical` supports only the private, permanently
+partial 2026/27 ÖFB-Cup scope and never derives removal evidence from absence.
+Keep the football-data.org token and opaque ÖFB feed URL in Portainer or another
+ignored operator secret store. See
 [source orchestration](source-orchestration.md).
 
 `OUTLOOK_CALENDAR_ID` is required for every Graph write. It must be the
@@ -151,7 +172,7 @@ same calendar. Do not target a general-purpose personal calendar.
 | `M365_USER_ID` | none | Required target mailbox identifier |
 | `OUTLOOK_CALENDAR_NAME` | `SMART Sports Calendar` | Startup reachability lookup; must identify the dedicated target calendar |
 | `OUTLOOK_CALENDAR_ID` | none | Required immutable Graph calendar ID used by synchronization writes |
-| `SYNCHRONIZATION_BATCH_LIMIT` | `100` | Positive maximum per run; urgent/unmapped work runs first and synced mappings rotate oldest-synchronized-first |
+| `SYNCHRONIZATION_BATCH_LIMIT` | `100` | Positive maximum per run; unmapped, retry/lifecycle, and revision-pending work runs first, then synced mappings rotate oldest-synchronized-first |
 | `GRAPH_BASE_URL` | Microsoft Graph v1.0 | Graph API root; use the documented production endpoint unless testing an isolated mock |
 | `GRAPH_STARTUP_VALIDATION_ENABLED` | `true` | Boolean; keep enabled for deployed environments |
 
@@ -245,6 +266,33 @@ non-empty. Never use `docker compose down --volumes` during an upgrade.
 
 Database initialization and forward migrations are idempotent. Schema
 downgrades are not implemented.
+
+### Upgrade from v0.4.5-beta.1 to v0.5.0-beta.1
+
+1. Stop the exact application stack and create a transactionally consistent
+   backup of its project-scoped `/data/sports.db` volume.
+2. Verify the backup is non-empty and keep it outside the Docker volume.
+3. Review `.env.example` and add only the provider settings required by the
+   approved competition jobs. Never replace existing secrets with placeholders.
+4. Keep every new provider disabled until its exact `SOURCE_JOBS_JSON`
+   authority, catalog, season, and secret configuration is ready.
+5. Check out the verified signed `v0.5.0-beta.1` tag.
+6. Run `docker compose config --quiet` and resolve every missing or invalid
+   setting before starting the container.
+7. Run `docker compose up --detach --build` for exactly one instance attached to
+   the existing project-scoped volume and Outlook calendar.
+8. Verify startup health and confirm migration
+   `008_add_calendar_sync_revisions` completes without error.
+9. Allow bounded Outlook synchronization batches to drain every pending
+   calendar revision. A temporary revision backlog after migration is expected;
+   creates, updates, and lifecycle work are prioritized before unchanged rows.
+10. Run the secret-safe staging evidence command and verify zero pending
+    calendar mapping revisions before enabling production promotion.
+
+The Phase 5 catalog and source assignments initialize idempotently. Migration
+`008_add_calendar_sync_revisions` preserves existing events and mappings while
+queueing them for one safe payload-revision reconciliation. Do not downgrade an
+upgraded database in place.
 
 ### Rollback
 
@@ -485,11 +533,21 @@ For issue #63, open the `calendar-sync` container console for
 python -m app.operations.staging_evidence --database /data/sports.db
 ```
 
+For the Phase 5 six-authority candidate, follow
+[`phase-5-multi-competition-staging-validation.md`](phase-5-multi-competition-staging-validation.md)
+and run the strict read-only profile after convergence:
+
+```bash
+python -m app.operations.staging_evidence --database /data/sports.db --limit 50 --validate-phase-5-candidate
+```
+
 The command opens SQLite in read-only mode and reports only database integrity,
 schema version, startup count, public authoritative source/scope keys, fixture
 and source-mapping aggregates, kickoff range, source freshness, normalized
-status counts, calendar-mapping status counts, and recent synchronization
-counters. It deliberately omits configuration, provider external IDs, event
+status counts, calendar-mapping status counts, revision-pending mapping counts,
+and recent synchronization counters. Strict validation requires the persisted
+event and calendar revisions to be fully converged. It deliberately omits
+configuration, provider external IDs, event
 details, error messages, metadata, calendar IDs, Outlook IDs, raw responses,
 and source URLs. Review the output before adding it to sanitized GitHub
 evidence.
@@ -556,13 +614,14 @@ Immutable beta staging qualification
 Controlled manual production promotion
 ```
 
-The release branch is created from fully validated `develop`, reviewed into
-`main`, and signed-tagged on the resulting `main` commit. Staging is frozen to
-that immutable tag for candidate verification before GitHub Releases publishes
-the release notes as a pre-release. Production promotion is a separate manual
-gate and must honor unresolved release blockers such as #101. GHCR remains a
-future enhancement; do not document or deploy a registry image that has not
-been built and verified.
+The release branch is created from fully validated `develop`, reviewed back
+into `develop`, and followed by a final verified `develop` to `main` pull
+request. The resulting `main` commit is signed-tagged and GitHub Releases
+publishes the release notes as a pre-release. Staging can then be frozen to the
+immutable tag for final operational confirmation. Production promotion is a
+separate explicit manual decision and is never implied by tag or pre-release
+publication. GHCR remains a future enhancement; do not document or deploy a
+registry image that has not been built and verified.
 
 ---
 

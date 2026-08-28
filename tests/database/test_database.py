@@ -100,6 +100,7 @@ def test_migrations_are_registered_once(
         ("005_create_fixture_reconciliation_state",),
         ("006_extend_provider_import_runs",),
         ("007_create_source_assignments",),
+        ("008_add_calendar_sync_revisions",),
     ]
 
 
@@ -775,3 +776,56 @@ def test_source_assignment_migration_preserves_existing_source_mapping(
             """
         ).fetchone()
     assert mapping == (source_id, "sport", sport_id, "legacy-football")
+
+
+def test_sync_revision_migration_preserves_data_and_queues_reconciliation(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "sports.db"
+    legacy_migrations = tmp_path / "legacy-migrations"
+    legacy_migrations.mkdir()
+    migrations = Path(__file__).parents[2] / "app" / "database" / "migrations"
+    for migration in sorted(migrations.glob("00[1-7]_*.sql")):
+        copy2(migration, legacy_migrations / migration.name)
+    Database(database_path, migrations_directory=legacy_migrations).initialize()
+    timestamp = "2026-08-27T20:00:00+00:00"
+    with connect(database_path) as connection:
+        sport_id = connection.execute(
+            """
+            INSERT INTO sports (sport_key, name, created_at, updated_at)
+            VALUES ('football', 'Football', ?, ?)
+            """,
+            (timestamp, timestamp),
+        ).lastrowid
+        event_id = connection.execute(
+            """
+            INSERT INTO sports_events (
+                sport_id, event_key, event_type, title, start_time,
+                first_seen_at, last_seen_at, created_at, updated_at
+            ) VALUES (?, 'legacy-fixture', 'match', 'Legacy fixture', ?, ?, ?, ?, ?)
+            """,
+            (sport_id, timestamp, timestamp, timestamp, timestamp, timestamp),
+        ).lastrowid
+        connection.execute(
+            """
+            INSERT INTO calendar_event_mappings (
+                event_id, calendar_id, transaction_id, outlook_event_id,
+                content_hash, sync_status, last_synced_at, created_at, updated_at
+            ) VALUES (?, 'calendar-1', ?, 'outlook-1', 'hash-1', 'synced', ?, ?, ?)
+            """,
+            (event_id, str(uuid4()), timestamp, timestamp, timestamp),
+        )
+
+    Database(database_path).initialize()
+
+    with connect(database_path) as connection:
+        migrated = connection.execute(
+            """
+            SELECT event.sync_revision, mapping.last_synced_revision,
+                   mapping.sync_status
+            FROM sports_events AS event
+            JOIN calendar_event_mappings AS mapping ON mapping.event_id = event.id
+            """
+        ).fetchone()
+
+    assert migrated == (1, 0, "synced")

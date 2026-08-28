@@ -140,6 +140,7 @@ class EventSynchronizer:
         if mapping_was_revived:
             return self._create_event(
                 event_id=event.id,
+                event_revision=event.sync_revision,
                 calendar_id=calendar_id,
                 payload=payload,
                 content_hash=content_hash,
@@ -149,6 +150,7 @@ class EventSynchronizer:
         if mapping is None:
             return self._create_event(
                 event_id=event.id,
+                event_revision=event.sync_revision,
                 calendar_id=calendar_id,
                 payload=payload,
                 content_hash=content_hash,
@@ -166,6 +168,7 @@ class EventSynchronizer:
 
             return self._create_event(
                 event_id=event.id,
+                event_revision=event.sync_revision,
                 calendar_id=calendar_id,
                 payload=payload,
                 content_hash=content_hash,
@@ -173,7 +176,10 @@ class EventSynchronizer:
             )
 
         if mapping.content_hash == content_hash:
-            checked_mapping = self._mappings_repository.mark_checked(mapping.id)
+            checked_mapping = self._mappings_repository.mark_checked(
+                mapping.id,
+                event_revision=event.sync_revision,
+            )
             if checked_mapping is None:
                 raise EventSynchronizationError(
                     f"Unchanged calendar mapping could not be marked as checked: "
@@ -193,6 +199,7 @@ class EventSynchronizer:
 
         return self._update_event(
             mapping=mapping,
+            event_revision=event.sync_revision,
             calendar_id=calendar_id,
             payload=payload,
             content_hash=content_hash,
@@ -206,6 +213,7 @@ class EventSynchronizer:
     def _create_event(
         self,
         event_id: int,
+        event_revision: int,
         calendar_id: str,
         payload: OutlookEventPayload,
         content_hash: str,
@@ -251,6 +259,7 @@ class EventSynchronizer:
                 outlook_event_id=event_reference.id,
                 outlook_change_key=None,
                 content_hash=content_hash,
+                event_revision=event_revision,
             )
 
             if synchronized_mapping is None:
@@ -278,6 +287,7 @@ class EventSynchronizer:
     def _update_event(
         self,
         mapping: CalendarEventMapping,
+        event_revision: int,
         calendar_id: str,
         payload: OutlookEventPayload,
         content_hash: str,
@@ -309,6 +319,7 @@ class EventSynchronizer:
                 outlook_event_id=event_reference.id,
                 outlook_change_key=mapping.outlook_change_key,
                 content_hash=content_hash,
+                event_revision=event_revision,
             )
 
             if synchronized_mapping is None:

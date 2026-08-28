@@ -43,8 +43,9 @@ This contract does not define an HTTP client or retry implementation.
   silently to a default.
 - Collection order from the provider has no semantic meaning. Normalized
   collections use a deterministic order before comparison or persistence.
-- A fetch is authoritative only when all expected pages have completed and all
-  items have validated.
+- Source authority and observation completeness are separate. An authoritative
+  source may return a partial observation, but only a validated complete scope
+  can contribute absence/removal evidence.
 - Provider capabilities describe observable behavior; callers do not infer
   capabilities from provider names.
 
@@ -56,6 +57,23 @@ usage terms or the technical contract. Verification, bootstrap, and fallback
 sources are read-only and cannot create removal evidence, cancel canonical
 events, or overwrite authoritative fields. Automatic failover is outside the
 `v0.4.5-beta.1` boundary.
+
+Competition lifecycle and observation scope are provider-neutral typed values.
+The canonical competition format is `league` or `knockout_cup`. Each fixture
+observation declares one scope kind: `partial`, `complete_season`,
+`complete_stage`, or `complete_round`. A complete season scope is currently
+valid only for a league. A complete stage scope is valid for a qualified,
+stable stage of either format. A complete round scope requires knockout/cup
+format. Stage and round scopes require normalized stable identifiers.
+
+Removal evidence is permitted for an authoritative, unfiltered, bounded
+`complete_season` league observation. An exact `complete_stage` observation or
+a knockout/cup `complete_round` observation may contribute evidence only when
+it is non-empty, every fixture matches the exact normalized boundary, and
+repository selection is restricted to the same source, competition, season,
+and stage/round. The generic behavior does not qualify any provider or concrete
+competition scope. See
+[`adr/0004-model-competition-lifecycle-scopes.md`](adr/0004-model-competition-lifecycle-scopes.md).
 
 For iCalendar sources, `UID` is the only acceptable provider event identity.
 `SUMMARY`, participant names, kickoff, and venue are mutable fields. A feed is
@@ -353,6 +371,11 @@ candidate only when it was previously mapped but is absent from a complete,
 successful, authoritative fetch whose declared scope includes that fixture.
 Absence from a page, date window, status-filtered query, partial fetch, failed
 fetch, or changed filter is never removal evidence.
+
+An authoritative source role alone is never removal evidence. The observation
+must declare a validated supported complete scope whose competition format
+matches the canonical competition. Unknown, contradictory, or unsupported
+scope values fail before canonical lifecycle changes.
 
 Removal uses a two-observation policy:
 

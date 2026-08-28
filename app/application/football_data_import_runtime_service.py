@@ -25,7 +25,10 @@ class FootballDataImportRuntimeService:
 
     def run(self) -> ProviderImportRunResult | None:
         if not self._lock.acquire(blocking=False):
-            self._logger.warning("football-data.org import skipped: run already active")
+            self._logger.warning(
+                "football-data.org import skipped: run already active job_key=%s",
+                self._orchestrator.job_key,
+            )
             return None
         try:
             if not self._recovered:
@@ -36,14 +39,18 @@ class FootballDataImportRuntimeService:
                     ),
                 )
                 self._recovered = True
-            self._logger.info("football-data.org provider import cycle started")
-            result = self._orchestrator.import_current_premier_league()
+            self._logger.info(
+                "football-data.org provider import cycle started: job_key=%s",
+                self._orchestrator.job_key,
+            )
+            result = self._orchestrator.import_current_competition()
             self._logger.info(
                 (
-                    "football-data.org provider import completed: run_id=%s "
+                    "football-data.org provider import completed: job_key=%s run_id=%s "
                     "status=%s processed=%s created=%s updated=%s unchanged=%s "
                     "cancelled=%s deleted=%s deferred=%s failed=%s"
                 ),
+                self._orchestrator.job_key,
                 result.sync_run_id,
                 result.status,
                 result.items_processed,
@@ -58,7 +65,8 @@ class FootballDataImportRuntimeService:
             return result
         except Exception as error:
             self._logger.error(
-                "football-data.org provider import failed: category=%s",
+                "football-data.org provider import failed: job_key=%s category=%s",
+                self._orchestrator.job_key,
                 type(error).__name__,
             )
             raise

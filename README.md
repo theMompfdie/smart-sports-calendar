@@ -4,27 +4,30 @@
 
 ## Current Status
 
-**Current release:** `v0.4.5-beta.1`
+**Current release:** `v0.5.0-beta.1`
 
 **Development stage:** Beta
 
-**Completed phases:** Phase 1, Phase 2, Phase 3, and Phase 4
+**Completed phases:** Phase 1, Phase 2, Phase 3, Phase 4, and Phase 5
 
-**Active delivery track:** release qualification and controlled production
-promotion for `v0.4.5-beta.1`
-([tracker #64](https://github.com/theMompfdie/smart-sports-calendar/issues/64))
+**Latest delivery track:** Phase 5 multi-competition football expansion for
+`v0.5.0-beta.1`
+([tracker #104](https://github.com/theMompfdie/smart-sports-calendar/issues/104))
 
-**Automated tests:** 566 passing tests
+**Automated tests:** 898 passing tests
 
-The application foundation, persistent domain model, repository layer, Microsoft Graph integration, Outlook synchronization engine, and the scheduled, reported API-Football Premier League import runtime are implemented.
+The application foundation, persistent domain model, repository layer,
+Microsoft Graph integration, Outlook synchronization engine, and scheduled
+provider runtimes for the qualified Premier League, Bundesliga, EFL
+Championship regular season, DFB-Pokal, 2. Bundesliga, and ÖFB-Cup paths are
+implemented and have passed isolated live staging.
 
-The beta includes provider-neutral source selection, the approved
-football-data.org Premier League authority, isolated multi-instance deployment,
-and credential-safe live staging validation through Outlook. It is not yet
-approved for production use: the controlled live provider-failure exercise is
-deferred to [#101](https://github.com/theMompfdie/smart-sports-calendar/issues/101)
-and blocks manual production promotion. The official ECAL calendar is not
-approved for automated ingestion.
+The beta includes provider-neutral source selection, six approved 2026/27
+competition authorities, isolated multi-instance deployment, and secret-safe
+live staging validation through Outlook. It remains a pre-release:
+production promotion is a separate explicit operator decision and is never
+performed automatically. The official ECAL calendar remains unapproved for
+automated ingestion.
 
 ## Project Vision
 
@@ -92,6 +95,7 @@ The application focuses on:
 - atomic, idempotent fixture persistence with stable event source mappings
 - explicit create, update, skip, cancel, remove, and TBD-defer decisions
 - lifecycle correction and two-observation authoritative removal handling
+- bounded stage/round reconciliation for qualified knockout/cup observations
 - scheduled non-overlapping provider-import orchestration
 - persistent import-run counters, recovery, and sanitized rate-limit diagnostics
 - successful-import handoff to the existing Outlook synchronization runtime
@@ -107,9 +111,23 @@ Provider-neutral source jobs provide explicit competition/season authority,
 roles, independent intervals, adapter registration, fail-closed startup
 validation, and persistent assignment history. The current API-Football writer
 must be paired with an explicit authoritative source job when enabled. The
-football-data.org API v4 adapter is the sole released authoritative writer for
-the 2026/27 Premier League scope and fails closed before canonical or Outlook
-handoff unless the complete 20-team, 380-match snapshot validates.
+football-data.org API v4 runtime supports strict 2026/27 Premier League,
+Bundesliga, and EFL Championship profiles, independent competition jobs, and a
+shared provider-wide quota. Premier League and Bundesliga require complete
+seasons. Championship accepts only its qualified 552-fixture `REGULAR_SEASON`
+stage through one exact response or validated `500 + 52` pagination; its seven
+play-off fixtures remain excluded. Each scope fails closed before canonical or
+Outlook handoff unless its exact completeness contract validates. Championship
+live staging passed its operator gate. The 2026/27 DFB-Pokal uses the
+public OpenLigaDB API through a separate knockout-cup profile. Its observations
+are permanently partial: they
+may create or update known fixtures but never infer cancellation or removal.
+The same public provider is qualified and implemented as the preferred no-cost
+2026/27 2. Bundesliga authority. Its initial runtime is removal-disabled and
+passed isolated staging. The official ÖFB competition iCalendar feed provides
+the private 2026/27 ÖFB-Cup authority through a strict permanent-partial
+contract; it can create or update stable fixtures but absence is never
+destructive.
 
 Phase 4 documentation:
 
@@ -131,6 +149,29 @@ Phase 4 documentation:
 - [manual live validation](docs/phase-4-live-validation.md)
 - [Phase 4 release checklist](docs/phase-4-release-checklist.md)
 - [v0.4 stabilization roadmap](docs/v0.4-stabilization-roadmap.md)
+
+Phase 5 decision records:
+
+- [competition lifecycle model](docs/adr/0004-model-competition-lifecycle-scopes.md)
+- [source and authority matrix](docs/phase-5-source-authority-matrix.md)
+- [source qualification boundary ADR](docs/adr/0005-bound-phase-5-source-qualification.md)
+- [football-data.org Bundesliga selection ADR](docs/adr/0006-select-football-data-for-bundesliga.md)
+- [football-data.org Bundesliga import](docs/football-data-bundesliga-import.md)
+- [football-data.org Championship import](docs/football-data-championship-import.md)
+- [football-data.org Championship selection ADR](docs/adr/0008-select-football-data-for-championship-regular-season.md)
+- [OpenLigaDB DFB-Pokal selection ADR](docs/adr/0007-select-openligadb-for-dfb-pokal.md)
+- [OpenLigaDB DFB-Pokal qualification](docs/openligadb-dfb-pokal-qualification.md)
+- [OpenLigaDB DFB-Pokal import](docs/openligadb-dfb-pokal-import.md)
+- [OpenLigaDB 2. Bundesliga qualification](docs/openligadb-2-bundesliga-qualification.md)
+- [OpenLigaDB 2. Bundesliga selection ADR](docs/adr/0009-select-openligadb-for-2-bundesliga.md)
+- [OpenLigaDB 2. Bundesliga import](docs/openligadb-second-bundesliga-import.md)
+- [Austrian Bundesliga source qualification](docs/austrian-bundesliga-source-qualification.md)
+- [FA Cup source qualification](docs/fa-cup-source-qualification.md)
+- [EFL Cup source qualification](docs/efl-cup-source-qualification.md)
+- [ÖFB-Cup source qualification](docs/oefb-cup-source-qualification.md)
+- [ÖFB-Cup authority selection ADR](docs/adr/0010-select-oefb-calendar-for-oefb-cup.md)
+- [Phase 5 multi-competition staging validation](docs/phase-5-multi-competition-staging-validation.md)
+- [v0.5.0-beta.1 release checklist](docs/v0.5.0-beta.1-release-checklist.md)
 
 ### Database and Persistence
 
@@ -215,6 +256,12 @@ participants, data sources, source assignments, source mappings, sports
 events, event participants, results, statistics, calendar event mappings, and
 synchronization runs. It supports team-based competitions and
 participant-based sports that may be added later.
+
+The [multi-competition catalog foundation](docs/multi-competition-catalog.md)
+records the qualified Bundesliga competition and 2026/27 season alongside the
+existing Premier League catalog. This is catalog metadata only: Bundesliga
+participants, fixture import, scheduling, staging, and release remain separate
+Phase 5 work.
 
 ## Design Principles
 
@@ -380,7 +427,7 @@ docker compose config
 Expected automated test result for the current development state:
 
 ```text
-486 passed
+898 passed
 ```
 
 ## Development Workflow
@@ -473,11 +520,30 @@ delivery order and operational boundaries.
 
 ### Phase 5 – Additional Domestic Competitions
 
-**Status:** _Planned_
+**Status:** _Completed in `v0.5.0-beta.1`_
 
-- Austrian competitions
-- German competitions
-- additional English competitions
+- source qualification and competition-specific authority decisions
+- German Bundesliga qualified and implemented through the credential-free
+  provider-to-SQLite-to-mocked-Graph boundary; isolated live staging completed
+- DFB-Pokal qualified and implemented with OpenLigaDB through the
+  provider-to-SQLite-to-mocked-Graph boundary; isolated live staging completed
+  and absence never causes removal
+- 2\. Bundesliga qualified and implemented with OpenLigaDB through the
+  provider-to-SQLite-to-mocked-Graph boundary; initial operation remains
+  removal-disabled and isolated live staging is completed
+- EFL Championship regular season implemented with strict 552-fixture and
+  `500 + 52` pagination contracts; isolated live staging completed
+- Austrian Bundesliga deferred because no reviewed no-cost candidate provides
+  a permitted complete scope and no paid plan was approved
+- FA Cup deferred because official sources are manual-only, no reviewed free
+  API supplies a safe 2026/27 scope, and no paid plan was approved
+- EFL Cup deferred because the official ECAL calendar is not permitted for
+  automated collection, no reviewed free API supplies a safe complete scope,
+  and no paid plan was approved
+- ÖFB-Cup official iCalendar source qualified and implemented for private,
+  non-destructive `partial` use through the provider-to-SQLite-to-mocked-Graph
+  boundary; isolated live staging, Outlook attribution, failure/recovery, and
+  idempotency validation completed
 
 ### Phase 6 – UEFA Competitions
 
@@ -488,6 +554,11 @@ delivery order and operational boundaries.
 - Conference League
 - Nations League
 - European Championship Qualification
+
+The Champions League, Europa League, and Conference League were evaluated for
+Phase 5 and deferred because their hybrid qualifying, league, and knockout
+lifecycle requires a dedicated capability model. They are not part of the
+`v0.5.0-beta.1` implementation scope.
 
 ### Phase 7 – NFL Provider
 
@@ -505,6 +576,24 @@ Detailed Phase 4 release notes are available in
 Detailed authoritative-source beta release notes are available in
 [`RELEASE_NOTES_v0.4.5-beta.1.md`](RELEASE_NOTES_v0.4.5-beta.1.md).
 
+Detailed Phase 5 beta release notes are available in
+[`RELEASE_NOTES_v0.5.0-beta.1.md`](RELEASE_NOTES_v0.5.0-beta.1.md).
+
+### `v0.5.0-beta.1`
+
+- six concurrent qualified 2026/27 competition authorities
+- Bundesliga and EFL Championship through football-data.org
+- DFB-Pokal and removal-disabled 2. Bundesliga through OpenLigaDB
+- private permanent-partial ÖFB-Cup authority through the official iCalendar
+  feed
+- explicit league, complete-stage, and non-destructive cup lifecycle scopes
+- Outlook synchronization prioritization for changed and pending revisions
+- deterministic migration `008_add_calendar_sync_revisions`
+- six-authority live staging, Outlook convergence, restart, failure, recovery,
+  and idempotency evidence
+- explicit deferral of Austrian Bundesliga, FA Cup, EFL Cup, and UEFA scopes
+- 898 passing automated tests
+
 ### `v0.4.5-beta.1`
 
 - isolated staging and production Docker/Portainer operating model
@@ -515,7 +604,7 @@ Detailed authoritative-source beta release notes are available in
 - visible authoritative-source attribution in Outlook events
 - secret-safe qualification and staging-evidence commands
 - credential-safe live staging validation and idempotent Outlook convergence
-- controlled production promotion remains blocked by deferred issue #101
+- controlled production-promotion evidence was completed in issue #101
 
 ### `v0.4.0-alpha.1`
 
@@ -560,16 +649,24 @@ Detailed authoritative-source beta release notes are available in
 
 ## Current Limitations
 
-This remains an alpha release.
+This remains a beta pre-release.
 
 - live provider and Microsoft Graph tenant behavior is not exercised by CI
 - no administrative user interface
 - synchronization locking is process-local only
-- multiple application instances must not synchronize the same calendar/database concurrently
-- distributed locking and supported multi-instance coordination are not implemented
-- production behavior still requires validation against a real provider and target calendar
+- multiple application instances must not synchronize the same calendar or
+  database concurrently
+- distributed locking and supported multi-instance coordination are not
+  implemented
+- production promotion remains a separate manual operator decision
 
-The synchronization engine and scheduled API-Football catalog-to-canonical-to-Outlook runtime are covered by deterministic provider-payload-to-SQLite-to-mocked-Graph tests. Live provider and tenant validation is an explicit, credential-safe manual activity and is never part of normal CI. See [`docs/phase-4-live-validation.md`](docs/phase-4-live-validation.md) and [`docs/phase-4-release-checklist.md`](docs/phase-4-release-checklist.md).
+The synchronization engine and scheduled provider-to-canonical-to-Outlook
+runtimes are covered by deterministic provider-payload-to-SQLite-to-mocked-
+Graph tests. Live provider and tenant validation remains an explicit,
+credential-safe manual activity and is never part of normal CI. See
+[`docs/phase-5-multi-competition-staging-validation.md`](docs/phase-5-multi-competition-staging-validation.md)
+and
+[`docs/v0.5.0-beta.1-release-checklist.md`](docs/v0.5.0-beta.1-release-checklist.md).
 
 ## Project Goals
 

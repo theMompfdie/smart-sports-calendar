@@ -55,10 +55,17 @@ the latter two retain their sanitized provider reason in metadata.
 repeated observations. A later provider correction clears it.
 
 Removal detection is permitted only for an observation explicitly declared
-`authoritative=True`, `complete=True`, and `filtered=False`. The declared scope
-contains competition, season, an optional UTC window, a unique observation ID,
-and its UTC observation time. Missing fixtures outside that exact scope are not
-considered.
+`authoritative=True`, complete through a supported typed lifecycle scope, and
+`filtered=False`. A league `complete_season` scope requires a bounded UTC
+season window. A qualified `complete_stage` scope or knockout/cup
+`complete_round` scope must be non-empty, and every returned fixture must match
+its exact normalized stage or round. An optional stage on a complete-round
+scope is also part of the exact boundary. Mixed or contradictory collections
+fail before repository writes.
+
+The repository selects missing candidates only from the same source,
+competition, season, optional UTC window, and declared stage/round boundary.
+Fixtures in another stage or round cannot gain or advance reconciliation state.
 
 The first qualifying absence creates a reconciliation candidate. A second,
 distinct authoritative observation confirms it and sets `deleted_at`. Replaying
@@ -66,8 +73,9 @@ the same observation ID cannot advance the counter. Reappearance before
 confirmation clears the candidate; reappearance after confirmation clears
 `deleted_at` while retaining the original event and mapping identity.
 
-Partial, failed, or filtered fetches must be submitted as non-authoritative and
-therefore cannot create removal candidates.
+Partial, failed, filtered, non-authoritative, empty, or scope-conflicting
+observations cannot create removal candidates. Completeness is a qualified
+provider claim; it is never inferred from HTTP success or the returned count.
 
 ## Migration and retry behavior
 
@@ -87,9 +95,11 @@ provider or Graph calls. They cover stable identity, exact home/away
 persistence, write-free repeated imports, kickoff changes and TBD retention,
 optional-field preservation, cancellation and correction, two-observation
 removal, same-observation replay, reappearance, partial-scope safety, mapping
-conflicts, and transactional rollback.
+conflicts, exact stage/round isolation, transactional rollback and retry, and
+SQLite-to-recording-Graph removal/reappearance behavior.
 
 ## Remaining work
 
-Phase 4.6 and later work owns persistent import-run reporting, scheduling,
-provider fetch-to-import orchestration, and the final provider-to-Outlook path.
+Concrete cup support still requires competition-specific provider
+qualification, stable stage/round mapping, completeness evidence, catalog and
+runtime configuration, and isolated staging validation.

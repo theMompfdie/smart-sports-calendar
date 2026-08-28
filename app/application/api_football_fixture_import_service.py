@@ -10,6 +10,10 @@ from app.database.fixture_import_repository import (
     FixtureImportScopeRecord,
     FixtureParticipantRecord,
 )
+from app.domain.competition_lifecycle import (
+    CompetitionLifecycleScope,
+    FixtureObservationScopeKind,
+)
 from app.providers.api_football.exceptions import (
     ProviderIntegrityError,
     ProviderResolutionError,
@@ -23,10 +27,10 @@ class FixtureImportScope:
     season_id: int
     observation_id: str
     observed_at_utc: datetime
+    lifecycle: CompetitionLifecycleScope
     window_start_utc: datetime | None = None
     window_end_utc: datetime | None = None
     authoritative: bool = False
-    complete: bool = True
     filtered: bool = False
 
     def __post_init__(self) -> None:
@@ -45,10 +49,29 @@ class FixtureImportScope:
             and self.window_start_utc > self.window_end_utc
         ):
             raise ValueError("Fixture import window start must not follow its end.")
-        if self.authoritative and (not self.complete or self.filtered):
+        if self.filtered and self.lifecycle.complete:
             raise ValueError(
-                "Only complete, unfiltered fixture observations may be authoritative."
+                "A filtered fixture observation cannot declare a complete scope."
             )
+        if (
+            self.lifecycle.scope_kind is FixtureObservationScopeKind.COMPLETE_SEASON
+            and (self.window_start_utc is None or self.window_end_utc is None)
+        ):
+            raise ValueError(
+                "A complete-season fixture observation requires a bounded UTC window."
+            )
+
+    @property
+    def complete(self) -> bool:
+        return self.lifecycle.complete
+
+    @property
+    def removal_eligible(self) -> bool:
+        return (
+            self.authoritative
+            and not self.filtered
+            and self.lifecycle.removal_reconciliation_supported
+        )
 
     @staticmethod
     def _require_utc(value: datetime, field_name: str) -> None:
@@ -87,6 +110,8 @@ class ApiFootballFixtureImportService:
             window_start_utc=scope.window_start_utc,
             window_end_utc=scope.window_end_utc,
             authoritative=scope.authoritative,
+            lifecycle=scope.lifecycle,
+            filtered=scope.filtered,
             observation_id=scope.observation_id.strip(),
             observed_at_utc=scope.observed_at_utc,
         )
@@ -104,6 +129,7 @@ class ApiFootballFixtureImportService:
         fixtures: tuple[NormalizedFixture, ...],
         scope: FixtureImportScope,
     ) -> None:
+        ApiFootballFixtureImportService._validate_complete_boundary(fixtures, scope)
         external_ids: set[str] = set()
         for fixture in fixtures:
             if not fixture.external_id.strip():
@@ -147,6 +173,39 @@ class ApiFootballFixtureImportService:
             if roles != ["home", "away"]:
                 raise ProviderIntegrityError(
                     "Fixture must contain deterministic home and away participants: "
+                    f"external_id={fixture.external_id}."
+                )
+
+    @staticmethod
+    def _validate_complete_boundary(
+        fixtures: tuple[NormalizedFixture, ...],
+        scope: FixtureImportScope,
+    ) -> None:
+        lifecycle = scope.lifecycle
+        if lifecycle.scope_kind not in {
+            FixtureObservationScopeKind.COMPLETE_STAGE,
+            FixtureObservationScopeKind.COMPLETE_ROUND,
+        }:
+            return
+        if not fixtures:
+            raise ProviderIntegrityError(
+                "A complete stage or round observation must contain fixtures."
+            )
+        for fixture in fixtures:
+            if (
+                lifecycle.scope_kind is FixtureObservationScopeKind.COMPLETE_STAGE
+                and fixture.stage != lifecycle.stage
+            ):
+                raise ProviderIntegrityError(
+                    "Fixture falls outside the declared complete-stage scope: "
+                    f"external_id={fixture.external_id}."
+                )
+            if lifecycle.scope_kind is FixtureObservationScopeKind.COMPLETE_ROUND and (
+                fixture.round_name != lifecycle.round_name
+                or (lifecycle.stage is not None and fixture.stage != lifecycle.stage)
+            ):
+                raise ProviderIntegrityError(
+                    "Fixture falls outside the declared complete-round scope: "
                     f"external_id={fixture.external_id}."
                 )
 

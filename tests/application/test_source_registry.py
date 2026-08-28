@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 import pytest
 from app.application.source_registry import SourceRegistry
@@ -53,6 +53,33 @@ def test_registry_builds_independent_jobs_for_registered_sources() -> None:
     jobs[1].task()
     first.assert_called_once_with()
     second.assert_called_once_with()
+
+
+def test_registry_can_build_definition_scoped_tasks_for_one_source() -> None:
+    registry = SourceRegistry()
+    task = MagicMock()
+    factory = MagicMock(side_effect=lambda job: lambda: task(job.job_key))
+    premier_league = definition("shared")
+    bundesliga = SourceJobDefinition(
+        job_key="shared-bl",
+        source_key="shared",
+        role=SourceRole.AUTHORITATIVE,
+        scope=SourceScope("football", "bundesliga", "2026_27"),
+        interval_seconds=1200,
+    )
+    registry.register(
+        "shared",
+        task_factory=factory,
+        supported_roles=frozenset({SourceRole.AUTHORITATIVE}),
+        writes_canonical=True,
+    )
+
+    jobs = registry.build_scheduled_jobs((premier_league, bundesliga))
+    for job in jobs:
+        job.task()
+
+    assert factory.call_args_list == [call(premier_league), call(bundesliga)]
+    assert task.call_args_list == [call("shared-pl"), call("shared-bl")]
 
 
 def test_registry_rejects_missing_adapter() -> None:

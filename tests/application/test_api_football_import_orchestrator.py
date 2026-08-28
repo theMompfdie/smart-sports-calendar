@@ -23,6 +23,10 @@ from app.database.fixture_import_repository import (
     FixtureImportResult,
 )
 from app.database.sync_runs_repository import SyncRun, SyncRunsRepository
+from app.domain.competition_lifecycle import (
+    CompetitionFormat,
+    FixtureObservationScopeKind,
+)
 from app.providers.api_football.exceptions import ProviderRateLimitError
 from app.providers.api_football.models import RateLimitSnapshot
 
@@ -33,6 +37,7 @@ def create_batch() -> NormalizedFixtureBatch:
     return NormalizedFixtureBatch(
         fixtures=(),
         competition_id=10,
+        competition_format=CompetitionFormat.LEAGUE,
         season_id=20,
         season_start_date=date(2026, 8, 14),
         season_end_date=date(2027, 5, 24),
@@ -151,6 +156,8 @@ def test_orchestrator_persists_scope_diagnostics_and_decision_counters() -> None
     )
     assert scope.authoritative is True
     assert scope.complete is True
+    assert scope.lifecycle.scope_kind is FixtureObservationScopeKind.COMPLETE_SEASON
+    assert scope.removal_eligible is True
     assert scope.filtered is False
     assert scope.observed_at_utc == FETCHED_AT
     assert scope.observation_id.startswith("api-football-")
@@ -169,6 +176,11 @@ def test_orchestrator_persists_scope_diagnostics_and_decision_counters() -> None
     assert metadata["role"] == "authoritative"
     assert metadata["competition_key"] == "premier_league"
     assert metadata["season_key"] == "current"
+    assert metadata["competition_format"] == "league"
+    assert metadata["scope_kind"] == "complete_season"
+    assert metadata["scope_stage"] is None
+    assert metadata["scope_round"] is None
+    assert metadata["removal_eligible"] is True
     assert metadata["request_attempts"] == 3
     assert metadata["rate_limits"]["daily_remaining"] == 91
     assert metadata["rate_limits"]["retry_after_seconds"] == 4.0
@@ -207,6 +219,7 @@ def test_orchestrator_records_sanitized_failure_and_does_not_import() -> None:
         "Provider import failed with ProviderRateLimitError."
     )
     assert failure["metadata"]["error_category"] == "ProviderRateLimitError"
+    assert failure["metadata"]["complete"] is False
     assert "provider-secret" not in str(failure)
 
 

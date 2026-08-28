@@ -39,7 +39,12 @@ from app.database.sync_runs_repository import SyncRunsRepository
 from app.database.synchronization_query_repository import (
     SynchronizationQueryRepository,
 )
+from app.domain.competition_lifecycle import (
+    CompetitionLifecycleScope,
+    FixtureObservationScopeKind,
+)
 from app.providers.contracts import SourceJobDefinition, SourceRole, SourceScope
+from app.providers.football_data.profiles import PREMIER_LEAGUE_PROFILE
 from app.synchronization.event_synchronizer import EventSynchronizer
 from app.synchronization.outlook_event_payload_builder import OutlookEventPayloadBuilder
 from app.synchronization.synchronization_orchestrator import SynchronizationOrchestrator
@@ -55,6 +60,7 @@ CALENDAR_ID = "staging-calendar"
 
 class SnapshotAdapter:
     def __init__(self) -> None:
+        self.profile = PREMIER_LEAGUE_PROFILE
         self.snapshot = snapshot()
 
     def fetch_snapshot(self, season_year: int):
@@ -109,7 +115,7 @@ def create_harness(database_path, *, persist_source_assignment: bool = True):
     adapter = SnapshotAdapter()
     service = FootballDataPremierLeagueService(
         settings=settings,
-        adapter=adapter,  # type: ignore[arg-type]
+        adapter=adapter,
         sports_repository=sports,
         competitions_repository=competitions,
         seasons_repository=seasons,
@@ -128,6 +134,10 @@ def create_harness(database_path, *, persist_source_assignment: bool = True):
                 season_id=batch.season_id,
                 observation_id="existing-api-football-event",
                 observed_at_utc=batch.fetched_at_utc,
+                lifecycle=CompetitionLifecycleScope(
+                    competition_format=batch.competition_format,
+                    scope_kind=FixtureObservationScopeKind.PARTIAL,
+                ),
                 authoritative=False,
             ),
         )
@@ -154,7 +164,7 @@ def create_harness(database_path, *, persist_source_assignment: bool = True):
             )
         )
     provider = FootballDataImportOrchestrator(
-        premier_league_service=service,
+        competition_service=service,
         import_service=ApiFootballFixtureImportService(
             sources,
             FixtureImportRepository(database_path),

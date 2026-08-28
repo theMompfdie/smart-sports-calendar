@@ -1,0 +1,171 @@
+# v0.5.0-beta.1 - Multi-Competition Football Beta
+
+## Summary
+
+`v0.5.0-beta.1` completes Phase 5 and expands SMART Sports Calendar from one
+released Premier League authority to six concurrently scheduled 2026/27
+football competition authorities. The release preserves provider-neutral
+orchestration, deterministic canonical identity, idempotent Outlook
+synchronization, competition-isolated failure handling, and explicit
+competition lifecycle boundaries.
+
+This is a beta pre-release. Publishing it does not deploy or promote the
+production stack automatically.
+
+## Shipped competition authorities
+
+| Competition | Authority | Released scope | Lifecycle boundary |
+| --- | --- | --- | --- |
+| Premier League | football-data.org API v4 | 380 fixtures | complete season |
+| Bundesliga | football-data.org API v4 | 306 fixtures | complete season |
+| EFL Championship | football-data.org API v4 | 552 regular-season fixtures | complete `REGULAR_SEASON` stage; play-offs excluded |
+| DFB-Pokal | OpenLigaDB API v1 | currently published fixtures | permanently partial; absence is non-destructive |
+| 2\. Bundesliga | OpenLigaDB API v1 | 306 fixtures | removal-disabled partial operation |
+| ÖFB-Cup | official private ÖFB iCalendar feed | 48 currently published fixtures | permanently partial; absence is non-destructive |
+
+Each competition and season has exactly one configured authoritative writer.
+There is no automatic failover and no field-level provider aggregation.
+
+## Highlights
+
+- Added explicit league, knockout-cup, complete-season, complete-stage, and
+  partial observation capabilities.
+- Added configuration-driven multi-competition catalogs, source assignments,
+  independent provider jobs, and isolated run reporting.
+- Added the qualified Bundesliga and Championship profiles to the existing
+  football-data.org adapter with shared free-plan request pacing.
+- Added a credential-free OpenLigaDB adapter for DFB-Pokal and 2. Bundesliga.
+- Added the private official ÖFB iCalendar adapter with strict HTTPS, host,
+  redirect, content-type, size, recurrence, property, identity, and season
+  validation.
+- Added reviewed provider mappings for every shipped 2026/27 participant.
+- Added bounded knockout-cup reconciliation while preventing partial sources
+  from generating cancellation or removal evidence.
+- Prioritized new, changed, failed, lifecycle-pending, and revision-pending
+  Outlook mappings before unchanged mappings; unchanged rows rotate fairly.
+- Expanded secret-safe staging evidence to validate all six authorities and
+  calendar revision convergence.
+
+## Behavior changes
+
+- Provider jobs are configured independently through `SOURCE_JOBS_JSON` and
+  must match an enabled adapter and one exact competition/season authority.
+- A failure in one provider job does not block unrelated imports or calendar
+  synchronization of the last-known-good canonical state.
+- Championship imports accept exactly the qualified 552-fixture
+  `REGULAR_SEASON` scope through one response or validated `500 + 52`
+  pagination. The seven play-off fixtures are intentionally excluded.
+- DFB-Pokal and ÖFB-Cup observations are always `partial`, `complete=false`,
+  and removal-ineligible.
+- 2\. Bundesliga is initially removal-disabled even though its 306-fixture
+  structure was observed and validated.
+- Existing calendar mappings receive one safe payload-revision reconciliation
+  after migration and then return to idempotent unchanged processing.
+
+## Database migration
+
+Migration `008_add_calendar_sync_revisions` adds monotonic event and synchronized
+payload revisions. It preserves existing canonical events, Outlook IDs,
+transaction IDs, source mappings, and calendar mappings while queueing existing
+calendar mappings for one bounded reconciliation sweep.
+
+Database initialization and forward migration remain deterministic and
+idempotent. Schema downgrade is not supported. Back up the stopped SQLite
+database before upgrading and never run older code against the upgraded
+database without restoring the matching pre-upgrade backup.
+
+## Configuration and operations
+
+- Package version: `0.5.0b1`.
+- New provider settings cover football-data.org, OpenLigaDB, and the ÖFB
+  iCalendar adapter.
+- football-data.org remains bounded to the configured free-plan request budget.
+- OpenLigaDB requires no credential.
+- The opaque ÖFB subscription URL is a deployment secret. It must be created
+  manually through the official public ÖFB calendar control and must never be
+  committed, logged, pasted into GitHub, or redistributed.
+- The ÖFB feed must not be polled more frequently than every six hours.
+- Staging and production must retain different stack names, volumes, SQLite
+  databases, Outlook calendars, credentials, and logs.
+- Production must never track `develop`; promotion uses an explicitly approved
+  immutable tag and remains manual.
+
+See [`docs/deployment.md`](docs/deployment.md) and
+[`docs/phase-5-multi-competition-staging-validation.md`](docs/phase-5-multi-competition-staging-validation.md).
+
+## Validation evidence
+
+- 898 deterministic automated tests pass without live provider or Microsoft
+  Graph credentials.
+- Ruff linting and formatting checks pass.
+- Docker Compose rendering, image build, health, SQLite initialization, and
+  three-instance isolation validation pass.
+- Isolated live staging converged all six authorities and Outlook mappings with
+  zero pending calendar revisions.
+- Restart and unchanged reruns preserved fixture, source, and Outlook identity.
+- Controlled football-data.org, OpenLigaDB, and ÖFB iCalendar failures
+  preserved last-known-good state while unrelated jobs and synchronization
+  continued.
+- Restored provider access returned to successful unchanged imports.
+- Manual Outlook review confirmed competition attribution, participants,
+  kickoffs, DFB-Pokal and 2. Bundesliga entries, and all 48 current ÖFB-Cup
+  entries.
+
+Normal CI continues to mock all external network boundaries. Live evidence is
+operator-run and secret-safe.
+
+## Explicit deferrals
+
+The following competitions are not implemented or released in
+`v0.5.0-beta.1`:
+
+- Austrian Bundesliga: no reviewed no-cost candidate provides the permitted
+  complete split-season scope and no paid plan was approved.
+- FA Cup: official sources are manual-only and no permitted, trustworthy
+  no-cost machine-readable authority was qualified.
+- EFL Cup: official ECAL automation is prohibited and no permitted,
+  trustworthy no-cost complete authority was qualified.
+- UEFA Champions League, Europa League, and Conference League: their hybrid
+  qualifying, league, and knockout lifecycle requires a later capability and
+  source-qualification slice.
+
+## Known limitations
+
+- This remains a beta pre-release rather than a general-availability release.
+- Live scores, standings, statistics, lineups, odds, and historical enrichment
+  remain out of scope.
+- Synchronization locking is process-local. Never run two instances against the
+  same writable SQLite database or Outlook calendar.
+- DFB-Pokal, 2. Bundesliga, and ÖFB-Cup absence cannot remove canonical or
+  Outlook events under their current authority contracts.
+- Championship play-offs are not part of the released authority.
+- The ÖFB feed is restricted to the operator's private calendar use; this
+  release does not grant redistribution or commercial data rights.
+- Automatic provider failover and field-level multi-source aggregation are not
+  implemented.
+
+## Upgrade
+
+1. Stop the exact deployment and create a verified backup of `/data/sports.db`.
+2. Review `.env.example` and configure only explicitly approved source jobs.
+3. Check out the signed `v0.5.0-beta.1` tag.
+4. Run `docker compose config --quiet`.
+5. Start exactly one application instance with the existing project-scoped
+   volume and dedicated Outlook calendar.
+6. Confirm migration `008_add_calendar_sync_revisions` and startup validation
+   complete successfully.
+7. Allow bounded synchronization cycles to drain revision-pending mappings.
+8. Run secret-safe staging evidence and require zero pending revisions.
+
+## Rollback
+
+Prefer a forward fix. An in-place schema downgrade is unsupported. If rollback
+is required, stop the application, preserve the upgraded database for
+investigation, restore the verified pre-upgrade database backup, check out the
+previous release tag, and start exactly one instance. Restoring the backup
+discards state recorded after that backup.
+
+## Tracking
+
+- Phase 5 master: #104
+- Release qualification and publication: #147

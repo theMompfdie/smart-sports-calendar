@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Protocol
 
 from app.providers.contracts import (
     SourceConfigurationError,
@@ -12,9 +13,14 @@ from app.scheduler.scheduler import ScheduledJob
 @dataclass(frozen=True)
 class RegisteredSource:
     source_key: str
-    task: SourceJobTask
+    task: SourceJobTask | None
+    task_factory: "SourceJobTaskFactory | None"
     supported_roles: frozenset[SourceRole]
     writes_canonical: bool
+
+
+class SourceJobTaskFactory(Protocol):
+    def __call__(self, definition: SourceJobDefinition) -> SourceJobTask: ...
 
 
 class SourceRegistry:
@@ -24,8 +30,9 @@ class SourceRegistry:
     def register(
         self,
         source_key: str,
-        task: SourceJobTask,
+        task: SourceJobTask | None = None,
         *,
+        task_factory: SourceJobTaskFactory | None = None,
         supported_roles: frozenset[SourceRole],
         writes_canonical: bool,
     ) -> None:
@@ -34,6 +41,10 @@ class SourceRegistry:
         if source_key in self._sources:
             raise SourceConfigurationError(
                 f"Source adapter is already registered: {source_key}."
+            )
+        if (task is None) == (task_factory is None):
+            raise ValueError(
+                "A source adapter must declare exactly one task or task factory."
             )
         if not supported_roles or SourceRole.DISABLED in supported_roles:
             raise ValueError("A source adapter must declare active supported roles.")
@@ -49,6 +60,7 @@ class SourceRegistry:
         self._sources[source_key] = RegisteredSource(
             source_key=source_key,
             task=task,
+            task_factory=task_factory,
             supported_roles=supported_roles,
             writes_canonical=writes_canonical,
         )
@@ -72,11 +84,18 @@ class SourceRegistry:
                     f"Source {definition.source_key} does not support role "
                     f"{definition.role.value}."
                 )
+            task = (
+                registered.task_factory(definition)
+                if registered.task_factory is not None
+                else registered.task
+            )
+            if task is None:
+                raise AssertionError("Registered source task unexpectedly missing.")
             jobs.append(
                 ScheduledJob(
                     job_key=definition.job_key,
                     interval_seconds=definition.interval_seconds,
-                    task=registered.task,
+                    task=task,
                 )
             )
         return tuple(jobs)
