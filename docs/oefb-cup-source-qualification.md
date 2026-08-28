@@ -104,7 +104,12 @@ identity fingerprint. The implementation catalog contains only the reviewed
 64 public team identities and provider mappings required for deterministic
 correlation.
 
-## Required implementation contract
+## Implementation contract
+
+The credential-free provider, normalization, runtime, scheduling, persistence,
+and SQLite-to-mocked-Graph implementation satisfies this contract. Isolated
+live staging with the operator-managed feed secret remains required before the
+competition can be accepted as complete.
 
 The follow-up implementation must satisfy all of these rules:
 
