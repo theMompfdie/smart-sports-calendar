@@ -20,7 +20,7 @@ The application foundation, persistent domain model, repository layer,
 Microsoft Graph integration, Outlook synchronization engine, and scheduled
 provider runtimes for the qualified Premier League, Bundesliga, EFL
 Championship regular season, DFB-Pokal, and 2. Bundesliga paths are
-implemented. Championship live staging remains pending.
+implemented and have passed isolated live staging.
 
 The beta includes provider-neutral source selection, the approved
 football-data.org Premier League authority, isolated multi-instance deployment,
@@ -162,6 +162,7 @@ Phase 5 decision records:
 - [OpenLigaDB 2. Bundesliga qualification](docs/openligadb-2-bundesliga-qualification.md)
 - [OpenLigaDB 2. Bundesliga selection ADR](docs/adr/0009-select-openligadb-for-2-bundesliga.md)
 - [OpenLigaDB 2. Bundesliga import](docs/openligadb-second-bundesliga-import.md)
+- [Austrian Bundesliga source qualification](docs/austrian-bundesliga-source-qualification.md)
 - [Phase 5 multi-competition staging validation](docs/phase-5-multi-competition-staging-validation.md)
 
 ### Database and Persistence
@@ -523,10 +524,11 @@ delivery order and operational boundaries.
   provider-to-SQLite-to-mocked-Graph boundary; initial operation remains
   removal-disabled and isolated live staging is completed
 - EFL Championship regular season implemented with strict 552-fixture and
-  `500 + 52` pagination contracts; isolated live staging remains pending
-- Austrian and additional English competitions remain evaluated or
-  conditional until their documented qualification and implementation gates
-  pass
+  `500 + 52` pagination contracts; isolated live staging completed
+- Austrian Bundesliga deferred because no reviewed no-cost candidate provides
+  a permitted complete scope and no paid plan was approved
+- FA Cup, EFL Cup, and ÖFB-Cup remain pending competition-specific source
+  qualification
 
 ### Phase 6 – UEFA Competitions
 
