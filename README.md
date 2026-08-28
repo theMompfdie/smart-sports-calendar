@@ -530,7 +530,10 @@ delivery order and operational boundaries.
   a permitted complete scope and no paid plan was approved
 - FA Cup deferred because official sources are manual-only, no reviewed free
   API supplies a safe 2026/27 scope, and no paid plan was approved
-- EFL Cup and ÖFB-Cup remain pending competition-specific source qualification
+- EFL Cup deferred because the official ECAL calendar is not permitted for
+  automated collection, no reviewed free API supplies a safe complete scope,
+  and no paid plan was approved
+- ÖFB-Cup remains pending competition-specific source qualification
 
 ### Phase 6 – UEFA Competitions
 
