@@ -46,9 +46,37 @@ BUNDESLIGA_TEAM_NAME_MAPPING: dict[str, str] = {
     "VfB Stuttgart": "vfb_stuttgart",
 }
 
+CHAMPIONSHIP_TEAM_NAME_MAPPING: dict[str, str] = {
+    "Birmingham City FC": "birmingham_city",
+    "Blackburn Rovers FC": "blackburn_rovers",
+    "Bolton Wanderers FC": "bolton_wanderers",
+    "Bristol City FC": "bristol_city",
+    "Burnley FC": "burnley",
+    "Cardiff City FC": "cardiff_city",
+    "Charlton Athletic FC": "charlton_athletic",
+    "Derby County FC": "derby_county",
+    "Lincoln City FC": "lincoln_city",
+    "Middlesbrough FC": "middlesbrough",
+    "Millwall FC": "millwall",
+    "Norwich City FC": "norwich_city",
+    "Portsmouth FC": "portsmouth",
+    "Preston North End FC": "preston_north_end",
+    "Queens Park Rangers FC": "queens_park_rangers",
+    "Sheffield United FC": "sheffield_united",
+    "Southampton FC": "southampton",
+    "Stoke City FC": "stoke_city",
+    "Swansea City AFC": "swansea_city",
+    "Watford FC": "watford",
+    "West Bromwich Albion FC": "west_bromwich_albion",
+    "West Ham United FC": "west_ham_united",
+    "Wolverhampton Wanderers FC": "wolverhampton_wanderers",
+    "Wrexham AFC": "wrexham",
+}
+
 REVIEWED_TEAM_NAME_MAPPINGS = {
     "premier_league": PREMIER_LEAGUE_TEAM_NAME_MAPPING,
     "bundesliga": BUNDESLIGA_TEAM_NAME_MAPPING,
+    "championship": CHAMPIONSHIP_TEAM_NAME_MAPPING,
 }
 
 _NORMALIZED_TEAM_MAPPING = {
@@ -114,9 +142,43 @@ _NORMALIZED_BUNDESLIGA_TEAM_MAPPING.update(
     }
 )
 
+_NORMALIZED_CHAMPIONSHIP_TEAM_MAPPING = {
+    re.sub(r"[^a-z0-9]", "", name.casefold()): key
+    for name, key in CHAMPIONSHIP_TEAM_NAME_MAPPING.items()
+}
+_NORMALIZED_CHAMPIONSHIP_TEAM_MAPPING.update(
+    {
+        "birmingham": "birmingham_city",
+        "blackburn": "blackburn_rovers",
+        "bolton": "bolton_wanderers",
+        "bristolcity": "bristol_city",
+        "burnley": "burnley",
+        "cardiff": "cardiff_city",
+        "charlton": "charlton_athletic",
+        "derbycounty": "derby_county",
+        "lincolncity": "lincoln_city",
+        "middlesbrough": "middlesbrough",
+        "millwall": "millwall",
+        "norwich": "norwich_city",
+        "portsmouth": "portsmouth",
+        "prestonne": "preston_north_end",
+        "qpr": "queens_park_rangers",
+        "sheffieldutd": "sheffield_united",
+        "southampton": "southampton",
+        "stoke": "stoke_city",
+        "swansea": "swansea_city",
+        "watford": "watford",
+        "westbrom": "west_bromwich_albion",
+        "westham": "west_ham_united",
+        "wolverhampton": "wolverhampton_wanderers",
+        "wrexham": "wrexham",
+    }
+)
+
 TEAM_NAME_MAPPINGS: dict[str, dict[str, str]] = {
     "premier_league": _NORMALIZED_TEAM_MAPPING,
     "bundesliga": _NORMALIZED_BUNDESLIGA_TEAM_MAPPING,
+    "championship": _NORMALIZED_CHAMPIONSHIP_TEAM_MAPPING,
 }
 
 

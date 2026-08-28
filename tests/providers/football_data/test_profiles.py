@@ -1,6 +1,7 @@
 import pytest
 from app.providers.football_data.profiles import (
     BUNDESLIGA_PROFILE,
+    CHAMPIONSHIP_PROFILE,
     PREMIER_LEAGUE_PROFILE,
     FootballDataCompetitionProfile,
     get_competition_profile,
@@ -12,6 +13,9 @@ def test_reviewed_profiles_resolve_by_canonical_scope() -> None:
         get_competition_profile("premier_league", "2026_27") == PREMIER_LEAGUE_PROFILE
     )
     assert get_competition_profile("bundesliga", "2026_27") == BUNDESLIGA_PROFILE
+    assert get_competition_profile("championship", "2026_27") == CHAMPIONSHIP_PROFILE
+    assert CHAMPIONSHIP_PROFILE.match_stage_filter == "REGULAR_SEASON"
+    assert CHAMPIONSHIP_PROFILE.external_season_id == 2509
     assert get_competition_profile("bundesliga", "2025_26") is None
 
 

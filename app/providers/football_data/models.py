@@ -77,6 +77,7 @@ class FootballDataSnapshot:
     fetched_at_utc: datetime
     request_attempts: int
     rate_limits: RateLimitSnapshot
+    page_count: int = 1
 
 
 def parse_snapshot(
@@ -89,6 +90,7 @@ def parse_snapshot(
     fetched_at_utc: datetime,
     request_attempts: int,
     rate_limits: RateLimitSnapshot,
+    page_count: int = 1,
 ) -> FootballDataSnapshot:
     competition_id = _positive_int(competition_payload, "id")
     competition_code = _string(competition_payload, "code")
@@ -174,6 +176,7 @@ def parse_snapshot(
         fetched_at_utc=_require_utc(fetched_at_utc, "fetch timestamp"),
         request_attempts=request_attempts,
         rate_limits=rate_limits,
+        page_count=page_count,
     )
 
 

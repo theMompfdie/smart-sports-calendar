@@ -11,6 +11,7 @@ from app.providers.football_data.exceptions import (
 from app.providers.football_data.models import parse_snapshot
 from app.providers.football_data.profiles import (
     BUNDESLIGA_PROFILE,
+    CHAMPIONSHIP_PROFILE,
     PREMIER_LEAGUE_PROFILE,
     FootballDataCompetitionProfile,
 )
@@ -59,6 +60,18 @@ def test_bundesliga_profile_parses_exact_complete_scope() -> None:
     assert len(result.teams) == 18
     assert len(result.matches) == 306
     assert {match.matchday for match in result.matches} == set(range(1, 35))
+
+
+def test_championship_profile_parses_exact_regular_season_scope() -> None:
+    result = snapshot(CHAMPIONSHIP_PROFILE)
+
+    assert result.competition_id == 2016
+    assert result.competition_code == "ELC"
+    assert result.season_id == 2509
+    assert len(result.teams) == 24
+    assert len(result.matches) == 552
+    assert {match.stage for match in result.matches} == {"REGULAR_SEASON"}
+    assert {match.matchday for match in result.matches} == set(range(1, 47))
 
 
 @pytest.mark.parametrize(

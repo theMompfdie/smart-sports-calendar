@@ -1,8 +1,12 @@
 from dataclasses import replace
 from datetime import timedelta
 
+import pytest
 from app.application.api_football_fixture_import_service import (
     ApiFootballFixtureImportService,
+)
+from app.application.api_football_import_orchestrator import (
+    ProviderImportOrchestrationError,
 )
 from app.application.football_data_import_orchestrator import (
     FootballDataImportOrchestrator,
@@ -40,6 +44,7 @@ from app.database.synchronization_query_repository import (
 from app.providers.contracts import SourceJobDefinition, SourceRole, SourceScope
 from app.providers.football_data.profiles import (
     BUNDESLIGA_PROFILE,
+    CHAMPIONSHIP_PROFILE,
     PREMIER_LEAGUE_PROFILE,
     FootballDataCompetitionProfile,
 )
@@ -84,7 +89,11 @@ def create_harness(database_path):
     source = register_football_data_source(settings, sources)
     adapters = {
         profile.competition_key: SnapshotAdapter(profile)
-        for profile in (PREMIER_LEAGUE_PROFILE, BUNDESLIGA_PROFILE)
+        for profile in (
+            PREMIER_LEAGUE_PROFILE,
+            BUNDESLIGA_PROFILE,
+            CHAMPIONSHIP_PROFILE,
+        )
     }
     services = {
         profile.competition_key: FootballDataCompetitionService(
@@ -99,7 +108,11 @@ def create_harness(database_path):
             source_mappings_repository=mappings,
             profile=profile,
         )
-        for profile in (PREMIER_LEAGUE_PROFILE, BUNDESLIGA_PROFILE)
+        for profile in (
+            PREMIER_LEAGUE_PROFILE,
+            BUNDESLIGA_PROFILE,
+            CHAMPIONSHIP_PROFILE,
+        )
     }
     batches = {
         competition_key: service.fetch_normalized_snapshot()
@@ -264,3 +277,50 @@ def test_premier_league_and_bundesliga_share_sqlite_without_identity_collisions(
     unchanged_sync = calendar.synchronize(CALENDAR_ID, 700)
     assert unchanged_sync.items_unchanged == 686
     assert len(graph.operations) == 686
+
+
+def test_championship_regular_season_is_stage_bounded_and_idempotent(
+    tmp_path,
+) -> None:
+    database_path = tmp_path / "championship-football-data.db"
+    providers, calendar, adapters, graph, source, mappings = create_harness(
+        database_path
+    )
+    provider = providers["championship"]
+
+    first_import = provider.import_current_competition()
+    first_sync_batches = tuple(calendar.synchronize(CALENDAR_ID, 100) for _ in range(6))
+
+    assert first_import.items_created == 552
+    assert [batch.items_created for batch in first_sync_batches] == [
+        100,
+        100,
+        100,
+        100,
+        100,
+        52,
+    ]
+    assert len(graph.operations) == 552
+    provider_run = SyncRunsRepository(database_path).get_by_id(first_import.sync_run_id)
+    assert provider_run is not None
+    assert provider_run.metadata is not None
+    assert provider_run.metadata["scope_kind"] == "complete_stage"
+    assert provider_run.metadata["scope_stage"] == "REGULAR_SEASON"
+    assert provider_run.metadata["removal_eligible"] is True
+
+    second_import = provider.import_current_competition()
+    second_sync = calendar.synchronize(CALENDAR_ID, 600)
+
+    assert second_import.items_unchanged == 552
+    assert second_sync.items_unchanged == 552
+    assert len(graph.operations) == 552
+
+    def fail_snapshot(_season_year: int):
+        raise RuntimeError("synthetic provider failure")
+
+    adapters["championship"].fetch_snapshot = fail_snapshot
+    with pytest.raises(ProviderImportOrchestrationError):
+        provider.import_current_competition()
+
+    assert providers["premier_league"].import_current_competition().items_created == 380
+    assert mappings.get_by_external_id(source.id, "event", "3551") is not None

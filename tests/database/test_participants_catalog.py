@@ -42,8 +42,8 @@ def test_catalog_creates_and_assigns_reviewed_competition_teams(
 ) -> None:
     repositories, result = initialize(tmp_path)
     database_path = repositories[0]
-    assert len(result.participants) == 120
-    assert len(result.season_participants) == 120
+    assert len(result.participants) == 144
+    assert len(result.season_participants) == 144
     assert {item.participant_key for item in result.participants} >= {
         "arsenal",
         "coventry_city",
@@ -55,6 +55,9 @@ def test_catalog_creates_and_assigns_reviewed_competition_teams(
         "sc_st_toenis",
         "hamburg_eimsbuetteler_bc",
         "fc_heidenheim",
+        "birmingham_city",
+        "cardiff_city",
+        "wrexham",
     }
     assert all(item.participant_type == "team" for item in result.participants)
     with sqlite3.connect(database_path) as connection:
@@ -70,6 +73,7 @@ def test_catalog_creates_and_assigns_reviewed_competition_teams(
         ).fetchall()
     assert membership_counts == [
         ("bundesliga", 18),
+        ("championship", 24),
         ("dfb_pokal", 64),
         ("premier_league", 20),
         ("second_bundesliga", 18),
@@ -80,12 +84,16 @@ def test_catalog_creates_and_assigns_reviewed_competition_teams(
     }
     assert countries_by_key["arsenal"] == "GB-ENG"
     assert countries_by_key["fc_bayern_muenchen"] == "DE"
+    assert countries_by_key["cardiff_city"] == "GB-WLS"
+    assert countries_by_key["swansea_city"] == "GB-WLS"
+    assert countries_by_key["wrexham"] == "GB-WLS"
+    assert countries_by_key["birmingham_city"] == "GB-ENG"
 
 
-def test_catalog_excludes_relegated_teams(tmp_path: Path) -> None:
+def test_catalog_assigns_relegated_teams_to_championship(tmp_path: Path) -> None:
     _, result = initialize(tmp_path)
     keys = {item.participant_key for item in result.participants}
-    assert keys.isdisjoint({"burnley", "west_ham_united", "wolverhampton_wanderers"})
+    assert keys >= {"burnley", "west_ham_united", "wolverhampton_wanderers"}
 
 
 def test_catalog_can_run_repeatedly(tmp_path: Path) -> None:
@@ -108,8 +116,8 @@ def test_catalog_can_run_repeatedly(tmp_path: Path) -> None:
         membership_count = connection.execute(
             "SELECT COUNT(*) FROM season_participants"
         ).fetchone()
-    assert participant_count == (84,)
-    assert membership_count == (120,)
+    assert participant_count == (108,)
+    assert membership_count == (144,)
     assert [item.id for item in second.participants] == [
         item.id for item in first.participants
     ]

@@ -2,7 +2,8 @@
 
 This operator-run procedure is the live validation gate for issue #122, the
 remaining DFB-Pokal staging criteria in issue #119, and the 2. Bundesliga gate
-in issue #132. It validates the 2026/27 Premier League, Bundesliga, DFB-Pokal,
+in issue #132, and the Championship gate in issue #135. It validates the
+2026/27 Premier League, Bundesliga, Championship regular season, DFB-Pokal,
 and 2. Bundesliga together in one isolated staging deployment. It does not
 authorize production promotion, a tag, or a release.
 
@@ -14,6 +15,7 @@ The only enabled authoritative jobs are:
 | --- | --- | --- | --- |
 | `football-data-premier-league` | football-data.org `PL` / 2021 | `football/premier_league/2026_27` | `complete_season` |
 | `football-data-bundesliga` | football-data.org `BL1` / 2002 | `football/bundesliga/2026_27` | `complete_season` |
+| `football-data-championship` | football-data.org `ELC` / 2016 | `football/championship/2026_27` | `complete_stage` for `REGULAR_SEASON` only |
 | `openligadb-dfb-pokal` | OpenLigaDB `4945/dfb/2026` | `football/dfb_pokal/2026_27` | permanently `partial` |
 | `openligadb-second-bundesliga` | OpenLigaDB `4938/bl2/2026` | `football/second_bundesliga/2026_27` | initially removal-disabled `partial` |
 
@@ -35,7 +37,7 @@ or deployment identifiers into GitHub evidence.
 - The staging database has a verified backup before recovery exercises.
 - The operator can edit only the staging provider base URLs for controlled
   failure exercises.
-- The football-data.org token covers both approved competition profiles.
+- The football-data.org token covers all three approved competition profiles.
 
 Confirm locally that the secret file is ignored and that no unrelated changes
 are present:
@@ -63,7 +65,7 @@ FOOTBALL_DATA_REQUESTS_PER_MINUTE=10
 FOOTBALL_DATA_MINIMUM_REQUEST_INTERVAL_SECONDS=6.1
 OPENLIGADB_ENABLED=true
 OPENLIGADB_MINIMUM_REQUEST_INTERVAL_SECONDS=1
-SOURCE_JOBS_JSON=[{"job_key":"football-data-premier-league","source_key":"football_data","sport_key":"football","competition_key":"premier_league","season_key":"2026_27","role":"authoritative","interval_seconds":21600},{"job_key":"football-data-bundesliga","source_key":"football_data","sport_key":"football","competition_key":"bundesliga","season_key":"2026_27","role":"authoritative","interval_seconds":21600},{"job_key":"openligadb-dfb-pokal","source_key":"openligadb","sport_key":"football","competition_key":"dfb_pokal","season_key":"2026_27","role":"authoritative","interval_seconds":21600},{"job_key":"openligadb-second-bundesliga","source_key":"openligadb","sport_key":"football","competition_key":"second_bundesliga","season_key":"2026_27","role":"authoritative","interval_seconds":21600}]
+SOURCE_JOBS_JSON=[{"job_key":"football-data-premier-league","source_key":"football_data","sport_key":"football","competition_key":"premier_league","season_key":"2026_27","role":"authoritative","interval_seconds":21600},{"job_key":"football-data-bundesliga","source_key":"football_data","sport_key":"football","competition_key":"bundesliga","season_key":"2026_27","role":"authoritative","interval_seconds":21600},{"job_key":"football-data-championship","source_key":"football_data","sport_key":"football","competition_key":"championship","season_key":"2026_27","role":"authoritative","interval_seconds":21600},{"job_key":"openligadb-dfb-pokal","source_key":"openligadb","sport_key":"football","competition_key":"dfb_pokal","season_key":"2026_27","role":"authoritative","interval_seconds":21600},{"job_key":"openligadb-second-bundesliga","source_key":"openligadb","sport_key":"football","competition_key":"second_bundesliga","season_key":"2026_27","role":"authoritative","interval_seconds":21600}]
 ```
 
 Keep the official provider base URLs unchanged except during the controlled
@@ -88,6 +90,7 @@ handoff described in
 ```bash
 python -m app.operations.football_data_qualification --competition premier-league --season 2026
 python -m app.operations.football_data_qualification --competition bundesliga --season 2026
+python -m app.operations.football_data_qualification --competition championship --season 2026
 python -m app.operations.openligadb_qualification
 python -m app.operations.openligadb_qualification --competition 2-bundesliga
 ```
@@ -111,9 +114,10 @@ calendar cycles have completed:
 docker compose exec -T calendar-sync python -m app.operations.staging_evidence --database /data/sports.db --limit 50 --validate-phase-5-candidate
 ```
 
-The command fails unless it finds exactly the four approved authorities, 380
-Premier League fixtures, 306 Bundesliga fixtures, 306 2. Bundesliga fixtures,
-a non-empty DFB-Pokal scope, one source mapping and one synchronized calendar
+The command fails unless it finds exactly the five approved authorities, 380
+Premier League fixtures, 306 Bundesliga fixtures, 552 Championship
+regular-season fixtures, 306 2. Bundesliga fixtures, a non-empty DFB-Pokal
+scope, one source mapping and one synchronized calendar
 mapping per fixture, zero revision-pending mappings, one calendar target per
 competition, and safe lifecycle flags on the latest run of each job. It emits
 only aggregate counts, public canonical keys, timestamps, status totals,
@@ -129,7 +133,7 @@ provider metadata, error messages, URLs, tokens, and raw payloads.
 
 1. Confirm the container is healthy and Graph startup validation accepted the
    dedicated staging calendar without logging its immutable identifier.
-2. Wait for all four independent provider jobs and calendar synchronization
+2. Wait for all five independent provider jobs and calendar synchronization
    to complete. After the `008_add_calendar_sync_revisions` upgrade, existing
    mappings intentionally require one bounded reconciliation sweep; continue
    through calendar batches until the revision-pending count reaches zero.
@@ -176,13 +180,13 @@ base URL with `https://127.0.0.1`, redeploy, and observe one bounded failed
 cycle:
 
 1. Set `FOOTBALL_DATA_BASE_URL=https://127.0.0.1`; keep OpenLigaDB unchanged.
-   Both football-data.org jobs must fail closed while the OpenLigaDB job and
-   synchronization of committed state remain operational.
+   All three football-data.org jobs must fail closed while both OpenLigaDB jobs
+   and synchronization of committed state remain operational.
 2. Restore `FOOTBALL_DATA_BASE_URL=https://api.football-data.org`, redeploy,
    and require successful unchanged convergence.
 3. Set `OPENLIGADB_BASE_URL=https://127.0.0.1`; keep football-data.org
    unchanged. DFB-Pokal and 2. Bundesliga must preserve last-known-good state
-   while both football-data.org league jobs and calendar synchronization remain
+   while all three football-data.org jobs and calendar synchronization remain
    operational.
 4. Restore `OPENLIGADB_BASE_URL=https://api.openligadb.de`, redeploy, and
    require successful unchanged convergence.
@@ -212,7 +216,7 @@ recovery container. Volume removal remains a separate explicit operator action.
 - Candidate commit/tag: `<public Git reference>`
 - Validation window (UTC): `<start>` to `<end>`
 - Staging/production isolation: `<pass/fail>`
-- Exact four-authority configuration: `<pass/fail>`
+- Exact five-authority configuration: `<pass/fail>`
 - Fresh Premier League qualification: `<pass/fail and aggregate comparison>`
 - Fresh Bundesliga qualification: `<pass/fail and aggregate comparison>`
 - Fresh DFB-Pokal qualification: `<pass/fail and aggregate comparison>`

@@ -115,7 +115,7 @@ class FootballDataCompetitionService:
             season_start_date=context.season_start_date,
             season_end_date=context.season_end_date,
             fetched_at_utc=snapshot.fetched_at_utc,
-            page_count=1,
+            page_count=snapshot.page_count,
             request_attempts=snapshot.request_attempts,
             rate_limits=snapshot.rate_limits,
         )

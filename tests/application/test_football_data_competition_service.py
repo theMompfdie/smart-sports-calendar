@@ -21,6 +21,7 @@ from app.database.sports_repository import SportsRepository
 from app.domain.competition_lifecycle import CompetitionFormat
 from app.providers.football_data.profiles import (
     BUNDESLIGA_PROFILE,
+    CHAMPIONSHIP_PROFILE,
     PREMIER_LEAGUE_PROFILE,
     FootballDataCompetitionProfile,
 )
@@ -81,6 +82,7 @@ def create_service(
     [
         (PREMIER_LEAGUE_PROFILE, 380, 22),
         (BUNDESLIGA_PROFILE, 306, 20),
+        (CHAMPIONSHIP_PROFILE, 552, 26),
     ],
 )
 def test_service_normalizes_reviewed_competition_profile(

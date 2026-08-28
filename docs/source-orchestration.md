@@ -9,7 +9,8 @@ football-data.org Premier League transport and canonical import. Phase 5 issue
 competition-scoped runtime dispatch. Issue #119 adds the isolated OpenLigaDB
 DFB-Pokal writer with an invariant permanent-partial observation scope. Issue
 #132 reuses that provider boundary for an independent removal-disabled 2.
-Bundesliga job.
+Bundesliga job. Issue #135 adds the qualified EFL Championship regular-season
+stage without admitting the separate play-off stage.
 
 ## Source jobs
 
@@ -39,7 +40,9 @@ Example for the existing API-Football adapter:
 
 Keep the environment-variable form on one line. `football_data` supports the
 authoritative `football/premier_league/2026_27` and
-`football/bundesliga/2026_27` profiles; it must be paired with
+`football/bundesliga/2026_27` complete-season profiles plus the bounded
+`football/championship/2026_27` `REGULAR_SEASON` complete-stage profile; it
+must be paired with
 `FOOTBALL_DATA_ENABLED=true`. Each profile has a separate job key and interval.
 `openligadb` supports the authoritative `football/dfb_pokal/2026_27` and
 `football/second_bundesliga/2026_27` scopes and must be paired with
@@ -93,6 +96,12 @@ minimum request interval and retry policy therefore enforce one provider-wide
 quota budget instead of independent per-competition budgets. Each job still
 has its own runtime lock, sync-run metadata, and failure boundary.
 
+The Championship match request is stage-filtered and accepts only the exact
+qualified 552-item response or documented `500 + 52` offset pagination. Each
+returned fixture is independently checked as `REGULAR_SEASON`; play-offs,
+partial pages, offset drift, duplicates, and mixed stages fail before canonical
+writes or removal evidence.
+
 OpenLigaDB jobs share one bounded client but have independent runtime locks and
 retry/run-reporting boundaries. Both the DFB-Pokal and initial 2. Bundesliga
 runtime declare `partial`, `complete=false`, and `removal_eligible=false`.
@@ -118,12 +127,12 @@ aggregates. A failed or overlapping import makes no canonical changes.
 Source role and observation completeness are intentionally separate. An
 authoritative job may produce a partial observation that safely creates or
 updates fixtures without creating removal evidence. Removal reconciliation is
-supported for an unfiltered complete-season league scope and for a non-empty,
-exact `complete_stage` or `complete_round` knockout/cup scope. Cup candidate
-selection is bounded by source, competition, season, and the declared
-stage/round identifiers. This generic capability does not make a concrete cup
-complete or authoritative; that claim remains adapter- and
-competition-qualified.
+supported for an unfiltered complete-season league scope, a qualified non-empty
+and exact complete-stage scope, and a non-empty exact complete-round
+knockout/cup scope. Candidate selection is bounded by source, competition,
+season, and the declared stage/round identifiers. This generic capability does
+not make a concrete stage or round complete or authoritative; that claim
+remains adapter- and competition-qualified.
 
 Public attribution is owned by the selected source catalog entry. The
 synchronization query resolves the optional attribution only from the enabled

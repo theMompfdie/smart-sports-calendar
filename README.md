@@ -14,12 +14,13 @@
 `v0.5.0-beta.1`
 ([tracker #104](https://github.com/theMompfdie/smart-sports-calendar/issues/104))
 
-**Automated tests:** 729 passing tests
+**Automated tests:** 810 passing tests
 
 The application foundation, persistent domain model, repository layer,
 Microsoft Graph integration, Outlook synchronization engine, and scheduled
-provider runtimes for the qualified Premier League, Bundesliga, and DFB-Pokal
-paths are implemented.
+provider runtimes for the qualified Premier League, Bundesliga, EFL
+Championship regular season, DFB-Pokal, and 2. Bundesliga paths are
+implemented. Championship live staging remains pending.
 
 The beta includes provider-neutral source selection, the approved
 football-data.org Premier League authority, isolated multi-instance deployment,
@@ -111,12 +112,16 @@ Provider-neutral source jobs provide explicit competition/season authority,
 roles, independent intervals, adapter registration, fail-closed startup
 validation, and persistent assignment history. The current API-Football writer
 must be paired with an explicit authoritative source job when enabled. The
-football-data.org API v4 runtime supports strict 2026/27 Premier League and
-Bundesliga profiles, independent competition jobs, and a shared provider-wide
-quota. Each scope fails closed before canonical or Outlook handoff unless its
-complete season snapshot validates. Bundesliga live staging remains a separate
-operator gate. The 2026/27 DFB-Pokal uses the public OpenLigaDB API through a
-separate knockout-cup profile. Its observations are permanently partial: they
+football-data.org API v4 runtime supports strict 2026/27 Premier League,
+Bundesliga, and EFL Championship profiles, independent competition jobs, and a
+shared provider-wide quota. Premier League and Bundesliga require complete
+seasons. Championship accepts only its qualified 552-fixture `REGULAR_SEASON`
+stage through one exact response or validated `500 + 52` pagination; its seven
+play-off fixtures remain excluded. Each scope fails closed before canonical or
+Outlook handoff unless its exact completeness contract validates. Championship
+live staging remains a separate operator gate. The 2026/27 DFB-Pokal uses the
+public OpenLigaDB API through a separate knockout-cup profile. Its observations
+are permanently partial: they
 may create or update known fixtures but never infer cancellation or removal.
 The same public provider is qualified and implemented as the preferred no-cost
 2026/27 2. Bundesliga authority. Its initial runtime is removal-disabled and
@@ -150,6 +155,7 @@ Phase 5 decision records:
 - [source qualification boundary ADR](docs/adr/0005-bound-phase-5-source-qualification.md)
 - [football-data.org Bundesliga selection ADR](docs/adr/0006-select-football-data-for-bundesliga.md)
 - [football-data.org Bundesliga import](docs/football-data-bundesliga-import.md)
+- [football-data.org Championship import](docs/football-data-championship-import.md)
 - [OpenLigaDB DFB-Pokal selection ADR](docs/adr/0007-select-openligadb-for-dfb-pokal.md)
 - [OpenLigaDB DFB-Pokal qualification](docs/openligadb-dfb-pokal-qualification.md)
 - [OpenLigaDB DFB-Pokal import](docs/openligadb-dfb-pokal-import.md)
@@ -412,7 +418,7 @@ docker compose config
 Expected automated test result for the current development state:
 
 ```text
-486 passed
+810 passed
 ```
 
 ## Development Workflow
@@ -509,13 +515,15 @@ delivery order and operational boundaries.
 
 - source qualification and competition-specific authority decisions
 - German Bundesliga qualified and implemented through the credential-free
-  provider-to-SQLite-to-mocked-Graph boundary; live staging remains pending
+  provider-to-SQLite-to-mocked-Graph boundary; isolated live staging completed
 - DFB-Pokal qualified and implemented with OpenLigaDB through the
-  provider-to-SQLite-to-mocked-Graph boundary; isolated live staging remains
-  pending and absence never causes removal
-- 2. Bundesliga qualified and implemented with OpenLigaDB through the
+  provider-to-SQLite-to-mocked-Graph boundary; isolated live staging completed
+  and absence never causes removal
+- 2\. Bundesliga qualified and implemented with OpenLigaDB through the
   provider-to-SQLite-to-mocked-Graph boundary; initial operation remains
-  removal-disabled and isolated live staging is pending
+  removal-disabled and isolated live staging is completed
+- EFL Championship regular season implemented with strict 552-fixture and
+  `500 + 52` pagination contracts; isolated live staging remains pending
 - Austrian and additional English competitions remain evaluated or
   conditional until their documented qualification and implementation gates
   pass

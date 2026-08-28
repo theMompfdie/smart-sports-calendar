@@ -150,6 +150,7 @@ def test_container_builds_isolated_competition_runtimes_with_shared_client(
         source_jobs=(
             football_data_job(),
             football_data_job("bundesliga", 21600),
+            football_data_job("championship", 21600),
         ),
     )
 
@@ -158,6 +159,7 @@ def test_container_builds_isolated_competition_runtimes_with_shared_client(
     assert set(container.football_data_import_runtime_services) == {
         "football-data-premier-league",
         "football-data-bundesliga",
+        "football-data-championship",
     }
     assert all(
         adapter._client is shared_client
@@ -166,9 +168,11 @@ def test_container_builds_isolated_competition_runtimes_with_shared_client(
     assert [job.job_key for job in container.source_scheduled_jobs] == [
         "football-data-premier-league",
         "football-data-bundesliga",
+        "football-data-championship",
     ]
     assert [job.interval_seconds for job in container.source_scheduled_jobs] == [
         3600,
+        21600,
         21600,
     ]
     premier_league_runtime = container.football_data_import_runtime_services[
@@ -177,22 +181,27 @@ def test_container_builds_isolated_competition_runtimes_with_shared_client(
     bundesliga_runtime = container.football_data_import_runtime_services[
         "football-data-bundesliga"
     ]
+    championship_runtime = container.football_data_import_runtime_services[
+        "football-data-championship"
+    ]
     with (
         patch.object(premier_league_runtime, "run") as premier_league_run,
         patch.object(bundesliga_runtime, "run") as bundesliga_run,
+        patch.object(championship_runtime, "run") as championship_run,
     ):
         for scheduled_job in container.source_scheduled_jobs:
             scheduled_job.task()
 
     premier_league_run.assert_called_once_with()
     bundesliga_run.assert_called_once_with()
+    championship_run.assert_called_once_with()
 
 
 def test_container_rejects_unsupported_football_data_profile(tmp_path: Path) -> None:
     settings = replace(
         create_settings(tmp_path / "sports.db"),
         football_data=FootballDataSettings(enabled=True, api_key="secret"),
-        source_jobs=(football_data_job("championship"),),
+        source_jobs=(football_data_job("fa_cup"),),
     )
 
     with pytest.raises(SourceConfigurationError, match="supported authoritative"):

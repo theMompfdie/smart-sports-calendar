@@ -57,10 +57,11 @@ repeated observations. A later provider correction clears it.
 Removal detection is permitted only for an observation explicitly declared
 `authoritative=True`, complete through a supported typed lifecycle scope, and
 `filtered=False`. A league `complete_season` scope requires a bounded UTC
-season window. A knockout/cup `complete_stage` or `complete_round` scope must
-be non-empty, and every returned fixture must match its exact normalized stage
-or round. An optional stage on a complete-round scope is also part of the exact
-boundary. Mixed or contradictory collections fail before repository writes.
+season window. A qualified `complete_stage` scope or knockout/cup
+`complete_round` scope must be non-empty, and every returned fixture must match
+its exact normalized stage or round. An optional stage on a complete-round
+scope is also part of the exact boundary. Mixed or contradictory collections
+fail before repository writes.
 
 The repository selects missing candidates only from the same source,
 competition, season, optional UTC window, and declared stage/round boundary.

@@ -69,6 +69,15 @@ def phase_5_candidate_evidence() -> StagingEvidence:
             306,
         ),
         (
+            "football-data-championship",
+            "football_data",
+            "championship",
+            "complete_stage",
+            True,
+            True,
+            552,
+        ),
+        (
             "openligadb-dfb-pokal",
             "openligadb",
             "dfb_pokal",
@@ -159,6 +168,9 @@ def phase_5_candidate_evidence() -> StagingEvidence:
                 scope_kind=scope_kind,
                 removal_eligible=removal_eligible,
                 error_category=None,
+                scope_stage=(
+                    "REGULAR_SEASON" if competition_key == "championship" else None
+                ),
             )
             for index, (
                 job_key,
@@ -366,7 +378,7 @@ def test_collect_staging_evidence_reports_safe_authoritative_fixture_scope(
         assert excluded_value not in rendered
 
 
-def test_collect_staging_evidence_keeps_four_authorities_isolated(
+def test_collect_staging_evidence_keeps_five_authorities_isolated(
     tmp_path: Path,
 ) -> None:
     database_path = create_database(tmp_path)
@@ -387,6 +399,7 @@ def test_collect_staging_evidence_keeps_four_authorities_isolated(
     scopes = (
         ("premier_league", "football-data-premier-league", football_data.id),
         ("bundesliga", "football-data-bundesliga", football_data.id),
+        ("championship", "football-data-championship", football_data.id),
         ("dfb_pokal", "openligadb-dfb-pokal", openligadb.id),
         (
             "second_bundesliga",
@@ -446,6 +459,7 @@ def test_collect_staging_evidence_keeps_four_authorities_isolated(
 
     assert [authority.job_key for authority in evidence.active_authorities] == [
         "football-data-bundesliga",
+        "football-data-championship",
         "openligadb-dfb-pokal",
         "football-data-premier-league",
         "openligadb-second-bundesliga",
@@ -454,18 +468,20 @@ def test_collect_staging_evidence_keeps_four_authorities_isolated(
     assert set(fixture_scopes) == {
         "premier_league",
         "bundesliga",
+        "championship",
         "dfb_pokal",
         "second_bundesliga",
     }
     assert fixture_scopes["premier_league"].source_key == "football_data"
     assert fixture_scopes["bundesliga"].source_key == "football_data"
+    assert fixture_scopes["championship"].source_key == "football_data"
     assert fixture_scopes["dfb_pokal"].source_key == "openligadb"
     assert fixture_scopes["second_bundesliga"].source_key == "openligadb"
     assert all(scope.source_event_mappings == 1 for scope in fixture_scopes.values())
     assert all(scope.calendar_mappings == 1 for scope in fixture_scopes.values())
     assert all(scope.calendar_targets == 1 for scope in fixture_scopes.values())
     assert (
-        len({scope.source_event_ids_sha256 for scope in fixture_scopes.values()}) == 4
+        len({scope.source_event_ids_sha256 for scope in fixture_scopes.values()}) == 5
     )
 
 

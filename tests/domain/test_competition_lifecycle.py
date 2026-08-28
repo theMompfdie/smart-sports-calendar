@@ -28,6 +28,15 @@ from app.domain.competition_lifecycle import (
         ),
         (
             CompetitionLifecycleScope(
+                CompetitionFormat.LEAGUE,
+                FixtureObservationScopeKind.COMPLETE_STAGE,
+                stage="REGULAR_SEASON",
+            ),
+            True,
+            True,
+        ),
+        (
+            CompetitionLifecycleScope(
                 CompetitionFormat.KNOCKOUT_CUP,
                 FixtureObservationScopeKind.COMPLETE_STAGE,
                 stage="group_stage",
@@ -65,13 +74,6 @@ def test_scope_reports_completeness_and_current_removal_support(
             None,
             None,
             "complete-season.*league",
-        ),
-        (
-            CompetitionFormat.LEAGUE,
-            FixtureObservationScopeKind.COMPLETE_STAGE,
-            "regular",
-            None,
-            "complete-stage.*knockout/cup",
         ),
         (
             CompetitionFormat.KNOCKOUT_CUP,

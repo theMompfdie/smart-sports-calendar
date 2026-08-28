@@ -24,10 +24,19 @@ BUNDESLIGA_MAPPING = FootballDataCompetitionMapping(
     external_code="BL1",
     external_id=2002,
 )
+CHAMPIONSHIP_MAPPING = FootballDataCompetitionMapping(
+    competition_key="championship",
+    external_code="ELC",
+    external_id=2016,
+)
 
 FOOTBALL_DATA_COMPETITION_MAPPINGS = {
     mapping.competition_key: mapping
-    for mapping in (PREMIER_LEAGUE_MAPPING, BUNDESLIGA_MAPPING)
+    for mapping in (
+        PREMIER_LEAGUE_MAPPING,
+        BUNDESLIGA_MAPPING,
+        CHAMPIONSHIP_MAPPING,
+    )
 }
 
 
