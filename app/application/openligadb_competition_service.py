@@ -169,7 +169,9 @@ class OpenLigaDBCompetitionService:
             )
             if participant_key is None:
                 raise OpenLigaDBIntegrityError(
-                    "Provider team identity does not match the reviewed mapping."
+                    "Provider team identity does not match the reviewed mapping: "
+                    f"competition={self.profile.canonical_competition_key} "
+                    f"provider_team_id={team.id}."
                 )
             participant = self._participants_repository.get_by_key(
                 sport_id=football.id, participant_key=participant_key
