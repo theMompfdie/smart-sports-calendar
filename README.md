@@ -163,6 +163,7 @@ Phase 5 decision records:
 - [OpenLigaDB 2. Bundesliga selection ADR](docs/adr/0009-select-openligadb-for-2-bundesliga.md)
 - [OpenLigaDB 2. Bundesliga import](docs/openligadb-second-bundesliga-import.md)
 - [Austrian Bundesliga source qualification](docs/austrian-bundesliga-source-qualification.md)
+- [FA Cup source qualification](docs/fa-cup-source-qualification.md)
 - [Phase 5 multi-competition staging validation](docs/phase-5-multi-competition-staging-validation.md)
 
 ### Database and Persistence
@@ -527,8 +528,9 @@ delivery order and operational boundaries.
   `500 + 52` pagination contracts; isolated live staging completed
 - Austrian Bundesliga deferred because no reviewed no-cost candidate provides
   a permitted complete scope and no paid plan was approved
-- FA Cup, EFL Cup, and ÖFB-Cup remain pending competition-specific source
-  qualification
+- FA Cup deferred because official sources are manual-only, no reviewed free
+  API supplies a safe 2026/27 scope, and no paid plan was approved
+- EFL Cup and ÖFB-Cup remain pending competition-specific source qualification
 
 ### Phase 6 – UEFA Competitions
 
