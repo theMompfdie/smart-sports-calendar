@@ -176,5 +176,8 @@ def test_missing_fixture_in_later_partial_observation_is_preserved(
     metadata = json.loads(metadata_json[0])
     assert metadata["authoritative_scope"] == "partial"
     assert metadata["scope_kind"] == "partial"
+    assert metadata["scope_stage_kind"] is None
+    assert metadata["scope_stage"] is None
+    assert metadata["scope_round"] is None
     assert metadata["complete"] is False
     assert metadata["removal_eligible"] is False

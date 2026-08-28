@@ -34,6 +34,7 @@ class SafeRunSummary:
     removal_eligible: bool | None
     error_category: str | None
     scope_stage: str | None = None
+    scope_stage_kind: str | None = None
 
 
 @dataclass(frozen=True)
@@ -424,6 +425,7 @@ def _safe_run_summary(row: sqlite3.Row) -> SafeRunSummary:
         removal_eligible=_safe_bool(metadata.get("removal_eligible")),
         error_category=_safe_identifier(metadata.get("error_category")),
         scope_stage=_safe_identifier(metadata.get("scope_stage")),
+        scope_stage_kind=_safe_identifier(metadata.get("scope_stage_kind")),
     )
 
 

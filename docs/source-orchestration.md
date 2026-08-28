@@ -129,10 +129,10 @@ authoritative job may produce a partial observation that safely creates or
 updates fixtures without creating removal evidence. Removal reconciliation is
 supported for an unfiltered complete-season league scope, a qualified non-empty
 and exact complete-stage scope, and a non-empty exact complete-round
-knockout/cup scope. Candidate selection is bounded by source, competition,
-season, and the declared stage/round identifiers. This generic capability does
-not make a concrete stage or round complete or authoritative; that claim
-remains adapter- and competition-qualified.
+knockout/cup or hybrid-tournament scope. Candidate selection is bounded by
+source, competition, season, and the declared stage/round identifiers. This
+generic capability does not make a concrete stage or round complete or
+authoritative; that claim remains adapter- and competition-qualified.
 
 Public attribution is owned by the selected source catalog entry. The
 synchronization query resolves the optional attribution only from the enabled
@@ -163,3 +163,24 @@ Phase 5.1 adds no schema migration. The existing
 format, while observation lifecycle scope is persisted in existing provider
 import-run metadata. Unknown persisted formats fail closed at repository
 mapping boundaries.
+
+## Phase 6 hybrid tournament contract
+
+Phase 6.1 adds `hybrid_tournament` for competitions that combine qualifying,
+league-phase, and knockout lifecycle segments. It does not register or enable a
+UEFA authority.
+
+Hybrid observations use the same source-job, import, repository,
+reconciliation, and synchronization path as released competitions. A typed
+stage kind accompanies exact normalized stage and round identifiers. Partial
+or incrementally published observations remain non-removal-capable. Complete
+hybrid stage/round claims require competition-specific qualification and retain
+the existing non-empty, exact-boundary, authority, replay, and two-observation
+safeguards.
+
+Draw-dependent fixtures use explicit resolved/unresolved participant slots.
+Any unresolved slot produces `DEFER`, creates no placeholder participant or
+calendar event, and cannot replace the last known good participants of an
+already mapped event. First/second-leg metadata is diagnostic; stable source
+fixture ID remains the correlation identity. See
+[`adr/0011-model-hybrid-uefa-lifecycle.md`](adr/0011-model-hybrid-uefa-lifecycle.md).

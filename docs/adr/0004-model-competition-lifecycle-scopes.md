@@ -64,6 +64,14 @@ round robin as a stable typed `REGULAR_SEASON` stage while the seven play-off
 fixtures form a separate progressive scope. The format alone does not grant
 stage completeness; the provider/competition qualification remains mandatory.
 
+Phase 6.1 extends the format vocabulary with `hybrid_tournament`. Exact hybrid
+stage and round observations retain the same persisted stage/round boundaries,
+but additionally require a provider-neutral typed stage kind. A hybrid complete
+round always declares both its stage and round. Unresolved draw-dependent
+participants are deferred and cannot create placeholder teams or calendar
+events. ADR 0011 owns the hybrid lifecycle, leg, tie, and participant-resolution
+decision.
+
 ## Persistence
 
 No schema migration is required for this decision.

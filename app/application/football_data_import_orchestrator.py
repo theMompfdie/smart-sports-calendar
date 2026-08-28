@@ -176,6 +176,11 @@ class FootballDataImportOrchestrator:
                 "observed_at_utc": scope.observed_at_utc.isoformat(),
                 "competition_format": scope.lifecycle.competition_format.value,
                 "scope_kind": scope.lifecycle.scope_kind.value,
+                "scope_stage_kind": (
+                    None
+                    if scope.lifecycle.stage_kind is None
+                    else scope.lifecycle.stage_kind.value
+                ),
                 "scope_stage": scope.lifecycle.stage,
                 "scope_round": scope.lifecycle.round_name,
                 "removal_eligible": scope.removal_eligible,

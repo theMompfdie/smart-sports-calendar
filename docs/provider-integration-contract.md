@@ -59,12 +59,14 @@ events, or overwrite authoritative fields. Automatic failover is outside the
 `v0.4.5-beta.1` boundary.
 
 Competition lifecycle and observation scope are provider-neutral typed values.
-The canonical competition format is `league` or `knockout_cup`. Each fixture
+The canonical competition format is `league`, `knockout_cup`, or
+`hybrid_tournament`. Each fixture
 observation declares one scope kind: `partial`, `complete_season`,
 `complete_stage`, or `complete_round`. A complete season scope is currently
 valid only for a league. A complete stage scope is valid for a qualified,
-stable stage of either format. A complete round scope requires knockout/cup
-format. Stage and round scopes require normalized stable identifiers.
+stable stage of a supported format. A complete round scope requires
+knockout/cup or hybrid-tournament format. Stage and round scopes require
+normalized stable identifiers.
 
 Removal evidence is permitted for an authoritative, unfiltered, bounded
 `complete_season` league observation. An exact `complete_stage` observation or
@@ -74,6 +76,20 @@ repository selection is restricted to the same source, competition, season,
 and stage/round. The generic behavior does not qualify any provider or concrete
 competition scope. See
 [`adr/0004-model-competition-lifecycle-scopes.md`](adr/0004-model-competition-lifecycle-scopes.md).
+
+A hybrid tournament may move through qualifying, play-off, league-phase,
+knockout-play-off, knockout, and final stages. Hybrid complete-stage and
+complete-round claims require a typed stage kind; a complete hybrid round also
+requires exact stage and round identifiers. First and second legs require an
+opaque normalized tie key for diagnostics, but source fixture ID remains the
+only provider correlation identity. See
+[`adr/0011-model-hybrid-uefa-lifecycle.md`](adr/0011-model-hybrid-uefa-lifecycle.md).
+
+The existing canonical season is also the edition/cycle boundary. Its
+project-owned season key must not be replaced by a provider-specific edition
+encoding. Cross-year club editions and national-team cycles may use different
+project key conventions, but each released competition/edition resolves to
+exactly one canonical season row.
 
 For iCalendar sources, `UID` is the only acceptable provider event identity.
 `SUMMARY`, participant names, kickoff, and venue are mutable fields. A feed is
@@ -321,6 +337,15 @@ size, licensing, and deletion policy.
 - A home/away reversal from the provider is a material update and must be
   logged; it must not create a second canonical fixture.
 - Neutral venue does not remove or swap home/away roles.
+- A draw-dependent home or away slot is explicitly `unresolved` and has no
+  canonical participant ID.
+- Provider placeholder labels such as a seed or winner-of-tie reference never
+  become canonical participants.
+- A fixture with any unresolved participant is deferred before canonical and
+  Outlook writes. Resolution under the same stable source fixture ID enters the
+  normal create/update path.
+- If a mapped fixture temporarily becomes unresolved again, the observation is
+  deferred and cannot overwrite the last known good participants or event.
 
 ## Lifecycle and status mapping
 
