@@ -20,6 +20,7 @@ class CalendarEventMapping:
     last_sync_error: str | None
     created_at: str
     updated_at: str
+    last_synced_revision: int = 0
 
 
 class CalendarEventMappingsRepository:
@@ -178,7 +179,9 @@ class CalendarEventMappingsRepository:
         outlook_event_id: str,
         outlook_change_key: str | None,
         content_hash: str,
+        event_revision: int,
     ) -> CalendarEventMapping | None:
+        self._validate_event_revision(event_revision)
         timestamp = self._timestamp()
 
         with self._connect() as connection:
@@ -188,7 +191,15 @@ class CalendarEventMappingsRepository:
                 SET outlook_event_id = ?,
                     outlook_change_key = ?,
                     content_hash = ?,
-                    sync_status = 'synced',
+                    sync_status = CASE
+                        WHEN ? = (
+                            SELECT sync_revision
+                            FROM sports_events
+                            WHERE id = calendar_event_mappings.event_id
+                        ) THEN 'synced'
+                        ELSE 'pending'
+                    END,
+                    last_synced_revision = ?,
                     sync_attempts = sync_attempts + 1,
                     last_synced_at = ?,
                     last_sync_error = NULL,
@@ -199,6 +210,8 @@ class CalendarEventMappingsRepository:
                     outlook_event_id,
                     outlook_change_key,
                     content_hash,
+                    event_revision,
+                    event_revision,
                     timestamp,
                     timestamp,
                     mapping_id,
@@ -213,20 +226,33 @@ class CalendarEventMappingsRepository:
     def mark_checked(
         self,
         mapping_id: int,
+        event_revision: int,
     ) -> CalendarEventMapping | None:
+        self._validate_event_revision(event_revision)
         timestamp = self._timestamp()
 
         with self._connect() as connection:
             cursor = connection.execute(
                 """
                 UPDATE calendar_event_mappings
-                SET last_synced_at = ?,
+                SET sync_status = CASE
+                        WHEN ? = (
+                            SELECT sync_revision
+                            FROM sports_events
+                            WHERE id = calendar_event_mappings.event_id
+                        ) THEN 'synced'
+                        ELSE 'pending'
+                    END,
+                    last_synced_revision = ?,
+                    last_synced_at = ?,
                     last_sync_error = NULL,
                     updated_at = ?
                 WHERE id = ?
-                  AND sync_status = 'synced'
+                  AND sync_status IN ('synced', 'pending', 'failed')
                 """,
                 (
+                    event_revision,
+                    event_revision,
                     timestamp,
                     timestamp,
                     mapping_id,
@@ -346,6 +372,7 @@ class CalendarEventMappingsRepository:
                 SET outlook_event_id = NULL,
                     outlook_change_key = NULL,
                     content_hash = NULL,
+                    last_synced_revision = 0,
                     sync_status = 'pending',
                     last_sync_error = NULL,
                     updated_at = ?
@@ -430,6 +457,7 @@ class CalendarEventMappingsRepository:
                 sync_attempts,
                 last_synced_at,
                 last_sync_error,
+                last_synced_revision,
                 created_at,
                 updated_at
             FROM calendar_event_mappings
@@ -451,4 +479,10 @@ class CalendarEventMappingsRepository:
             last_sync_error=row["last_sync_error"],
             created_at=row["created_at"],
             updated_at=row["updated_at"],
+            last_synced_revision=row["last_synced_revision"],
         )
+
+    @staticmethod
+    def _validate_event_revision(event_revision: int) -> None:
+        if event_revision < 1:
+            raise ValueError("Event synchronization revision must be positive.")

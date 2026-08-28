@@ -69,6 +69,15 @@ The exact ID/name mapping was updated after review. Name changes with a stable
 ID continue to fail closed until explicitly reviewed; fuzzy matching was not
 introduced.
 
+On 2026-08-28, isolated staging detected another fail-closed identity change:
+provider team ID `4762` changed from `SSV Jeddeloh 2` to `SSV Jeddeloh II`.
+Both exact spellings are retained as explicitly reviewed aliases for that one
+stable OpenLigaDB ID. Aliases remain provider- and competition-specific;
+unknown spellings, unknown IDs, fuzzy matching, and automatic cross-provider
+correlation remain rejected. Integrity diagnostics expose only the configured
+competition key and numeric provider team ID so future drift can be located
+without logging credentials or raw provider payloads.
+
 ## Read-only qualification command
 
 The command makes three bounded, unauthenticated HTTPS GET requests. It does

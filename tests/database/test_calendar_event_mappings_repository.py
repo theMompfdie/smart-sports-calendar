@@ -132,6 +132,7 @@ def test_mark_synced_updates_mapping(
         outlook_event_id="outlook-event-1",
         outlook_change_key="change-key-1",
         content_hash="new-hash",
+        event_revision=1,
     )
 
     assert synced_mapping is not None
@@ -145,6 +146,42 @@ def test_mark_synced_updates_mapping(
     assert synced_mapping.last_sync_error is None
     assert synced_mapping.created_at == created_mapping.created_at
     assert synced_mapping.updated_at >= created_mapping.updated_at
+
+
+def test_mark_synced_keeps_mapping_pending_when_event_changed_concurrently(
+    tmp_path: Path,
+) -> None:
+    event_id, repository = create_repository(tmp_path)
+    mapping = repository.create_pending(event_id, "calendar-1")
+    with sqlite3.connect(repository.database_path) as connection:
+        connection.execute(
+            "UPDATE sports_events SET title = 'Changed fixture' WHERE id = ?",
+            (event_id,),
+        )
+
+    raced_mapping = repository.mark_synced(
+        mapping_id=mapping.id,
+        outlook_event_id="outlook-event-1",
+        outlook_change_key=None,
+        content_hash="stale-hash",
+        event_revision=1,
+    )
+
+    assert raced_mapping is not None
+    assert raced_mapping.sync_status == "pending"
+    assert raced_mapping.last_synced_revision == 1
+
+    converged_mapping = repository.mark_synced(
+        mapping_id=mapping.id,
+        outlook_event_id="outlook-event-1",
+        outlook_change_key=None,
+        content_hash="current-hash",
+        event_revision=2,
+    )
+
+    assert converged_mapping is not None
+    assert converged_mapping.sync_status == "synced"
+    assert converged_mapping.last_synced_revision == 2
 
 
 def test_get_by_outlook_event_returns_synced_mapping(
@@ -161,6 +198,7 @@ def test_get_by_outlook_event_returns_synced_mapping(
         outlook_event_id="outlook-event-1",
         outlook_change_key="change-key-1",
         content_hash="hash-1",
+        event_revision=1,
     )
 
     loaded_mapping = repository.get_by_outlook_event(
@@ -184,6 +222,7 @@ def test_mark_checked_rotates_synced_mapping_without_graph_attempt(
         outlook_event_id="outlook-event-1",
         outlook_change_key="change-key-1",
         content_hash="hash-1",
+        event_revision=1,
     )
     assert synced_mapping is not None
     with sqlite3.connect(repository.database_path) as connection:
@@ -192,7 +231,7 @@ def test_mark_checked_rotates_synced_mapping_without_graph_attempt(
             ("2026-08-01T00:00:00+00:00", synced_mapping.id),
         )
 
-    checked_mapping = repository.mark_checked(synced_mapping.id)
+    checked_mapping = repository.mark_checked(synced_mapping.id, event_revision=1)
 
     assert checked_mapping is not None
     assert checked_mapping.sync_status == "synced"
@@ -202,6 +241,32 @@ def test_mark_checked_rotates_synced_mapping_without_graph_attempt(
     assert checked_mapping.content_hash == synced_mapping.content_hash
     assert checked_mapping.last_synced_at is not None
     assert checked_mapping.last_synced_at > "2026-08-01T00:00:00+00:00"
+
+
+def test_mark_checked_keeps_mapping_pending_when_event_changed_concurrently(
+    tmp_path: Path,
+) -> None:
+    event_id, repository = create_repository(tmp_path)
+    pending = repository.create_pending(event_id, "calendar-1")
+    synced = repository.mark_synced(
+        mapping_id=pending.id,
+        outlook_event_id="outlook-event-1",
+        outlook_change_key=None,
+        content_hash="hash-1",
+        event_revision=1,
+    )
+    assert synced is not None
+    with sqlite3.connect(repository.database_path) as connection:
+        connection.execute(
+            "UPDATE sports_events SET status = 'postponed' WHERE id = ?",
+            (event_id,),
+        )
+
+    checked = repository.mark_checked(synced.id, event_revision=1)
+
+    assert checked is not None
+    assert checked.sync_status == "pending"
+    assert checked.last_synced_revision == 1
 
 
 def test_mark_failed_records_error_and_attempt(
@@ -288,6 +353,7 @@ def test_mark_deleted_preserves_mapping_as_history(
         outlook_event_id="outlook-event-1",
         outlook_change_key="change-key-1",
         content_hash="hash-1",
+        event_revision=1,
     )
 
     assert synced_mapping is not None
@@ -313,6 +379,7 @@ def test_revive_deleted_preserves_mapping_and_transaction_identity(
         outlook_event_id="outlook-event-1",
         outlook_change_key="change-key-1",
         content_hash="hash-1",
+        event_revision=1,
     )
     assert synced is not None
     deleted = repository.mark_deleted(synced.id)
@@ -403,6 +470,7 @@ def test_mark_synced_rejects_duplicate_outlook_event(
         outlook_event_id="outlook-event-1",
         outlook_change_key=None,
         content_hash="hash-1",
+        event_revision=1,
     )
 
     with pytest.raises(sqlite3.IntegrityError):
@@ -411,6 +479,7 @@ def test_mark_synced_rejects_duplicate_outlook_event(
             outlook_event_id="outlook-event-1",
             outlook_change_key=None,
             content_hash="hash-2",
+            event_revision=1,
         )
 
 
@@ -438,6 +507,7 @@ def test_status_updates_return_none_for_unknown_mapping(
             outlook_event_id="outlook-event-1",
             outlook_change_key=None,
             content_hash="hash-1",
+            event_revision=1,
         )
         is None
     )

@@ -160,7 +160,7 @@ same calendar. Do not target a general-purpose personal calendar.
 | `M365_USER_ID` | none | Required target mailbox identifier |
 | `OUTLOOK_CALENDAR_NAME` | `SMART Sports Calendar` | Startup reachability lookup; must identify the dedicated target calendar |
 | `OUTLOOK_CALENDAR_ID` | none | Required immutable Graph calendar ID used by synchronization writes |
-| `SYNCHRONIZATION_BATCH_LIMIT` | `100` | Positive maximum per run; urgent/unmapped work runs first and synced mappings rotate oldest-synchronized-first |
+| `SYNCHRONIZATION_BATCH_LIMIT` | `100` | Positive maximum per run; unmapped, retry/lifecycle, and revision-pending work runs first, then synced mappings rotate oldest-synchronized-first |
 | `GRAPH_BASE_URL` | Microsoft Graph v1.0 | Graph API root; use the documented production endpoint unless testing an isolated mock |
 | `GRAPH_STARTUP_VALIDATION_ENABLED` | `true` | Boolean; keep enabled for deployed environments |
 
@@ -505,8 +505,10 @@ python -m app.operations.staging_evidence --database /data/sports.db --limit 50 
 The command opens SQLite in read-only mode and reports only database integrity,
 schema version, startup count, public authoritative source/scope keys, fixture
 and source-mapping aggregates, kickoff range, source freshness, normalized
-status counts, calendar-mapping status counts, and recent synchronization
-counters. It deliberately omits configuration, provider external IDs, event
+status counts, calendar-mapping status counts, revision-pending mapping counts,
+and recent synchronization counters. Strict validation requires the persisted
+event and calendar revisions to be fully converged. It deliberately omits
+configuration, provider external IDs, event
 details, error messages, metadata, calendar IDs, Outlook IDs, raw responses,
 and source URLs. Review the output before adding it to sanitized GitHub
 evidence.

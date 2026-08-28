@@ -39,11 +39,38 @@ class SourceAssignmentsRepository:
         assignments: tuple[SourceAssignmentWrite, ...],
     ) -> list[SourceAssignment]:
         timestamp = datetime.now(UTC).isoformat()
+        assignments_by_job_key = {
+            assignment.job_key: assignment for assignment in assignments
+        }
         with self._connect() as connection:
-            connection.execute(
-                "UPDATE source_assignments SET is_enabled = 0, updated_at = ?",
-                (timestamp,),
-            )
+            existing_rows = connection.execute(
+                """
+                SELECT job_key, source_id, competition_id, season_id, role,
+                       is_enabled
+                FROM source_assignments
+                """
+            ).fetchall()
+            for row in existing_rows:
+                assignment = assignments_by_job_key.get(row["job_key"])
+                enabled = (
+                    assignment is not None
+                    and assignment.role is not SourceRole.DISABLED
+                )
+                identity_changed = assignment is not None and (
+                    row["source_id"] != assignment.source_id
+                    or row["competition_id"] != assignment.competition_id
+                    or row["season_id"] != assignment.season_id
+                    or row["role"] != assignment.role.value
+                )
+                if row["is_enabled"] and (not enabled or identity_changed):
+                    connection.execute(
+                        """
+                        UPDATE source_assignments
+                        SET is_enabled = 0, updated_at = ?
+                        WHERE job_key = ?
+                        """,
+                        (timestamp, row["job_key"]),
+                    )
             for assignment in assignments:
                 enabled = assignment.role is not SourceRole.DISABLED
                 connection.execute(
@@ -62,6 +89,14 @@ class SourceAssignmentsRepository:
                         interval_seconds = excluded.interval_seconds,
                         is_enabled = excluded.is_enabled,
                         updated_at = excluded.updated_at
+                    WHERE source_assignments.source_id IS NOT excluded.source_id
+                       OR source_assignments.competition_id
+                          IS NOT excluded.competition_id
+                       OR source_assignments.season_id IS NOT excluded.season_id
+                       OR source_assignments.role IS NOT excluded.role
+                       OR source_assignments.interval_seconds
+                          IS NOT excluded.interval_seconds
+                       OR source_assignments.is_enabled IS NOT excluded.is_enabled
                     """,
                     (
                         assignment.job_key,

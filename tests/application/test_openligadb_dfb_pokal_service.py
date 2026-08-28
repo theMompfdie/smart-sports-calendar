@@ -121,7 +121,10 @@ def test_service_normalizes_partial_dfb_pokal_snapshot_and_mappings(
 def test_service_fails_closed_on_changed_provider_identity(tmp_path: Path) -> None:
     service, _ = create_service(tmp_path, changed_name=True)
 
-    with pytest.raises(OpenLigaDBIntegrityError, match="reviewed mapping"):
+    with pytest.raises(
+        OpenLigaDBIntegrityError,
+        match=("reviewed mapping: competition=dfb_pokal provider_team_id=5712"),
+    ):
         service.fetch_normalized_snapshot()
 
 

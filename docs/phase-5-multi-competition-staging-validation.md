@@ -113,10 +113,11 @@ docker compose exec -T calendar-sync python -m app.operations.staging_evidence -
 
 The command fails unless it finds exactly the four approved authorities, 380
 Premier League fixtures, 306 Bundesliga fixtures, 306 2. Bundesliga fixtures,
-a non-empty DFB-Pokal scope, one source mapping and one synchronized calendar mapping per fixture, one
-calendar target per competition, and safe lifecycle flags on the latest run of
-each job. It emits only aggregate counts, public canonical keys, timestamps,
-status totals, sanitized run fields, and SHA-256 hashes of sorted source IDs.
+a non-empty DFB-Pokal scope, one source mapping and one synchronized calendar
+mapping per fixture, zero revision-pending mappings, one calendar target per
+competition, and safe lifecycle flags on the latest run of each job. It emits
+only aggregate counts, public canonical keys, timestamps, status totals,
+sanitized run fields, and SHA-256 hashes of sorted source IDs.
 
 Review the JSON before copying it outside staging. The command intentionally
 excludes calendar IDs, Outlook IDs, event titles, participants, external IDs,
@@ -129,7 +130,9 @@ provider metadata, error messages, URLs, tokens, and raw payloads.
 1. Confirm the container is healthy and Graph startup validation accepted the
    dedicated staging calendar without logging its immutable identifier.
 2. Wait for all four independent provider jobs and calendar synchronization
-   to complete.
+   to complete. After the `008_add_calendar_sync_revisions` upgrade, existing
+   mappings intentionally require one bounded reconciliation sweep; continue
+   through calendar batches until the revision-pending count reaches zero.
 3. Run the candidate evidence command. Do not continue on validation failure.
 4. Manually sample events from each competition in the staging calendar.
 5. Confirm football-data.org events show
