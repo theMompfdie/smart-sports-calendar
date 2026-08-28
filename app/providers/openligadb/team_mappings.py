@@ -5,6 +5,13 @@ from dataclasses import dataclass
 class OpenLigaDBTeamMapping:
     participant_key: str
     provider_name: str
+    provider_name_aliases: tuple[str, ...] = ()
+
+    def accepts_provider_name(self, provider_name: str) -> bool:
+        normalized_name = provider_name.strip()
+        return normalized_name == self.provider_name or (
+            normalized_name in self.provider_name_aliases
+        )
 
 
 DFB_POKAL_TEAM_MAPPINGS: dict[int, OpenLigaDBTeamMapping] = {
@@ -65,7 +72,11 @@ DFB_POKAL_TEAM_MAPPINGS: dict[int, OpenLigaDBTeamMapping] = {
     4555: OpenLigaDBTeamMapping("tsv_schott_mainz", "TSV Schott Mainz"),
     4568: OpenLigaDBTeamMapping("westfalia_rhynern", "SV Westfalia Rhynern"),
     4600: OpenLigaDBTeamMapping("vsg_altglienicke", "VSG Altglienicke Berlin"),
-    4762: OpenLigaDBTeamMapping("ssv_jeddeloh", "SSV Jeddeloh 2"),
+    4762: OpenLigaDBTeamMapping(
+        "ssv_jeddeloh",
+        "SSV Jeddeloh II",
+        provider_name_aliases=("SSV Jeddeloh 2",),
+    ),
     5276: OpenLigaDBTeamMapping("wuerzburger_kickers", "Würzburger Kickers"),
     5712: OpenLigaDBTeamMapping("sc_st_toenis", "SC St. Tönis"),
     6326: OpenLigaDBTeamMapping("phoenix_luebeck", "1. FC Phönix Lübeck"),
@@ -105,7 +116,7 @@ def resolve_team_key(
     competition_key: str, provider_id: int, provider_name: str
 ) -> str | None:
     mapping = TEAM_MAPPINGS_BY_COMPETITION_KEY.get(competition_key, {}).get(provider_id)
-    if mapping is None or mapping.provider_name != provider_name.strip():
+    if mapping is None or not mapping.accepts_provider_name(provider_name):
         return None
     return mapping.participant_key
 
