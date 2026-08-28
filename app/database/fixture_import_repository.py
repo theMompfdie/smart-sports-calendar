@@ -9,7 +9,10 @@ from typing import Any
 from app.domain.competition_lifecycle import (
     CompetitionFormat,
     CompetitionLifecycleScope,
+    FixtureLeg,
     FixtureObservationScopeKind,
+    FixtureParticipantResolution,
+    TournamentStageKind,
 )
 
 
@@ -28,9 +31,10 @@ class FixtureImportConflictError(RuntimeError):
 
 @dataclass(frozen=True)
 class FixtureParticipantRecord:
-    participant_id: int
+    participant_id: int | None
     role: str
     position_number: int
+    resolution: FixtureParticipantResolution
 
 
 @dataclass(frozen=True)
@@ -52,8 +56,18 @@ class FixtureImportRecord:
     venue_name: str | None
     city: str | None
     source_updated_at: datetime | None
-    metadata: dict[str, str] | None
+    metadata: dict[str, Any] | None
+    stage_kind: TournamentStageKind | None = None
+    tie_key: str | None = None
+    leg: FixtureLeg | None = None
     event_key_prefix: str = "api_football"
+
+    @property
+    def participants_resolved(self) -> bool:
+        return all(
+            participant.resolution is FixtureParticipantResolution.RESOLVED
+            for participant in self.participants
+        )
 
 
 @dataclass(frozen=True)
@@ -234,6 +248,13 @@ class FixtureImportRepository:
             """,
             (source_id, fixture.external_id),
         ).fetchone()
+
+        if not fixture.participants_resolved:
+            return FixtureImportItemResult(
+                external_id=fixture.external_id,
+                event_id=(None if mapping is None else int(mapping["internal_id"])),
+                decision=FixtureImportDecision.DEFER,
+            )
 
         if mapping is None:
             cross_source_event_id = self._find_cross_source_event(connection, fixture)
@@ -454,7 +475,7 @@ class FixtureImportRepository:
                 timestamp,
                 timestamp,
                 cancelled_at,
-                self._serialize_metadata(fixture.metadata),
+                self._serialize_metadata(self._event_metadata(fixture)),
                 timestamp,
                 timestamp,
             ),
@@ -472,9 +493,15 @@ class FixtureImportRepository:
         start_time = event["start_time"]
         if fixture.kickoff_confirmed and fixture.kickoff_utc is not None:
             start_time = fixture.kickoff_utc.isoformat()
+        persisted_metadata = (
+            None
+            if event["metadata_json"] is None
+            else json.loads(event["metadata_json"])
+        )
+        event_metadata = self._event_metadata(fixture, persisted_metadata)
         metadata_json = (
-            self._serialize_metadata(fixture.metadata)
-            if fixture.metadata is not None
+            self._serialize_metadata(event_metadata)
+            if event_metadata is not None
             else event["metadata_json"]
         )
         return {
@@ -721,6 +748,42 @@ class FixtureImportRepository:
         if metadata is None:
             return None
         return json.dumps(metadata, ensure_ascii=False, sort_keys=True)
+
+    @staticmethod
+    def _event_metadata(
+        fixture: FixtureImportRecord,
+        persisted_metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
+        supplied_metadata = fixture.metadata
+        if (
+            supplied_metadata is not None
+            and "tournament_lifecycle" in supplied_metadata
+        ):
+            raise FixtureImportConflictError(
+                "Fixture provider metadata uses reserved tournament lifecycle data."
+            )
+        metadata: dict[str, Any] = dict(
+            (persisted_metadata if supplied_metadata is None else supplied_metadata)
+            or {}
+        )
+        if (
+            supplied_metadata is not None
+            and persisted_metadata is not None
+            and "tournament_lifecycle" in persisted_metadata
+        ):
+            metadata["tournament_lifecycle"] = persisted_metadata[
+                "tournament_lifecycle"
+            ]
+        lifecycle = {
+            "stage_kind": (
+                None if fixture.stage_kind is None else fixture.stage_kind.value
+            ),
+            "tie_key": fixture.tie_key,
+            "leg": None if fixture.leg is None else fixture.leg.value,
+        }
+        if any(value is not None for value in lifecycle.values()):
+            metadata["tournament_lifecycle"] = lifecycle
+        return metadata or None
 
     @staticmethod
     def _isoformat(value: datetime | None) -> str | None:

@@ -547,8 +547,11 @@ delivery order and operational boundaries.
 
 ### Phase 6 – UEFA Competitions
 
-**Status:** _Planned_
+**Status:** _In progress through master issue
+[#150](https://github.com/theMompfdie/smart-sports-calendar/issues/150)_
 
+- provider-neutral hybrid lifecycle and identity contract tracked by
+  [#151](https://github.com/theMompfdie/smart-sports-calendar/issues/151)
 - Champions League
 - Europa League
 - Conference League

@@ -173,6 +173,21 @@ def test_upsert_rejects_unknown_competition_format(tmp_path: Path) -> None:
         )
 
 
+def test_upsert_persists_hybrid_tournament_without_schema_change(
+    tmp_path: Path,
+) -> None:
+    _, football_id, repository = create_repository(tmp_path)
+
+    competition = repository.upsert(
+        sport_id=football_id,
+        competition_key="uefa_hybrid_test",
+        name="UEFA Hybrid Test",
+        competition_type=CompetitionFormat.HYBRID_TOURNAMENT,
+    )
+
+    assert competition.competition_type is CompetitionFormat.HYBRID_TOURNAMENT
+
+
 def test_loading_unknown_persisted_competition_format_fails_closed(
     tmp_path: Path,
 ) -> None:

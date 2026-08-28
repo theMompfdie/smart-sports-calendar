@@ -9,6 +9,27 @@ class CompetitionLifecycleError(ValueError):
 class CompetitionFormat(StrEnum):
     LEAGUE = "league"
     KNOCKOUT_CUP = "knockout_cup"
+    HYBRID_TOURNAMENT = "hybrid_tournament"
+
+
+class TournamentStageKind(StrEnum):
+    QUALIFYING = "qualifying"
+    PLAYOFF = "playoff"
+    LEAGUE_PHASE = "league_phase"
+    KNOCKOUT_PLAYOFF = "knockout_playoff"
+    KNOCKOUT = "knockout"
+    FINAL = "final"
+
+
+class FixtureLeg(StrEnum):
+    SINGLE = "single"
+    FIRST = "first"
+    SECOND = "second"
+
+
+class FixtureParticipantResolution(StrEnum):
+    RESOLVED = "resolved"
+    UNRESOLVED = "unresolved"
 
 
 class FixtureObservationScopeKind(StrEnum):
@@ -24,6 +45,7 @@ class CompetitionLifecycleScope:
     scope_kind: FixtureObservationScopeKind
     stage: str | None = None
     round_name: str | None = None
+    stage_kind: TournamentStageKind | None = None
 
     def __post_init__(self) -> None:
         competition_format = self._parse_competition_format(self.competition_format)
@@ -31,8 +53,31 @@ class CompetitionLifecycleScope:
         object.__setattr__(self, "competition_format", competition_format)
         object.__setattr__(self, "scope_kind", scope_kind)
 
+        stage_kind = self._parse_optional_stage_kind(self.stage_kind)
+        object.__setattr__(self, "stage_kind", stage_kind)
+
         self._validate_optional_identifier(self.stage, "stage")
         self._validate_optional_identifier(self.round_name, "round_name")
+
+        if (
+            stage_kind is not None
+            and competition_format is not CompetitionFormat.HYBRID_TOURNAMENT
+        ):
+            raise CompetitionLifecycleError(
+                "A tournament stage kind requires hybrid-tournament format."
+            )
+        if stage_kind is not None and self.stage is None:
+            raise CompetitionLifecycleError(
+                "A tournament stage kind requires a stage identifier."
+            )
+        if (
+            competition_format is CompetitionFormat.HYBRID_TOURNAMENT
+            and self.round_name is not None
+            and self.stage is None
+        ):
+            raise CompetitionLifecycleError(
+                "A hybrid-tournament round requires a stage identifier."
+            )
 
         if scope_kind is FixtureObservationScopeKind.COMPLETE_SEASON:
             if competition_format is not CompetitionFormat.LEAGUE:
@@ -48,14 +93,32 @@ class CompetitionLifecycleScope:
                 raise CompetitionLifecycleError(
                     "A complete-stage scope requires exactly one stage identifier."
                 )
-        elif scope_kind is FixtureObservationScopeKind.COMPLETE_ROUND:
-            if competition_format is not CompetitionFormat.KNOCKOUT_CUP:
+            if (
+                competition_format is CompetitionFormat.HYBRID_TOURNAMENT
+                and stage_kind is None
+            ):
                 raise CompetitionLifecycleError(
-                    "A complete-round scope requires knockout/cup format."
+                    "A complete hybrid-tournament stage requires a stage kind."
+                )
+        elif scope_kind is FixtureObservationScopeKind.COMPLETE_ROUND:
+            if competition_format not in {
+                CompetitionFormat.KNOCKOUT_CUP,
+                CompetitionFormat.HYBRID_TOURNAMENT,
+            }:
+                raise CompetitionLifecycleError(
+                    "A complete-round scope requires knockout/cup or "
+                    "hybrid-tournament format."
                 )
             if self.round_name is None:
                 raise CompetitionLifecycleError(
                     "A complete-round scope requires a round identifier."
+                )
+            if competition_format is CompetitionFormat.HYBRID_TOURNAMENT and (
+                self.stage is None or stage_kind is None
+            ):
+                raise CompetitionLifecycleError(
+                    "A complete hybrid-tournament round requires a stage and "
+                    "stage kind."
                 )
 
     @property
@@ -73,6 +136,19 @@ class CompetitionLifecycleScope:
             FixtureObservationScopeKind.COMPLETE_STAGE,
             FixtureObservationScopeKind.COMPLETE_ROUND,
         }
+
+    @staticmethod
+    def _parse_optional_stage_kind(
+        value: TournamentStageKind | str | None,
+    ) -> TournamentStageKind | None:
+        if value is None:
+            return None
+        try:
+            return TournamentStageKind(value)
+        except (TypeError, ValueError) as error:
+            raise CompetitionLifecycleError(
+                f"Unknown tournament stage kind: {value!r}."
+            ) from error
 
     @staticmethod
     def _parse_competition_format(
