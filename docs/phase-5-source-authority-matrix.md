@@ -33,6 +33,11 @@ Austrian Bundesliga update, 2026-08-28: issue #125 defers the competition for
 scope, and no paid plan was approved. The exact re-evaluation triggers are in
 the focused qualification record.
 
+FA Cup update, 2026-08-28: issue #126 also defers the competition for
+`v0.5.0-beta.1`. The official FA sources are manual-only, OpenLigaDB has no FA
+Cup competition, TheSportsDB has no free 2026/27 scope, and no paid provider or
+separate data-rights clearance was approved.
+
 Decision meanings:
 
 - `Qualified`: implementation may proceed with the named authority and stated
@@ -179,7 +184,7 @@ non-authoritative and cannot advance removal evidence.
 | German Bundesliga | 2026/27 | `league`; authoritative unfiltered `complete_season` | football-data.org `BL1` / 2002 | **Implemented and staged** | ADR 0006 and issue #114 provide the qualified profile, reviewed 18-team mapping, complete-season runtime, offline SQLite-to-Graph proof, and isolated live staging evidence. Release remains a separate gate. |
 | German 2. Bundesliga | 2026/27 | `league`; structurally `complete_season`, initially removal-disabled | OpenLigaDB league 4938 / `bl2` / 2026; football-data.org only as paid fallback | **Implemented and staged** | Issue #132 adds the reviewed 18-team catalog/mapping, multi-job runtime, strict 306-fixture contract, offline SQLite-to-Graph proof, and isolated live staging evidence. ADR 0009 requires review of identity-set changes and keeps operation non-destructive. |
 | Austrian Bundesliga | 2026/27 | `league`; at most `partial` before explicit stage qualification | No authority assigned; Sportmonks league 181 remains a paid future candidate | **Deferred** | Official sources are manual-only; OpenLigaDB `BLÖ` / 5990 returned 36 groups and zero fixtures; football-data.org is paid and does not prove the full split lifecycle; API-Football lacks recorded data-rights clearance; TheSportsDB free retrieval stops at 15 events. No paid plan was approved. Re-evaluate only under the triggers in the focused qualification record. |
-| FA Cup | 2026/27 | `knockout_cup`; `partial` until a specific round is complete | Sportmonks league 24, subject to live lookup | **Conditional** | Current-season coverage, round/leg identifiers, placeholders, replay policy, identity across draws/reschedules, and complete-round evidence require live proof. Generic bounded reconciliation exists, but this competition remains removal-disabled until qualification passes. |
+| FA Cup | 2026/27 | `knockout_cup`; `partial` and removal-disabled until a future round-specific qualification | No authority assigned; Sportmonks league 24 remains a paid future candidate | **Deferred** | Official sources are manual-only; OpenLigaDB has no FA Cup competition; football-data.org is paid and current-season scope is unproven; API-Football lacks recorded rights clearance; TheSportsDB has no free 2026/27 scope; OpenFootball has no current cup schedule or stable fixture IDs. No paid plan was approved. |
 | EFL Cup | 2026/27 | `knockout_cup`; `partial` until a specific round is complete | Sportmonks league 27 | **Conditional** | Current-season coverage, two-legged round semantics, placeholders, stable identity, and complete-round evidence require live proof. Generic bounded reconciliation exists, but this competition remains removal-disabled until qualification passes. |
 | DFB-Pokal | 2026/27 | `knockout_cup`; permanently `partial` with this provider | OpenLigaDB league 4945 / `dfb` / 2026 | **Implemented and staged** | ADR 0007 records two stable live observations and issue #119 adds the catalog, reviewed 64-team mapping, runtime, offline SQLite-to-Graph proof, exact attribution, permanent removal disablement, and isolated live staging evidence. |
 | ÖFB Cup | 2026/27 | `knockout_cup`; `partial` until a specific round is complete | Sportmonks league 187 | **Conditional** | A paid selection, current-season live coverage, stable identity, stage/round mapping, and complete-round evidence are required. football-data.org is rejected for this competition because its public catalog is stale at 2020/21. |
@@ -242,8 +247,9 @@ its bounded implementation is delivered by #135. Isolated staging, restart,
 unchanged-cycle, and provider-failure validation passed on 2026-08-28. Play-off
 ingestion remains out of scope until separate live qualification succeeds.
 
-No domestic cup, Austrian competition, or UEFA competition is part of the
-first implementation wave.
+The FA Cup, EFL Cup, Austrian competitions, and UEFA competitions are not part
+of the first implementation wave. DFB-Pokal was implemented later through its
+separately qualified permanent-partial OpenLigaDB scope.
 
 ## Secret-safe operator validation gate
 
@@ -319,7 +325,8 @@ a job.
 | DFB-Pokal | Isolated OpenLigaDB staging and Outlook verification are complete; retain permanent-partial scope and ODbL attribution. |
 | Championship and 2. Bundesliga | Both implemented scopes passed isolated live staging. Retain the Championship regular-season boundary and the removal-disabled OpenLigaDB 2. Bundesliga boundary through the release gate. |
 | Austrian Bundesliga | Deferred by issue #125. Re-evaluate only when a permitted complete no-cost source appears, OpenLigaDB becomes structurally complete and stable, an official machine-readable feed is authorized, or the operator explicitly approves paid Sportmonks qualification. |
-| Domestic cups | Evaluate official and permitted no-cost candidates first; otherwise record an explicit competition-specific deferral. A paid provider requires operator approval. |
+| FA Cup | Deferred by issue #126. Re-evaluate only when an official permitted feed appears, OpenLigaDB gains a stable complete intended scope, another permitted no-cost source qualifies, rights clearance is recorded, or the operator explicitly approves paid provider qualification. |
+| EFL Cup and ÖFB-Cup | Evaluate official and permitted no-cost candidates first; otherwise record an explicit competition-specific deferral. A paid provider requires operator approval. |
 | UEFA competitions | Hybrid competition-capability ADR and model implementation; then repeat source and live qualification. |
 | All new competitions | Explicit source assignment with exactly one authority; scheduler isolation; credential-free unit/integration coverage; release documentation that distinguishes planned, qualified, implemented, staged, and released. |
 
@@ -362,6 +369,7 @@ Competition-format evidence, reviewed 2026-08-16:
 - [Austrian Bundesliga competition format](https://www.bundesliga.at/de/news/artikel/bundesliga-spielmodus-2023-24)
 - [2026/27 Austrian Bundesliga ground-round schedule](https://www.bundesliga.at/de/news/artikel/admiral-bundesliga-spielplan-fuer-den-grunddurchgang-2026-27)
 - [Austrian Bundesliga source qualification](austrian-bundesliga-source-qualification.md)
+- [FA Cup source qualification](fa-cup-source-qualification.md)
 - [DFB-Pokal format](https://www.dfb.de/en/men/mens-dfb-pokal)
 - [DFB-Pokal 2026/27 dates](https://www.dfb.de/maenner/wettbewerbe/dfb-pokal/rahmentermine)
 - [FA Cup round dates](https://www.thefa.com/competitions/thefacup/round-dates)
