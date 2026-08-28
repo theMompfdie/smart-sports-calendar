@@ -132,6 +132,14 @@ The complete provider settings are:
 | `OPENLIGADB_RETRY_BASE_DELAY_SECONDS` | `1` | Positive finite first backoff delay |
 | `OPENLIGADB_RETRY_MAX_DELAY_SECONDS` | `30` | Positive finite cap, not lower than the base delay |
 | `OPENLIGADB_MINIMUM_REQUEST_INTERVAL_SECONDS` | `1` | Positive minimum spacing between public provider requests |
+| `OEFB_ICAL_ENABLED` | `false` | Enables the private official ÖFB-Cup iCalendar authority; requires its matching authoritative job |
+| `OEFB_ICAL_FEED_URL` | empty | Required only when enabled; opaque HTTPS subscription URL supplied through the deployment secret store and never logged |
+| `OEFB_ICAL_CONNECT_TIMEOUT_SECONDS` | `5` | Positive finite connection timeout |
+| `OEFB_ICAL_READ_TIMEOUT_SECONDS` | `30` | Positive finite response timeout |
+| `OEFB_ICAL_MAX_ATTEMPTS` | `3` | Bounded transient retry count, maximum `10` |
+| `OEFB_ICAL_RETRY_BASE_DELAY_SECONDS` | `1` | Positive finite first backoff delay |
+| `OEFB_ICAL_RETRY_MAX_DELAY_SECONDS` | `30` | Positive finite cap, not lower than the base delay |
+| `OEFB_ICAL_MINIMUM_POLL_INTERVAL_SECONDS` | `21600` | Minimum six-hour poll interval required by the qualified feed contract |
 
 The JSON value must remain on one line in `.env` or Portainer. Adapter and job
 enablement must agree. The existing API-Football adapter supports only the
@@ -139,8 +147,11 @@ enablement must agree. The existing API-Football adapter supports only the
 the authoritative 2026/27 Premier League and Bundesliga complete-season scopes
 and the Championship `REGULAR_SEASON` complete-stage scope. `openligadb`
 supports the authoritative 2026/27 DFB-Pokal and 2. Bundesliga scopes and
-requires no credential. Keep the football-data.org token in Portainer or another ignored
-operator secret store. See [source orchestration](source-orchestration.md).
+requires no credential. `oefb_ical` supports only the private, permanently
+partial 2026/27 ÖFB-Cup scope and never derives removal evidence from absence.
+Keep the football-data.org token and opaque ÖFB feed URL in Portainer or another
+ignored operator secret store. See
+[source orchestration](source-orchestration.md).
 
 `OUTLOOK_CALENDAR_ID` is required for every Graph write. It must be the
 immutable Graph ID of the dedicated SMART Sports Calendar.
@@ -255,6 +266,33 @@ non-empty. Never use `docker compose down --volumes` during an upgrade.
 
 Database initialization and forward migrations are idempotent. Schema
 downgrades are not implemented.
+
+### Upgrade from v0.4.5-beta.1 to v0.5.0-beta.1
+
+1. Stop the exact application stack and create a transactionally consistent
+   backup of its project-scoped `/data/sports.db` volume.
+2. Verify the backup is non-empty and keep it outside the Docker volume.
+3. Review `.env.example` and add only the provider settings required by the
+   approved competition jobs. Never replace existing secrets with placeholders.
+4. Keep every new provider disabled until its exact `SOURCE_JOBS_JSON`
+   authority, catalog, season, and secret configuration is ready.
+5. Check out the verified signed `v0.5.0-beta.1` tag.
+6. Run `docker compose config --quiet` and resolve every missing or invalid
+   setting before starting the container.
+7. Run `docker compose up --detach --build` for exactly one instance attached to
+   the existing project-scoped volume and Outlook calendar.
+8. Verify startup health and confirm migration
+   `008_add_calendar_sync_revisions` completes without error.
+9. Allow bounded Outlook synchronization batches to drain every pending
+   calendar revision. A temporary revision backlog after migration is expected;
+   creates, updates, and lifecycle work are prioritized before unchanged rows.
+10. Run the secret-safe staging evidence command and verify zero pending
+    calendar mapping revisions before enabling production promotion.
+
+The Phase 5 catalog and source assignments initialize idempotently. Migration
+`008_add_calendar_sync_revisions` preserves existing events and mappings while
+queueing them for one safe payload-revision reconciliation. Do not downgrade an
+upgraded database in place.
 
 ### Rollback
 
@@ -495,7 +533,7 @@ For issue #63, open the `calendar-sync` container console for
 python -m app.operations.staging_evidence --database /data/sports.db
 ```
 
-For the Phase 5 five-competition candidate, follow
+For the Phase 5 six-authority candidate, follow
 [`phase-5-multi-competition-staging-validation.md`](phase-5-multi-competition-staging-validation.md)
 and run the strict read-only profile after convergence:
 
@@ -576,13 +614,14 @@ Immutable beta staging qualification
 Controlled manual production promotion
 ```
 
-The release branch is created from fully validated `develop`, reviewed into
-`main`, and signed-tagged on the resulting `main` commit. Staging is frozen to
-that immutable tag for candidate verification before GitHub Releases publishes
-the release notes as a pre-release. Production promotion is a separate manual
-gate and must honor unresolved release blockers such as #101. GHCR remains a
-future enhancement; do not document or deploy a registry image that has not
-been built and verified.
+The release branch is created from fully validated `develop`, reviewed back
+into `develop`, and followed by a final verified `develop` to `main` pull
+request. The resulting `main` commit is signed-tagged and GitHub Releases
+publishes the release notes as a pre-release. Staging can then be frozen to the
+immutable tag for final operational confirmation. Production promotion is a
+separate explicit manual decision and is never implied by tag or pre-release
+publication. GHCR remains a future enhancement; do not document or deploy a
+registry image that has not been built and verified.
 
 ---
 

@@ -1,11 +1,11 @@
 # Phase 5 Multi-Competition Staging Validation
 
 This operator-run procedure is the live validation gate for issue #122, the
-remaining DFB-Pokal staging criteria in issue #119, and the 2. Bundesliga gate
-in issue #132, and the Championship gate in issue #135. It validates the
-2026/27 Premier League, Bundesliga, Championship regular season, DFB-Pokal,
-and 2. Bundesliga together in one isolated staging deployment. It does not
-authorize production promotion, a tag, or a release.
+remaining DFB-Pokal staging criteria in issue #119, the 2. Bundesliga gate in
+issue #132, the Championship gate in issue #135, and the ÖFB-Cup gate in issue
+#145. It validates the 2026/27 Premier League, Bundesliga, Championship regular
+season, DFB-Pokal, 2. Bundesliga, and ÖFB-Cup together in one isolated staging
+deployment. It does not authorize production promotion, a tag, or a release.
 
 ## Candidate boundary
 
@@ -18,10 +18,11 @@ The only enabled authoritative jobs are:
 | `football-data-championship` | football-data.org `ELC` / 2016 | `football/championship/2026_27` | `complete_stage` for `REGULAR_SEASON` only |
 | `openligadb-dfb-pokal` | OpenLigaDB `4945/dfb/2026` | `football/dfb_pokal/2026_27` | permanently `partial` |
 | `openligadb-second-bundesliga` | OpenLigaDB `4938/bl2/2026` | `football/second_bundesliga/2026_27` | initially removal-disabled `partial` |
+| `oefb-ical-oefb-cup` | official private ÖFB iCalendar feed | `football/oefb_cup/2026_27` | permanently `partial` |
 
-Both OpenLigaDB jobs must report `complete=false`, `scope_kind=partial`, and
-`removal_eligible=false`. Missing OpenLigaDB fixtures never cancel or delete
-canonical or Outlook events.
+Both OpenLigaDB jobs and the ÖFB iCalendar job must report `complete=false`,
+`scope_kind=partial`, and `removal_eligible=false`. Missing fixtures from these
+partial authorities never cancel or delete canonical or Outlook events.
 
 Stop immediately if staging shares a database, volume, calendar, credentials,
 stack name, or writable resource with production. Never print the effective
@@ -140,7 +141,7 @@ provider metadata, error messages, URLs, tokens, and raw payloads.
 
 1. Confirm the container is healthy and Graph startup validation accepted the
    dedicated staging calendar without logging its immutable identifier.
-2. Wait for all five independent provider jobs and calendar synchronization
+2. Wait for all six independent provider jobs and calendar synchronization
    to complete. After the `008_add_calendar_sync_revisions` upgrade, existing
    mappings intentionally require one bounded reconciliation sweep; continue
    through calendar batches until the revision-pending count reaches zero.
@@ -150,6 +151,8 @@ provider metadata, error messages, URLs, tokens, and raw payloads.
    `Football data provided by the Football-Data.org API`.
 6. Confirm DFB-Pokal and 2. Bundesliga events show
    `Fixture data provided by OpenLigaDB (ODbL 1.0): https://www.openligadb.de/`.
+7. Confirm ÖFB-Cup events show the reviewed official ÖFB attribution without
+   exposing the private feed URL.
 
 ### 2. Unchanged-cycle idempotency
 

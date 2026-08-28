@@ -10,17 +10,16 @@ data can change and must be revalidated before an operator accepts a
 subscription or enables a source.
 
 The matrix evaluates the released Premier League baseline and all eleven Phase
-5 candidates. It does not enable a source, add catalog data, authorize a paid
-plan, or claim that a new competition is released. The existing
-football-data.org Premier League job remains the only released authoritative
-writer.
+5 candidates. It does not itself enable a source, add catalog data, or
+authorize a paid plan. The final `v0.5.0-beta.1` release boundary contains the
+six explicitly assigned authorities recorded below.
 
 Implementation status update, 2026-08-28: the qualified Bundesliga,
-Championship regular season, DFB-Pokal, and 2. Bundesliga paths have passed
-isolated live staging and unchanged-cycle validation. They are implemented and
-staged but not yet released. Issue #118 qualifies OpenLigaDB rather than the
-rejected paid Sportmonks candidate for the DFB-Pokal. ADR 0007 permanently
-limits that authority to non-destructive `partial` observations.
+Championship regular season, DFB-Pokal, 2. Bundesliga, and ÖFB-Cup paths passed
+isolated live staging, Outlook convergence, unchanged-cycle validation,
+restart, failure isolation, and recovery. Issue #118 qualifies OpenLigaDB
+rather than the rejected paid Sportmonks candidate for the DFB-Pokal. ADR 0007
+permanently limits that authority to non-destructive `partial` observations.
 
 Cost-policy update, 2026-08-27: issue #124 evaluates the no-cost OpenLigaDB
 `bl2` / 4938 candidate before the paid football-data.org fallback. A permitted,
@@ -48,9 +47,10 @@ rights and deterministic authority contract, and no paid provider was approved.
 ÖFB iCalendar feed for private, non-destructive `partial` use. Two stable
 secret-safe observations proved unique provider fixture UIDs, UTC kickoffs,
 structured participant identities, exact first- and second-round totals, and a
-six-hour refresh contract. Issue #145 implements the credential-free provider,
-catalog, runtime, and SQLite-to-mocked-Graph path. Isolated staging remains
-pending.
+six-hour refresh contract. Issue #145 implements the provider, catalog,
+runtime, and SQLite-to-mocked-Graph path. Isolated staging passed with 48
+current-season fixtures, stable Outlook identity and attribution, unchanged
+restart behavior, controlled provider failure, and clean recovery.
 
 Decision meanings:
 
@@ -201,7 +201,7 @@ non-authoritative and cannot advance removal evidence.
 | FA Cup | 2026/27 | `knockout_cup`; `partial` and removal-disabled until a future round-specific qualification | No authority assigned; Sportmonks league 24 remains a paid future candidate | **Deferred** | Official sources are manual-only; OpenLigaDB has no FA Cup competition; football-data.org is paid and current-season scope is unproven; API-Football lacks recorded rights clearance; TheSportsDB has no free 2026/27 scope; OpenFootball has no current cup schedule or stable fixture IDs. No paid plan was approved. |
 | EFL Cup | 2026/27 | `knockout_cup`; `partial` and removal-disabled until a future round-specific qualification | No authority assigned; Sportmonks league 27 remains a paid future candidate | **Deferred** | Official ECAL automation is prohibited; OpenLigaDB has no competition; football-data.org and Sportmonks require paid coverage; API-Football lacks recorded rights clearance; TheSportsDB free retrieval is capped at 15 events; other free calendars lack the required authority contract. No paid plan was approved. |
 | DFB-Pokal | 2026/27 | `knockout_cup`; permanently `partial` with this provider | OpenLigaDB league 4945 / `dfb` / 2026 | **Implemented and staged** | ADR 0007 records two stable live observations and issue #119 adds the catalog, reviewed 64-team mapping, runtime, offline SQLite-to-Graph proof, exact attribution, permanent removal disablement, and isolated live staging evidence. |
-| ÖFB Cup | 2026/27 | `knockout_cup`; permanently `partial` under the current contract | Official ÖFB competition iCalendar feed | **Implemented; staging pending** | Two stable observations proved 48 current fixtures across rounds one and two, unique numeric UIDs, UTC kickoffs, structured participant identities, and `PT6H` refresh. Issue #145 implements the reviewed 64-team catalog, permanent-partial runtime, strict provider boundary, and offline SQLite-to-Graph proof. The multi-season feed has no explicit cancellation or completeness marker, so absence is never destructive. Use is limited to the operator's private calendar and the opaque feed URL remains secret. |
+| ÖFB Cup | 2026/27 | `knockout_cup`; permanently `partial` under the current contract | Official ÖFB competition iCalendar feed | **Implemented and staged** | Two stable observations proved 48 current fixtures across rounds one and two, unique numeric UIDs, UTC kickoffs, structured participant identities, and `PT6H` refresh. Issue #145 implements the reviewed 64-team catalog, permanent-partial runtime, strict provider boundary, offline SQLite-to-Graph proof, and isolated live staging. The multi-season feed has no explicit cancellation or completeness marker, so absence is never destructive. Use is limited to the operator's private calendar and the opaque feed URL remains secret. |
 | UEFA Champions League | 2026/27 | not representable by one Phase 5.1 format; qualifying, league, and knockout scopes | Sportmonks league 2 as future candidate | **Deferred** | The hybrid lifecycle exceeds ADR 0004, participants and fixtures are incremental, and current authority evidence is incomplete. No `v0.5.0-beta.1` release claim. |
 | UEFA Europa League | 2026/27 | not representable by one Phase 5.1 format; qualifying, league, and knockout scopes | Sportmonks league 5 as future candidate | **Deferred** | Same hybrid-model gap and incremental completeness risk as the Champions League. No `v0.5.0-beta.1` release claim. |
 | UEFA Conference League | 2026/27 | not representable by one Phase 5.1 format; qualifying, league, and knockout scopes | Sportmonks league 2286 as future candidate | **Deferred** | Same hybrid-model gap and incremental completeness risk as the Champions League. No `v0.5.0-beta.1` release claim. |
@@ -344,14 +344,14 @@ a job.
 | Austrian Bundesliga | Deferred by issue #125. Re-evaluate only when a permitted complete no-cost source appears, OpenLigaDB becomes structurally complete and stable, an official machine-readable feed is authorized, or the operator explicitly approves paid Sportmonks qualification. |
 | FA Cup | Deferred by issue #126. Re-evaluate only when an official permitted feed appears, OpenLigaDB gains a stable complete intended scope, another permitted no-cost source qualifies, rights clearance is recorded, or the operator explicitly approves paid provider qualification. |
 | EFL Cup | Deferred by issue #127. Re-evaluate only when an official permitted feed appears, ECAL/EFL grants written automation permission, OpenLigaDB gains a stable intended scope, another permitted no-cost source qualifies, rights clearance is recorded, or the operator explicitly approves paid provider qualification. |
-| ÖFB-Cup | Complete isolated staging with the operator-managed secret URL, verify Outlook attribution and identity stability, and retain permanent-partial semantics through the release gate. |
+| ÖFB-Cup | Isolated staging, Outlook attribution, identity stability, failure isolation, and recovery are complete; retain the private permanent-partial semantics through the release gate. |
 | UEFA competitions | Hybrid competition-capability ADR and model implementation; then repeat source and live qualification. |
 | All new competitions | Explicit source assignment with exactly one authority; scheduler isolation; credential-free unit/integration coverage; release documentation that distinguishes planned, qualified, implemented, staged, and released. |
 
-No database migration is approved by #108. Each implementation issue must
-verify whether the existing schema and source-mapping model are sufficient; a
-required migration must be deterministic, idempotent, independently reviewed,
-and covered by repository tests.
+No database migration was approved by the original #108 qualification slice.
+The later synchronization-prioritization issue #136 added deterministic,
+idempotent migration `008_add_calendar_sync_revisions`, independently reviewed
+and covered by repository and staging-convergence tests.
 
 ## Primary evidence
 
