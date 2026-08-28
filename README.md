@@ -533,7 +533,8 @@ delivery order and operational boundaries.
 - EFL Cup deferred because the official ECAL calendar is not permitted for
   automated collection, no reviewed free API supplies a safe complete scope,
   and no paid plan was approved
-- ÖFB-Cup remains pending competition-specific source qualification
+- ÖFB-Cup official iCalendar source qualified for private, non-destructive
+  `partial` use; provider implementation and isolated staging remain pending
 
 ### Phase 6 – UEFA Competitions
 
