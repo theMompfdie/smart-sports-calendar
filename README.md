@@ -567,7 +567,13 @@ delivery order and operational boundaries.
   candidate release boundary begins with the league phase, qualification may
   remain a separate optional scope, OpenLigaDB is currently incomplete, and
   no paid provider or authority is approved
-- Conference League
+- UEFA Conference League 2026/27 delivery tracked by
+  [#160](https://github.com/theMompfdie/smart-sports-calendar/issues/160),
+  with active source qualification in
+  [#161](https://github.com/theMompfdie/smart-sports-calendar/issues/161): the
+  candidate release boundary begins with the league phase, qualification may
+  remain a separate optional scope, no 2026/27 OpenLigaDB entry currently
+  exists, and no paid provider or authority is approved
 - Nations League
 - European Championship Qualification
 
