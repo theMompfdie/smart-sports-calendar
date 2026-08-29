@@ -560,8 +560,13 @@ delivery order and operational boundaries.
   league phase and later stages; the 2026/27 qualifying rounds are explicitly
   excluded, and no authority is assigned until credentialed qualification is
   complete
-- Champions League
-- Europa League
+- UEFA Europa League 2026/27 delivery tracked by
+  [#157](https://github.com/theMompfdie/smart-sports-calendar/issues/157),
+  with active source qualification in
+  [#158](https://github.com/theMompfdie/smart-sports-calendar/issues/158): the
+  candidate release boundary begins with the league phase, qualification may
+  remain a separate optional scope, OpenLigaDB is currently incomplete, and
+  no paid provider or authority is approved
 - Conference League
 - Nations League
 - European Championship Qualification
