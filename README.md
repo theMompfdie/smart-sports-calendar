@@ -574,7 +574,13 @@ delivery order and operational boundaries.
   candidate release boundary begins with the league phase, qualification may
   remain a separate optional scope, no 2026/27 OpenLigaDB entry currently
   exists, and no paid provider or authority is approved
-- Nations League
+- UEFA Nations League 2026/27 delivery tracked by
+  [#163](https://github.com/theMompfdie/smart-sports-calendar/issues/163),
+  with active source and scope qualification in
+  [#164](https://github.com/theMompfdie/smart-sports-calendar/issues/164):
+  OpenLigaDB currently provides the complete 48-fixture League A group phase,
+  paid providers advertise broader coverage, and no release boundary, paid
+  provider, or authority is approved
 - European Championship Qualification
 
 The Champions League, Europa League, and Conference League were evaluated for
