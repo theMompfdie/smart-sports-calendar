@@ -21,7 +21,7 @@ from app.providers.contracts import (
     NormalizedFixtureParticipant,
     RateLimitSnapshot,
 )
-from app.providers.nflverse.adapter import NflverseCompetitionAdapter
+from app.providers.nflverse.adapter import NflverseSnapshotAdapter
 from app.providers.nflverse.client import SCHEDULE_URL
 from app.providers.nflverse.exceptions import NflverseIntegrityError
 from app.providers.nflverse.models import NflverseGame
@@ -70,7 +70,7 @@ class _CanonicalContext:
 class NflverseCompetitionService:
     def __init__(
         self,
-        adapter: NflverseCompetitionAdapter,
+        adapter: NflverseSnapshotAdapter,
         sports_repository: SportsRepository,
         competitions_repository: CompetitionsRepository,
         seasons_repository: SeasonsRepository,
