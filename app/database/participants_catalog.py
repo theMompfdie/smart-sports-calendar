@@ -26,6 +26,7 @@ class ParticipantCatalogEntry:
 
 @dataclass(frozen=True)
 class SeasonParticipantsCatalogEntry:
+    sport_key: str
     competition_key: str
     season_key: str
     country_code: str
@@ -322,8 +323,44 @@ NATIONS_LEAGUE_A_2026_27_TEAMS = (
     ("wales_national_team", "Wales", "Wales", "GB-WLS"),
 )
 
+NFL_2026_TEAMS = (
+    ("arizona_cardinals", "Arizona Cardinals", "Cardinals", "ARI"),
+    ("atlanta_falcons", "Atlanta Falcons", "Falcons", "ATL"),
+    ("baltimore_ravens", "Baltimore Ravens", "Ravens", "BAL"),
+    ("buffalo_bills", "Buffalo Bills", "Bills", "BUF"),
+    ("carolina_panthers", "Carolina Panthers", "Panthers", "CAR"),
+    ("chicago_bears", "Chicago Bears", "Bears", "CHI"),
+    ("cincinnati_bengals", "Cincinnati Bengals", "Bengals", "CIN"),
+    ("cleveland_browns", "Cleveland Browns", "Browns", "CLE"),
+    ("dallas_cowboys", "Dallas Cowboys", "Cowboys", "DAL"),
+    ("denver_broncos", "Denver Broncos", "Broncos", "DEN"),
+    ("detroit_lions", "Detroit Lions", "Lions", "DET"),
+    ("green_bay_packers", "Green Bay Packers", "Packers", "GB"),
+    ("houston_texans", "Houston Texans", "Texans", "HOU"),
+    ("indianapolis_colts", "Indianapolis Colts", "Colts", "IND"),
+    ("jacksonville_jaguars", "Jacksonville Jaguars", "Jaguars", "JAX"),
+    ("kansas_city_chiefs", "Kansas City Chiefs", "Chiefs", "KC"),
+    ("los_angeles_rams", "Los Angeles Rams", "Rams", "LA"),
+    ("los_angeles_chargers", "Los Angeles Chargers", "Chargers", "LAC"),
+    ("las_vegas_raiders", "Las Vegas Raiders", "Raiders", "LV"),
+    ("miami_dolphins", "Miami Dolphins", "Dolphins", "MIA"),
+    ("minnesota_vikings", "Minnesota Vikings", "Vikings", "MIN"),
+    ("new_england_patriots", "New England Patriots", "Patriots", "NE"),
+    ("new_orleans_saints", "New Orleans Saints", "Saints", "NO"),
+    ("new_york_giants", "New York Giants", "Giants", "NYG"),
+    ("new_york_jets", "New York Jets", "Jets", "NYJ"),
+    ("philadelphia_eagles", "Philadelphia Eagles", "Eagles", "PHI"),
+    ("pittsburgh_steelers", "Pittsburgh Steelers", "Steelers", "PIT"),
+    ("seattle_seahawks", "Seattle Seahawks", "Seahawks", "SEA"),
+    ("san_francisco_49ers", "San Francisco 49ers", "49ers", "SF"),
+    ("tampa_bay_buccaneers", "Tampa Bay Buccaneers", "Buccaneers", "TB"),
+    ("tennessee_titans", "Tennessee Titans", "Titans", "TEN"),
+    ("washington_commanders", "Washington Commanders", "Commanders", "WAS"),
+)
+
 SEASON_PARTICIPANTS_CATALOG = (
     SeasonParticipantsCatalogEntry(
+        sport_key="football",
         competition_key="premier_league",
         season_key="2026_27",
         country_code="GB-ENG",
@@ -337,6 +374,7 @@ SEASON_PARTICIPANTS_CATALOG = (
         ),
     ),
     SeasonParticipantsCatalogEntry(
+        sport_key="football",
         competition_key="bundesliga",
         season_key="2026_27",
         country_code="DE",
@@ -350,6 +388,7 @@ SEASON_PARTICIPANTS_CATALOG = (
         ),
     ),
     SeasonParticipantsCatalogEntry(
+        sport_key="football",
         competition_key="championship",
         season_key="2026_27",
         country_code="GB-ENG",
@@ -366,6 +405,7 @@ SEASON_PARTICIPANTS_CATALOG = (
         ),
     ),
     SeasonParticipantsCatalogEntry(
+        sport_key="football",
         competition_key="second_bundesliga",
         season_key="2026_27",
         country_code="DE",
@@ -379,6 +419,7 @@ SEASON_PARTICIPANTS_CATALOG = (
         ),
     ),
     SeasonParticipantsCatalogEntry(
+        sport_key="football",
         competition_key="dfb_pokal",
         season_key="2026_27",
         country_code="DE",
@@ -392,6 +433,7 @@ SEASON_PARTICIPANTS_CATALOG = (
         ),
     ),
     SeasonParticipantsCatalogEntry(
+        sport_key="football",
         competition_key="oefb_cup",
         season_key="2026_27",
         country_code="AT",
@@ -405,6 +447,7 @@ SEASON_PARTICIPANTS_CATALOG = (
         ),
     ),
     SeasonParticipantsCatalogEntry(
+        sport_key="football",
         competition_key="uefa_nations_league",
         season_key="2026_27",
         country_code="INT",
@@ -420,6 +463,20 @@ SEASON_PARTICIPANTS_CATALOG = (
             )
         ),
     ),
+    SeasonParticipantsCatalogEntry(
+        sport_key="american_football",
+        competition_key="nfl",
+        season_key="2026",
+        country_code="US",
+        participants=tuple(
+            ParticipantCatalogEntry(
+                participant_key=participant_key,
+                name=name,
+                short_name=short_name,
+            )
+            for participant_key, name, short_name, _ in NFL_2026_TEAMS
+        ),
+    ),
 )
 
 
@@ -430,17 +487,17 @@ def initialize_participants_catalog(
     competitions_repository: CompetitionsRepository,
     seasons_repository: SeasonsRepository,
 ) -> ParticipantsCatalogResult:
-    football = sports_repository.get_by_key("football")
-    if football is None:
-        raise RuntimeError(
-            "Required sport not found for participants catalog: football"
-        )
-
     participants: list[Participant] = []
     memberships: list[SeasonParticipant] = []
     for catalog_entry in SEASON_PARTICIPANTS_CATALOG:
+        sport = sports_repository.get_by_key(catalog_entry.sport_key)
+        if sport is None:
+            raise RuntimeError(
+                "Required sport not found for participants catalog: "
+                f"{catalog_entry.sport_key}"
+            )
         competition = competitions_repository.get_by_key(
-            sport_id=football.id,
+            sport_id=sport.id,
             competition_key=catalog_entry.competition_key,
         )
         if competition is None:
@@ -459,7 +516,7 @@ def initialize_participants_catalog(
             )
         catalog_participants = [
             repository.upsert(
-                sport_id=football.id,
+                sport_id=sport.id,
                 participant_key=entry.participant_key,
                 participant_type="team",
                 name=entry.name,

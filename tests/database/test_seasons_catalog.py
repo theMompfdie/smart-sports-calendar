@@ -58,7 +58,7 @@ def test_initialize_seasons_catalog_creates_reviewed_seasons(
         sports_repository=sports_repository,
     )
 
-    assert len(seasons) == 7
+    assert len(seasons) == 8
     football = sports_repository.get_by_key("football")
 
     assert football is not None
@@ -99,6 +99,12 @@ def test_initialize_seasons_catalog_creates_reviewed_seasons(
         competition_key="uefa_nations_league",
     )
     assert nations_league is not None
+    american_football = sports_repository.get_by_key("american_football")
+    assert american_football is not None
+    nfl = competitions_repository.get_by_key(
+        sport_id=american_football.id, competition_key="nfl"
+    )
+    assert nfl is not None
     by_competition = {season.competition_id: season for season in seasons}
 
     premier_league_season = by_competition[premier_league.id]
@@ -155,6 +161,12 @@ def test_initialize_seasons_catalog_creates_reviewed_seasons(
     assert nations_league_season.start_date == "2026-09-24"
     assert nations_league_season.end_date == "2026-11-17"
     assert nations_league_season.is_current is True
+    nfl_season = by_competition[nfl.id]
+    assert nfl_season.season_key == "2026"
+    assert nfl_season.name == "2026 regular season"
+    assert nfl_season.start_date == "2026-09-09"
+    assert nfl_season.end_date == "2027-01-10"
+    assert nfl_season.is_current is True
 
 
 def test_initialize_seasons_catalog_can_run_repeatedly(
