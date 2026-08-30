@@ -12,6 +12,7 @@ from app.database.participants_repository import Participant
 from app.database.seasons_repository import Season
 from app.database.sports_events_repository import SportsEvent
 from app.database.sports_repository import Sport
+from app.domain.operator_notice import OPERATOR_NOTICE_METADATA_KEY, OperatorNotice
 
 
 @dataclass(frozen=True)
@@ -35,6 +36,7 @@ class SynchronizationEvent:
     statistics: tuple[EventStatistic, ...]
     mapping: CalendarEventMapping | None
     source_attribution: str | None = None
+    operator_notice: OperatorNotice | None = None
 
 
 class SynchronizationQueryRepository:
@@ -189,6 +191,7 @@ class SynchronizationQueryRepository:
             competition_id=event.competition_id,
             season_id=event.season_id,
         )
+        operator_notice = self._load_operator_notice(event.metadata)
 
         return SynchronizationEvent(
             event=event,
@@ -201,6 +204,7 @@ class SynchronizationQueryRepository:
             statistics=statistics,
             mapping=mapping,
             source_attribution=source_attribution,
+            operator_notice=operator_notice,
         )
 
     def _connect(self) -> sqlite3.Connection:
@@ -425,6 +429,20 @@ class SynchronizationQueryRepository:
             raise RuntimeError("Authoritative source attribution must be text.")
 
         return attribution.strip() or None
+
+    @staticmethod
+    def _load_operator_notice(
+        metadata: dict[str, Any] | None,
+    ) -> OperatorNotice | None:
+        if metadata is None or OPERATOR_NOTICE_METADATA_KEY not in metadata:
+            return None
+        notice = metadata[OPERATOR_NOTICE_METADATA_KEY]
+        if not isinstance(notice, str):
+            raise RuntimeError("Canonical operator notice must be text.")
+        try:
+            return OperatorNotice(notice)
+        except (TypeError, ValueError) as error:
+            raise RuntimeError("Canonical operator notice is invalid.") from error
 
     @classmethod
     def _map_sports_event(

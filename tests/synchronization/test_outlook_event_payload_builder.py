@@ -12,6 +12,7 @@ from app.database.synchronization_query_repository import (
     SynchronizationEvent,
     SynchronizationParticipant,
 )
+from app.domain.operator_notice import OperatorNotice
 from app.synchronization.outlook_event_payload_builder import (
     OutlookEventPayloadBuilder,
     OutlookEventPresentation,
@@ -58,6 +59,7 @@ def make_aggregate(
     event: SportsEvent | None = None,
     complete: bool = True,
     source_attribution: str | None = None,
+    operator_notice: OperatorNotice | None = None,
 ) -> SynchronizationEvent:
     sport = Sport(1, "football", "Football", None, None, TIMESTAMP, TIMESTAMP)
 
@@ -84,6 +86,7 @@ def make_aggregate(
             statistics=(),
             mapping=None,
             source_attribution=source_attribution,
+            operator_notice=operator_notice,
         )
 
     competition = Competition(
@@ -178,6 +181,7 @@ def make_aggregate(
         statistics=statistics,
         mapping=None,
         source_attribution=source_attribution,
+        operator_notice=operator_notice,
     )
 
 
@@ -234,6 +238,36 @@ def test_build_omits_missing_source_attribution() -> None:
     payload = OutlookEventPayloadBuilder().build(make_aggregate())
 
     assert "Source:" not in payload.body
+
+
+def test_build_renders_operator_notice_before_source_attribution() -> None:
+    notice = OperatorNotice("Subject to schedule changes.")
+    payload = OutlookEventPayloadBuilder().build(
+        make_aggregate(
+            operator_notice=notice,
+            source_attribution="Approved provider",
+        )
+    )
+
+    assert "\n\nNotice: Subject to schedule changes." in payload.body
+    assert payload.body.index("Notice:") < payload.body.index("Source:")
+
+
+def test_build_omits_missing_operator_notice() -> None:
+    payload = OutlookEventPayloadBuilder().build(make_aggregate())
+
+    assert "Notice:" not in payload.body
+
+
+def test_build_does_not_render_raw_provider_metadata_as_operator_notice() -> None:
+    event = make_sports_event(
+        metadata={"schedule_notice": "Unvalidated provider metadata"}
+    )
+
+    payload = OutlookEventPayloadBuilder().build(make_aggregate(event=event))
+
+    assert "Unvalidated provider metadata" not in payload.body
+    assert "Notice:" not in payload.body
 
 
 def test_build_fallback_end_uses_absolute_duration_across_dst_change() -> None:

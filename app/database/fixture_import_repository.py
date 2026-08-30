@@ -14,6 +14,7 @@ from app.domain.competition_lifecycle import (
     FixtureParticipantResolution,
     TournamentStageKind,
 )
+from app.domain.operator_notice import OPERATOR_NOTICE_METADATA_KEY, OperatorNotice
 
 
 class FixtureImportDecision(StrEnum):
@@ -57,6 +58,7 @@ class FixtureImportRecord:
     city: str | None
     source_updated_at: datetime | None
     metadata: dict[str, Any] | None
+    operator_notice: OperatorNotice | None = None
     stage_kind: TournamentStageKind | None = None
     tie_key: str | None = None
     leg: FixtureLeg | None = None
@@ -502,6 +504,11 @@ class FixtureImportRepository:
         metadata_json = (
             self._serialize_metadata(event_metadata)
             if event_metadata is not None
+            or (
+                persisted_metadata is not None
+                and OPERATOR_NOTICE_METADATA_KEY in persisted_metadata
+                and fixture.operator_notice is None
+            )
             else event["metadata_json"]
         )
         return {
@@ -755,12 +762,16 @@ class FixtureImportRepository:
         persisted_metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
         supplied_metadata = fixture.metadata
-        if (
-            supplied_metadata is not None
-            and "tournament_lifecycle" in supplied_metadata
+        reserved_metadata_keys = {
+            "tournament_lifecycle",
+            OPERATOR_NOTICE_METADATA_KEY,
+        }
+        if supplied_metadata is not None and reserved_metadata_keys.intersection(
+            supplied_metadata
         ):
             raise FixtureImportConflictError(
-                "Fixture provider metadata uses reserved tournament lifecycle data."
+                "Fixture provider metadata uses reserved tournament lifecycle "
+                "or operator notice data."
             )
         metadata: dict[str, Any] = dict(
             (persisted_metadata if supplied_metadata is None else supplied_metadata)
@@ -783,6 +794,10 @@ class FixtureImportRepository:
         }
         if any(value is not None for value in lifecycle.values()):
             metadata["tournament_lifecycle"] = lifecycle
+        if fixture.operator_notice is not None:
+            metadata[OPERATOR_NOTICE_METADATA_KEY] = fixture.operator_notice.text
+        else:
+            metadata.pop(OPERATOR_NOTICE_METADATA_KEY, None)
         return metadata or None
 
     @staticmethod
