@@ -270,6 +270,7 @@ def test_container_builds_isolated_openligadb_competition_runtimes(
         source_jobs=(
             openligadb_job(),
             openligadb_job("second_bundesliga"),
+            openligadb_job("uefa_nations_league"),
         ),
     )
 
@@ -278,6 +279,7 @@ def test_container_builds_isolated_openligadb_competition_runtimes(
     assert set(container.openligadb_import_runtime_services) == {
         "openligadb-dfb-pokal",
         "openligadb-second-bundesliga",
+        "openligadb-uefa-nations-league",
     }
     assert all(
         adapter._client is shared_client
@@ -286,25 +288,32 @@ def test_container_builds_isolated_openligadb_competition_runtimes(
     assert [job.job_key for job in container.source_scheduled_jobs] == [
         "openligadb-dfb-pokal",
         "openligadb-second-bundesliga",
+        "openligadb-uefa-nations-league",
     ]
     dfb_runtime = container.openligadb_import_runtime_services["openligadb-dfb-pokal"]
     second_bundesliga_runtime = container.openligadb_import_runtime_services[
         "openligadb-second-bundesliga"
     ]
+    nations_league_runtime = container.openligadb_import_runtime_services[
+        "openligadb-uefa-nations-league"
+    ]
     with (
         patch.object(dfb_runtime, "run") as dfb_run,
         patch.object(second_bundesliga_runtime, "run") as second_bundesliga_run,
+        patch.object(nations_league_runtime, "run") as nations_league_run,
     ):
         for scheduled_job in container.source_scheduled_jobs:
             scheduled_job.task()
 
     dfb_run.assert_called_once_with()
     second_bundesliga_run.assert_called_once_with()
+    nations_league_run.assert_called_once_with()
     assert [
         (job.job_key, job.interval_seconds) for job in container.scheduled_jobs
     ] == [
         ("openligadb-dfb-pokal", 21600),
         ("openligadb-second-bundesliga", 21600),
+        ("openligadb-uefa-nations-league", 21600),
         ("system:calendar-synchronization", 300),
     ]
 

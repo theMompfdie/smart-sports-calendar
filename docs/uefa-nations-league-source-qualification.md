@@ -2,18 +2,17 @@
 
 ## Status
 
-**Conditional for `v0.6.0-beta.1`: OpenLigaDB `nla` / 5978 has passed the
-technical evidence gates for the 48-fixture League A group phase only. No
-release boundary or authoritative writer is assigned. Sportmonks season 27797
-and football-data.org `UNL` / 2182 remain paid candidates for broader coverage.
-The operator must still select the exact scope and accept the applicable ODbL
-conditions before implementation.**
+**Qualified for `v0.6.0-beta.1`: on 2026-08-30 the operator selected
+OpenLigaDB `nla` / 5978 at EUR 0 as the bounded authority for the 48-fixture
+League A group phase only and accepted the applicable ODbL conditions.
+Leagues B, C, and D and every later stage remain excluded. Implementation is
+tracked by #170 and does not itself complete live staging or release approval.**
 
 This record was reviewed on 2026-08-29 and extended with two technical
-observations on 2026-08-30 for issue #164. It applies the hybrid tournament and
-bounded-observation contract completed in #151. It does not register an
-account, start a trial, approve payment, accept provider terms, assign an
-authority, enable a catalog entry, or authorize runtime collection.
+observations and the operator decision on 2026-08-30 for issue #164. It applies
+the hybrid tournament and bounded-observation contract completed in #151. It
+does not register an account, start a trial, approve payment, enable runtime
+collection, perform live staging, or approve production use.
 
 Public observations contain no credentials, private payloads, team names, or
 individual provider fixture IDs.
@@ -245,24 +244,17 @@ current provider-grade 2026/27 Nations League fixture dataset with stable IDs
 and lifecycle semantics. Neither can qualify even the 48-fixture League A
 group phase.
 
-## Conditional decision
+## Decision
 
-No authoritative writer is assigned for `uefa_nations_league` / `2026_27`.
-Implementation, credential use, paid registration, and source assignment are
-blocked until the operator selects one of these paths. The first path has
-passed its technical observation gate but is not approved automatically:
+The operator selected the zero-cost League A path through OpenLigaDB `nla` /
+5978 on 2026-08-30. The 48 group-phase fixtures passed two stable observations
+and an exact manual UEFA comparison. Later rounds remain incremental and
+unapproved, and removal remains disabled. ADR 0012 records the authority,
+scope, ODbL, private-runtime, and public-repository boundaries.
 
-1. **Zero-cost League A path — OpenLigaDB `nla` / 5978.** The 48 group-phase
-   fixtures passed two stable observations and an exact manual UEFA comparison.
-   Later rounds remain incremental and unapproved. Removal remains disabled.
-2. **Sportmonks all-leagues path — from EUR 29/month.** Qualify the 156-fixture
-   league phase through season 27797. This requires a card-backed trial, a new
-   adapter, and contractual and live validation.
-3. **football-data.org paid path — EUR 199/month.** Reuse the existing adapter
-   and qualify `UNL` / 2182 for an explicitly proven boundary. The public
-   season currently implies league-phase dates only.
-4. **Defer Nations League.** Preserve the unassigned state until an acceptable
-   source satisfies the scope, cost, and evidence boundary.
+Sportmonks season 27797 and football-data.org `UNL` / 2182 remain rejected for
+this release because they require recurring payment. They are neither fallback
+writers nor approved broader scopes.
 
 Full-edition or League A-through-finals approval requires later stage-specific
 evidence regardless of the selected provider. API-Football is not approvable
@@ -270,18 +262,15 @@ without separate UEFA rights clearance.
 
 ## Required next gate
 
-Before an implementation issue can be created:
+Issue #170 must implement and verify the selected boundary before live staging:
 
-1. the operator selects the exact release boundary;
-2. the operator selects the acceptable provider and recurring cost;
-3. the completed two-observation and manual UEFA comparison evidence remains
-   valid for the selected League A boundary; a broader selection requires its
-   own evidence;
-4. later 2027 and 2028 stages remain incremental until independently bounded;
-5. terms, attribution, persistence, cancellation, and secret handling are
-   explicitly accepted for private-calendar use; and
-6. excluded leagues or stages remain disabled and cannot provide removal
-   evidence.
+1. enforce the exact 48-fixture, 16-participant, four-group contract;
+2. keep later groups and stages filtered and removal-ineligible;
+3. retain attribution and stable private source mappings;
+4. prove idempotency, rescheduling, failure/recovery, and Outlook behavior with
+   synthetic provider data in normal CI; and
+5. repeat the bounded observation and lifecycle checks in isolated staging
+   before release inclusion.
 
 ## Re-evaluation triggers
 

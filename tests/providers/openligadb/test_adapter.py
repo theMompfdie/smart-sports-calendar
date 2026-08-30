@@ -2,11 +2,13 @@ from app.providers.openligadb.adapter import OpenLigaDBCompetitionAdapter
 from app.providers.openligadb.client import OpenLigaDBResponse
 from app.providers.openligadb.profiles import (
     DFB_POKAL_PROFILE,
+    NATIONS_LEAGUE_A_PROFILE,
     SECOND_BUNDESLIGA_PROFILE,
 )
 
 from tests.providers.openligadb.support import (
     FETCHED_AT,
+    nations_league_a_payloads,
     payloads,
     second_bundesliga_payloads,
 )
@@ -52,4 +54,19 @@ def test_adapter_fetches_the_reviewed_second_bundesliga_scope() -> None:
         "/getavailableleagues/2026",
         "/getavailablegroups/bl2/2026",
         "/getmatchdata/bl2/2026",
+    ]
+
+
+def test_adapter_fetches_only_the_reviewed_nations_league_a_scope() -> None:
+    client = StubClient(nations_league_a_payloads(include_later_stage_fixture=True))
+    adapter = OpenLigaDBCompetitionAdapter(client, NATIONS_LEAGUE_A_PROFILE)
+
+    snapshot = adapter.fetch_snapshot()
+
+    assert snapshot.league_id == 5978
+    assert len(snapshot.matches) == 48
+    assert client.requests == [
+        "/getavailableleagues/2026",
+        "/getavailablegroups/nla/2026",
+        "/getmatchdata/nla/2026",
     ]

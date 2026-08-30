@@ -71,6 +71,25 @@ SECOND_BUNDESLIGA_TEAMS = (
     (199, "1. FC Heidenheim 1846", "Heidenheim"),
 )
 
+NATIONS_LEAGUE_A_TEAMS = (
+    (1001, "Frankreich", "Frankreich"),
+    (1002, "Italien", "Italien"),
+    (1003, "Belgien", "Belgien"),
+    (1004, "Türkei", "Türkei"),
+    (1005, "Deutschland", "Deutschland"),
+    (1006, "Niederlande", "Niederlande"),
+    (1007, "Serbien", "Serbien"),
+    (1008, "Griechenland", "Griechenland"),
+    (1009, "Spanien", "Spanien"),
+    (1010, "Kroatien", "Kroatien"),
+    (1011, "England", "England"),
+    (1012, "Tschechien", "Tschechien"),
+    (1013, "Portugal", "Portugal"),
+    (1014, "Dänemark", "Dänemark"),
+    (1015, "Norwegen", "Norwegen"),
+    (1016, "Wales", "Wales"),
+)
+
 
 def second_bundesliga_payloads() -> tuple[list[dict], list[dict], list[dict]]:
     leagues = [
@@ -124,4 +143,72 @@ def second_bundesliga_payloads() -> tuple[list[dict], list[dict], list[dict]]:
                     "matchIsFinished": len(matches) < 18,
                 }
             )
+    return leagues, groups, matches
+
+
+def nations_league_a_payloads(
+    *, include_later_stage_fixture: bool = False
+) -> tuple[list[dict], list[dict], list[dict]]:
+    leagues = [
+        {
+            "leagueId": 5978,
+            "leagueName": "Nations League A 2026",
+            "leagueShortcut": "nla",
+            "leagueSeason": "2026",
+            "sport": {"sportId": 1, "sportName": "Fußball"},
+        }
+    ]
+    group_names = (
+        "Gruppe A",
+        "Gruppe B",
+        "Gruppe C",
+        "Gruppe D",
+        "Viertelfinale Hinspiele",
+        "Viertelfinale Rückspiele",
+        "Halbfinale",
+        "Endspiel/Platz 3",
+    )
+    groups = [
+        {
+            "groupID": 52000 + order,
+            "groupName": name,
+            "groupOrderID": order,
+        }
+        for order, name in enumerate(group_names, start=1)
+    ]
+    teams = [
+        {"teamId": team_id, "teamName": name, "shortName": short_name}
+        for team_id, name, short_name in NATIONS_LEAGUE_A_TEAMS
+    ]
+    matches: list[dict] = []
+    for group_order in range(1, 5):
+        group_teams = teams[(group_order - 1) * 4 : group_order * 4]
+        for home in group_teams:
+            for away in group_teams:
+                if home == away:
+                    continue
+                matches.append(
+                    {
+                        "matchID": 120000 + len(matches),
+                        "leagueId": 5978,
+                        "leagueName": "Nations League A 2026",
+                        "leagueShortcut": "nla",
+                        "leagueSeason": 2026,
+                        "group": deepcopy(groups[group_order - 1]),
+                        "team1": deepcopy(home),
+                        "team2": deepcopy(away),
+                        "matchDateTimeUTC": (
+                            f"2026-09-{23 + group_order:02d}T18:45:00Z"
+                        ),
+                        "lastUpdateDateTime": "2026-08-16T15:26:22.460",
+                        "timeZoneID": "W. Europe Standard Time",
+                        "matchIsFinished": False,
+                    }
+                )
+    if include_later_stage_fixture:
+        later = deepcopy(matches[0])
+        later["matchID"] = 130000
+        later["group"] = deepcopy(groups[4])
+        later["matchDateTimeUTC"] = "2026-10-01T18:45:00Z"
+        matches.append(later)
     return leagues, groups, matches
