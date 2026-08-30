@@ -44,6 +44,7 @@ from app.operations.staging_evidence import (
     render_staging_evidence,
     validate_nations_league_a_candidate,
     validate_phase_5_candidate,
+    validate_phase_7_nfl_candidate,
 )
 from app.providers.contracts import SourceRole
 
@@ -284,6 +285,108 @@ def nations_league_a_candidate_evidence() -> StagingEvidence:
     )
 
 
+def phase_7_nfl_candidate_evidence() -> StagingEvidence:
+    phase_6 = nations_league_a_candidate_evidence()
+    fixture_count = 272
+    total_fixtures = phase_6.sports_events + fixture_count
+    return replace(
+        phase_6,
+        sports_events=total_fixtures,
+        active_authorities=(
+            *phase_6.active_authorities,
+            SafeAuthoritySummary(
+                job_key="nflverse-nfl-2026",
+                source_key="nflverse",
+                sport_key="american_football",
+                competition_key="nfl",
+                season_key="2026",
+                role="authoritative",
+                interval_seconds=21600,
+            ),
+        ),
+        fixture_scopes=(
+            *phase_6.fixture_scopes,
+            SafeFixtureScopeSummary(
+                source_key="nflverse",
+                competition_key="nfl",
+                season_key="2026",
+                fixtures_total=fixture_count,
+                fixtures_active=fixture_count,
+                fixtures_deleted=0,
+                source_event_mappings=fixture_count,
+                source_event_ids_sha256="8" * 64,
+                calendar_mappings=fixture_count,
+                calendar_targets=1,
+                calendar_mapping_status_counts={"synced": fixture_count},
+                earliest_start_utc="2026-09-09T00:00:00+00:00",
+                latest_start_utc="2027-01-10T23:59:00+00:00",
+                latest_source_update_utc=None,
+                status_counts={"scheduled": fixture_count},
+                source_participant_mappings=32,
+                stage_counts={"regular-season": fixture_count},
+                round_counts={
+                    **{f"week-{week}": 16 for week in range(1, 17)},
+                    "week-17": 15,
+                    "week-18": 1,
+                },
+            ),
+        ),
+        calendar_mappings_by_status={"synced": total_fixtures},
+        recent_runs=(
+            SafeRunSummary(
+                id=8,
+                run_type="provider_import",
+                started_at="2026-08-30T18:00:00+00:00",
+                finished_at="2026-08-30T18:01:00+00:00",
+                status="completed",
+                items_processed=fixture_count,
+                items_created=0,
+                items_updated=0,
+                items_unchanged=fixture_count,
+                items_cancelled=0,
+                items_deleted=0,
+                items_deferred=0,
+                items_failed=0,
+                source_key="nflverse",
+                job_key="nflverse-nfl-2026",
+                competition_key="nfl",
+                season_key="2026",
+                authoritative=True,
+                complete=False,
+                scope_kind="partial",
+                removal_eligible=False,
+                error_category=None,
+                filtered=False,
+            ),
+            SafeRunSummary(
+                id=9,
+                run_type="calendar_sync",
+                started_at="2026-08-30T18:01:00+00:00",
+                finished_at="2026-08-30T18:02:00+00:00",
+                status="completed",
+                items_processed=100,
+                items_created=0,
+                items_updated=0,
+                items_unchanged=100,
+                items_cancelled=0,
+                items_deleted=0,
+                items_deferred=0,
+                items_failed=0,
+                source_key=None,
+                job_key=None,
+                competition_key=None,
+                season_key=None,
+                authoritative=None,
+                complete=None,
+                scope_kind=None,
+                removal_eligible=None,
+                error_category=None,
+            ),
+            *phase_6.recent_runs,
+        ),
+    )
+
+
 def test_collect_staging_evidence_returns_only_safe_operational_fields(
     tmp_path: Path,
 ) -> None:
@@ -380,7 +483,7 @@ def test_collect_staging_evidence_reports_safe_authoritative_fixture_scope(
     assert len(current_seasons) == 1
     season = current_seasons[0]
     source = register_football_data_source(
-        FootballDataSettings(enabled=True, api_key="provider-secret"),
+        FootballDataSettings(True, "provider-secret"),
         sources,
     )
     SourceAssignmentsRepository(database_path).synchronize(
@@ -497,7 +600,7 @@ def test_collect_staging_evidence_keeps_six_authorities_isolated(
     football = sports.get_by_key("football")
     assert football is not None
     football_data = register_football_data_source(
-        FootballDataSettings(enabled=True, api_key="provider-secret"), sources
+        FootballDataSettings(True, "provider-secret"), sources
     )
     openligadb = register_openligadb_source(OpenLigaDBSettings(enabled=True), sources)
     oefb_ical = register_oefb_ical_source(
@@ -673,6 +776,121 @@ def test_validate_nations_league_a_candidate_accepts_converged_evidence() -> Non
     validate_nations_league_a_candidate(nations_league_a_candidate_evidence())
 
 
+def test_validate_phase_7_nfl_candidate_accepts_converged_evidence() -> None:
+    validate_phase_7_nfl_candidate(phase_7_nfl_candidate_evidence())
+
+
+@pytest.mark.parametrize(
+    ("mutate", "message"),
+    (
+        (
+            lambda authority, scope, run: (
+                replace(authority, sport_key="football"),
+                scope,
+                run,
+            ),
+            "authority configuration is invalid for nfl",
+        ),
+        (
+            lambda authority, scope, run: (
+                authority,
+                replace(scope, source_participant_mappings=31),
+                run,
+            ),
+            "participant mapping count is invalid for nfl",
+        ),
+        (
+            lambda authority, scope, run: (
+                authority,
+                replace(scope, stage_counts={}),
+                run,
+            ),
+            "stage counts are invalid for nfl",
+        ),
+        (
+            lambda authority, scope, run: (
+                authority,
+                replace(scope, round_counts={"week-1": 272}),
+                run,
+            ),
+            "round coverage is invalid for nfl",
+        ),
+        (
+            lambda authority, scope, run: (
+                authority,
+                scope,
+                replace(run, removal_eligible=True),
+            ),
+            "latest provider run is invalid for nfl",
+        ),
+    ),
+)
+def test_validate_phase_7_nfl_candidate_rejects_invalid_scope(
+    mutate: Callable[
+        [SafeAuthoritySummary, SafeFixtureScopeSummary, SafeRunSummary],
+        tuple[SafeAuthoritySummary, SafeFixtureScopeSummary, SafeRunSummary],
+    ],
+    message: str,
+) -> None:
+    evidence = phase_7_nfl_candidate_evidence()
+    authority, scope, run = mutate(
+        evidence.active_authorities[-1],
+        evidence.fixture_scopes[-1],
+        evidence.recent_runs[0],
+    )
+
+    with pytest.raises(StagingEvidenceValidationError, match=message):
+        validate_phase_7_nfl_candidate(
+            replace(
+                evidence,
+                active_authorities=(*evidence.active_authorities[:-1], authority),
+                fixture_scopes=(*evidence.fixture_scopes[:-1], scope),
+                recent_runs=(run, *evidence.recent_runs[1:]),
+            )
+        )
+
+
+def test_validate_phase_7_nfl_candidate_requires_unchanged_provider_run() -> None:
+    evidence = phase_7_nfl_candidate_evidence()
+    nfl_run = replace(
+        evidence.recent_runs[0],
+        items_updated=1,
+        items_unchanged=271,
+    )
+
+    with pytest.raises(
+        StagingEvidenceValidationError,
+        match="latest provider run is invalid for nfl",
+    ):
+        validate_phase_7_nfl_candidate(
+            replace(evidence, recent_runs=(nfl_run, *evidence.recent_runs[1:]))
+        )
+
+
+def test_validate_phase_7_nfl_candidate_requires_write_free_calendar_run() -> None:
+    evidence = phase_7_nfl_candidate_evidence()
+    calendar_run = replace(
+        evidence.recent_runs[1],
+        items_updated=1,
+        items_unchanged=99,
+    )
+
+    with pytest.raises(
+        StagingEvidenceValidationError,
+        match="calendar synchronization run is not write-free",
+    ):
+        validate_phase_7_nfl_candidate(
+            replace(
+                evidence,
+                recent_runs=(
+                    evidence.recent_runs[0],
+                    calendar_run,
+                    *evidence.recent_runs[2:],
+                ),
+            )
+        )
+
+
 @pytest.mark.parametrize(
     "mutate",
     (
@@ -807,6 +1025,32 @@ def test_main_selects_nations_league_a_candidate_validation(
             "--database",
             str(database_path),
             "--validate-nations-league-a-candidate",
+        ]
+    )
+
+    assert result == 0
+    assert len(validated) == 1
+    assert json.loads(capsys.readouterr().out)["database_quick_check"] == "ok"
+
+
+def test_main_selects_phase_7_nfl_candidate_validation(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database_path = create_database(tmp_path)
+    validated: list[StagingEvidence] = []
+    monkeypatch.setattr(
+        staging_evidence,
+        "validate_phase_7_nfl_candidate",
+        validated.append,
+    )
+
+    result = main(
+        [
+            "--database",
+            str(database_path),
+            "--validate-phase-7-nfl-candidate",
         ]
     )
 
