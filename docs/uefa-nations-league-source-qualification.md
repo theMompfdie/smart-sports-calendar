@@ -2,16 +2,18 @@
 
 ## Status
 
-**Conditional for `v0.6.0-beta.1`: no release boundary or authoritative
-writer is assigned. OpenLigaDB `nla` / 5978 is a promising zero-cost candidate
-for the 48-fixture League A group phase only. Sportmonks season 27797 and
-football-data.org `UNL` / 2182 are paid candidates for broader coverage. The
-operator must select exact scope and cost before any credentialed gate.**
+**Conditional for `v0.6.0-beta.1`: OpenLigaDB `nla` / 5978 has passed the
+technical evidence gates for the 48-fixture League A group phase only. No
+release boundary or authoritative writer is assigned. Sportmonks season 27797
+and football-data.org `UNL` / 2182 remain paid candidates for broader coverage.
+The operator must still select the exact scope and accept the applicable ODbL
+conditions before implementation.**
 
-This record was reviewed on 2026-08-29 for issue #164. It applies the hybrid
-tournament and bounded-observation contract completed in #151. It does not
-register an account, start a trial, approve payment, accept provider terms,
-assign an authority, enable a catalog entry, or authorize runtime collection.
+This record was reviewed on 2026-08-29 and extended with two technical
+observations on 2026-08-30 for issue #164. It applies the hybrid tournament and
+bounded-observation contract completed in #151. It does not register an
+account, start a trial, approve payment, accept provider terms, assign an
+authority, enable a catalog entry, or authorize runtime collection.
 
 Public observations contain no credentials, private payloads, team names, or
 individual provider fixture IDs.
@@ -107,8 +109,43 @@ A sanitized credential-free observation on 2026-08-29 returned:
 - zero finished fixtures.
 
 The 48-fixture and 16-participant shape matches UEFA's League A group phase.
-It does not qualify the source yet. Two distinct stable observations and a
-fixture-by-fixture manual fingerprint comparison with UEFA remain required.
+
+Two secret-safe validator observations at `2026-08-30T09:14:57.467166Z` and
+`2026-08-30T09:16:32.440837Z` returned identical evidence:
+
+- 48 source and in-scope fixtures with 48 unique fixture IDs;
+- 16 participants;
+- 12 fixtures in each of the four League A groups;
+- zero fixtures in the configured quarter-final, semi-final, and final groups;
+- all 48 fixtures in `SCHEDULED` status;
+- UTC kickoffs from `2026-09-24T18:45:00Z` through
+  `2026-11-17T19:45:00Z`;
+- latest source update `2026-08-01T17:25:19.593000Z`;
+- no missing timezone declaration and three credential-free requests;
+- fixture-ID fingerprint
+  `d972894ee25924c4f8bcf680c6a4a0d820acb2b926263c663ab666e9cce80157`;
+  and
+- participant-ID fingerprint
+  `0eeb66755b15c4d9b7faf517298bfd5280eac76b3a94b3a1cb683d4f5c5cd838`.
+
+A separate manual comparison against UEFA's official fixture list produced an
+exact 48-of-48 pairing and UTC-kickoff match, with zero missing and zero
+unexpected fixtures. The independent canonical comparison fingerprint was
+`1676e35e54d308d7f19dbf76da4c6da0dad066aaca73fd03b2c0459e406dcae5`.
+
+The curated `nations-league-a-group-phase` profile ignores later-stage
+fixtures for its scoped fingerprint while recording the complete source count.
+It rejects incomplete groups, reused participants across groups, duplicate
+identities, invalid UTC data, or any fixture-count deviation.
+
+Re-run the same credential-free evidence path with:
+
+```powershell
+python -m app.operations.openligadb_qualification --competition nations-league-a-group-phase
+```
+
+The command emits only bounded aggregates, public group metadata, and hashed
+provider identities. It never emits team names or individual fixture IDs.
 
 If selected, the initial OpenLigaDB boundary should remain removal-disabled.
 The provider exposes no completeness marker and no sufficiently explicit
@@ -212,11 +249,12 @@ group phase.
 
 No authoritative writer is assigned for `uefa_nations_league` / `2026_27`.
 Implementation, credential use, paid registration, and source assignment are
-blocked until the operator selects one of these paths:
+blocked until the operator selects one of these paths. The first path has
+passed its technical observation gate but is not approved automatically:
 
-1. **Zero-cost League A path — OpenLigaDB `nla` / 5978.** Qualify only the 48
-   group-phase fixtures through two stable observations. Later rounds remain
-   incremental and unapproved. Removal remains disabled.
+1. **Zero-cost League A path — OpenLigaDB `nla` / 5978.** The 48 group-phase
+   fixtures passed two stable observations and an exact manual UEFA comparison.
+   Later rounds remain incremental and unapproved. Removal remains disabled.
 2. **Sportmonks all-leagues path — from EUR 29/month.** Qualify the 156-fixture
    league phase through season 27797. This requires a card-backed trial, a new
    adapter, and contractual and live validation.
@@ -232,13 +270,13 @@ without separate UEFA rights clearance.
 
 ## Required next gate
 
-Before a credentialed-validation or implementation issue can be created:
+Before an implementation issue can be created:
 
 1. the operator selects the exact release boundary;
 2. the operator selects the acceptable provider and recurring cost;
-3. two sanitized observations prove the exact selected participant and fixture
-   counts, stable fixture identity, group and stage isolation, UTC kickoffs,
-   pagination, update behavior, and reproducible fingerprints;
+3. the completed two-observation and manual UEFA comparison evidence remains
+   valid for the selected League A boundary; a broader selection requires its
+   own evidence;
 4. later 2027 and 2028 stages remain incremental until independently bounded;
 5. terms, attribution, persistence, cancellation, and secret handling are
    explicitly accepted for private-calendar use; and
@@ -260,7 +298,7 @@ Re-evaluate when:
 
 ## Sources
 
-Reviewed 2026-08-29:
+Reviewed 2026-08-29 and 2026-08-30:
 
 - [UEFA 2026/27 draw and format](https://www.uefa.com/uefanationsleague/news/02a1-1fc60cd57c4d-de2c1d716ed6-1000/)
 - [UEFA league-phase fixtures](https://www.uefa.com/uefanationsleague/news/02a2-1fea18abbcbc-456e846509e7-1000/)

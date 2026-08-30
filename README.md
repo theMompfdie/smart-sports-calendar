@@ -579,9 +579,9 @@ delivery order and operational boundaries.
   [#163](https://github.com/theMompfdie/smart-sports-calendar/issues/163),
   with active source and scope qualification in
   [#164](https://github.com/theMompfdie/smart-sports-calendar/issues/164):
-  OpenLigaDB currently provides the complete 48-fixture League A group phase,
-  paid providers advertise broader coverage, and no release boundary, paid
-  provider, or authority is approved
+  OpenLigaDB passed two stable technical observations and an exact manual UEFA
+  comparison for the 48-fixture League A group phase; broader paid scopes,
+  ODbL acceptance, release inclusion, and authority remain unapproved
 - European Championship Qualification
 
 The Champions League, Europa League, and Conference League were evaluated for
