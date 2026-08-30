@@ -54,13 +54,25 @@ def parse_snapshot(
     request_attempts: int,
 ) -> NflverseSnapshot:
     try:
-        reader = csv.DictReader(io.StringIO(body.decode("utf-8-sig"), newline=""))
+        reader = csv.DictReader(
+            io.StringIO(body.decode("utf-8-sig"), newline=""), strict=True
+        )
+        fieldnames = reader.fieldnames
+        rows = list(reader)
     except UnicodeDecodeError as error:
         raise NflverseSchemaError("nflverse returned non-UTF-8 CSV.") from error
-    if reader.fieldnames is None or not REQUIRED_COLUMNS.issubset(reader.fieldnames):
+    except csv.Error as error:
+        raise NflverseSchemaError("nflverse returned malformed CSV.") from error
+    if (
+        fieldnames is None
+        or len(fieldnames) != len(set(fieldnames))
+        or not REQUIRED_COLUMNS.issubset(fieldnames)
+    ):
         raise NflverseSchemaError("nflverse CSV is missing required columns.")
     games: list[NflverseGame] = []
-    for row in reader:
+    for row in rows:
+        if None in row:
+            raise NflverseSchemaError("nflverse CSV contains unexpected fields.")
         season = _integer(row, "season")
         game_type = _text(row, "game_type")
         if season != profile.season or game_type != profile.game_type:
