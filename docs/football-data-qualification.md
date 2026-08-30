@@ -170,17 +170,32 @@ the league table is complete, so they remain a separate progressive lifecycle
 scope comparable to a cup draw. They require later stage-specific live
 qualification and must not contribute removal evidence under this decision.
 
+## Champions League readiness status
+
+**Conditional and not ready.** The curated
+`champions-league-league-phase` profile supports the bounded 2026/27
+qualification track in issue #155. It requires competition `CL` / 2001,
+36 teams, exactly 144 `LEAGUE_STAGE` fixtures, eight complete matchdays, and
+one fixture appearance per team on every matchday.
+
+A secret-safe read-only check at `2026-08-30T08:40:34Z` observed the correct
+season ID 2557 and all 36 participants, but the match collection returned zero
+fixtures. The qualifier therefore failed closed without emitting evidence.
+This is not the first of the two required successful observations, and it does
+not assign authority or permit runtime implementation.
+
 ## Secret-safe live qualification commands
 
 The repository includes a read-only command with curated profiles for Premier
-League, Bundesliga, and the Championship regular season. It makes two metadata
-requests plus one or more paged match requests. Premier League and Bundesliga
-normally make three requests. The Championship endpoint was observed returning
-all 552 regular-season fixtures in one response despite the requested limit of
-500, so its current observation also makes three requests. The qualifier still
-supports pages of 500 and 52 if the provider starts honoring its documented
-pagination contract. Free-form competition IDs and expected counts are
-deliberately unsupported.
+League, Bundesliga, the Championship regular season, and the Champions League
+league phase. It makes two metadata requests plus one or more paged match
+requests. Premier League, Bundesliga, and a complete Champions League league
+phase normally require three requests. The Championship endpoint was observed
+returning all 552 regular-season fixtures in one response despite the requested
+limit of 500, so its current observation also makes three requests. The
+qualifier still supports pages of 500 and 52 if the provider starts honoring
+its documented pagination contract. Free-form competition IDs and expected
+counts are deliberately unsupported.
 
 The command emits only the qualification profile, observation time, aggregate
 identifiers, counts, pagination/request counts, UTC boundaries, status counts,
@@ -236,6 +251,25 @@ wrong offset or the response is not the complete 24-team double round robin.
 An exact 552-match first response is accepted within the configured byte limit;
 any other response above the requested 500-item page limit fails closed.
 
+For issue #155, the Champions League candidate is deliberately restricted to
+the league phase. Run this command only after a readiness check indicates that
+football-data.org has populated the fixture collection:
+
+```powershell
+$env:FOOTBALL_DATA_API_KEY = Read-Host -MaskInput "football-data.org API token"
+try {
+    python -m app.operations.football_data_qualification --competition champions-league-league-phase --season 2026
+}
+finally {
+    Remove-Item Env:FOOTBALL_DATA_API_KEY -ErrorAction SilentlyContinue
+}
+```
+
+An empty response, any count other than 144, a stage other than
+`LEAGUE_STAGE`, an incomplete matchday, or an unresolved participant fails
+closed. Qualification rounds belong to paid `CLQ` / 2174 and are never queried
+or merged by this profile.
+
 The command fails closed unless it observes:
 
 - API version `v4` on every response;
@@ -247,9 +281,9 @@ The command fails closed unless it observes:
 - deterministic SHA-256 fingerprints over the sorted match and team IDs;
 - the same competition and season identity on every match;
 - two distinct known participants on every match;
-- a complete double round-robin schedule with one appearance per team per
-  matchday and exactly one match in each directed pairing;
-- stage `REGULAR_SEASON` and the selected profile's exact matchday range;
+- the selected profile's exact schedule with one appearance per team per
+  matchday and no duplicate directed pairing;
+- the selected profile's exact stage and matchday range;
 - UTC `utcDate` and `lastUpdated` values; and
 - only the documented supported status vocabulary; and
 - a source-update age within the profile-independent freshness policy.
@@ -261,11 +295,13 @@ The curated invariants are:
 | `premier-league` | `PL` | 2021 | 20 | 380 | 38 |
 | `bundesliga` | `BL1` | 2002 | 18 | 306 | 34 |
 | `championship` | `ELC` | 2016 | 24 | 552 | 46 |
+| `champions-league-league-phase` | `CL` | 2001 | 36 | 144 | 8 |
 
 Premier League output belongs to issue #79, Bundesliga output to issue #110,
-and Championship output to issue #123, in every case only after manual review.
-The token, raw response, request headers, account dashboard, and `.env`
-contents must never be copied into GitHub.
+Championship output to issue #123, and Champions League output to issue #155,
+in every case only after manual review. The token, raw response, request
+headers, account dashboard, and `.env` contents must never be copied into
+GitHub.
 
 ## Approved operating conditions
 

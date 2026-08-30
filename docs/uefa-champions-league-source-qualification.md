@@ -8,7 +8,8 @@ stages. The 2026/27 qualifying rounds are deliberately outside the approved
 release boundary, while credentialed main-competition qualification remains
 pending.**
 
-This record was reviewed on 2026-08-28 for issue #154. It applies the hybrid
+This record was reviewed on 2026-08-28 for issue #154 and updated with the
+first readiness check on 2026-08-30 for issue #155. It applies the hybrid
 tournament contract completed in #151 and the operator constraint that the
 selected source must have zero recurring and zero one-time cost. Free account
 registration and a free API credential are acceptable. Paid trials, payment
@@ -52,8 +53,9 @@ All qualifying ties, play-offs, knockout phase play-offs, round-of-16 ties,
 quarter-finals, and semi-finals are played over two legs. The final is a
 single fixture. Draw-dependent participants and later fixtures become known
 incrementally. UEFA states that the 2026/27 league-phase match dates and
-kickoff times will be communicated after the 27 August draw and no later than
-29 August 2026.
+kickoff times were confirmed on 29 August 2026. The published inventory has 36
+teams, eight matchdays, and 144 fixtures from 8 September 2026 through
+27 January 2027.
 
 The canonical `2026_27` season remains the complete edition boundary. A source
 that exposes only the league phase and later stages can be considered only for
@@ -109,7 +111,7 @@ The public catalog nevertheless exposes qualifying as a different competition:
 
 | Provider competition | ID | Code | Plan observed 2026-08-28 | Public current season |
 | --- | ---: | --- | --- | --- |
-| UEFA Champions League | 2001 | `CL` | `TIER_ONE` / free | 2025/26, ID 2454 |
+| UEFA Champions League | 2001 | `CL` | `TIER_ONE` / free | 2026/27, ID 2557; fixture inventory empty on 2026-08-30 |
 | Champions League Qualification | 2174 | `CLQ` | `TIER_TWO` / paid | 2026 qualifying, ID 2531 |
 
 This split creates one accepted limitation and one remaining qualification
@@ -118,10 +120,10 @@ blocker:
 1. the permanent free plan does not include the separately modeled
    qualification competition; the operator accepted its exclusion for the
    2026/27 release boundary on 2026-08-28;
-2. on the review date the public `CL` catalog had not yet advanced to 2026/27,
-   so current league-phase fixture coverage, participant resolution, stage
-   vocabulary, and counts could not be proven without a later credentialed
-   observation.
+2. the `CL` catalog advanced to 2026/27 and exposed all 36 participants by the
+   2026-08-30 readiness check, but its season-filtered match collection still
+   returned zero fixtures. Coverage, stage vocabulary, and fixture identity
+   therefore remain unproven.
 
 The public documentation does not guarantee stable match IDs across
 reschedules or document an exact completeness marker. Numeric IDs are
@@ -217,12 +219,30 @@ Record only:
 An empty, partial, stale, mixed-season, duplicate, malformed, throttled,
 unauthorized, or failed response must not advance qualification.
 
+## Readiness observation on 2026-08-30
+
+After UEFA published the finalized league-phase schedule, a secret-safe,
+read-only football-data.org check at `2026-08-30T08:40:34Z` returned:
+
+- competition ID `2001` and code `CL`;
+- current season ID `2557`, bounded from 2026-09-08 through 2027-01-27;
+- 36 distinct participants; and
+- zero fixtures for `season=2026`.
+
+The empty fixture collection is a fail-closed `not ready` result, not the first
+successful qualification observation. No token, headers, account metadata,
+team names, fixture IDs, or raw payload were retained or published. The
+curated `champions-league-league-phase` validator profile now requires exactly
+36 teams, 144 `LEAGUE_STAGE` fixtures, eight complete matchdays, and one
+appearance per team per matchday. It rejects an empty or incomplete response
+before evidence can be emitted.
+
 ## Re-evaluation triggers
 
 Re-evaluate this decision when any of the following occurs:
 
-1. football-data.org publishes the 2026/27 `CL` season and league-phase
-   fixtures to the free account;
+1. football-data.org publishes the 2026/27 league-phase fixtures to the free
+   `CL` account scope;
 2. football-data.org moves `CLQ` into the permanent free tier;
 3. UEFA publishes or explicitly permits a documented, automatically updated
    API or calendar feed with stable fixture identity;
@@ -240,6 +260,7 @@ Reviewed 2026-08-28:
 - [UEFA 2026/27 qualifying fixtures and format](https://www.uefa.com/uefachampionsleague/news/02a6-20e5a8be4e63-ae971c582f8c-1000--champions-league-qualifying-fixtures-results-dates-how-it-/)
 - [UEFA 2026/27 regulations](https://documents.uefa.com/r/Regulations-of-the-UEFA-Champions-League-2026/27/G.1-Introduction-Online)
 - [UEFA league-phase draw and publication timing](https://www.uefa.com/uefachampionsleague/draws/)
+- [UEFA 2026/27 confirmed league-phase fixtures](https://www.uefa.com/uefachampionsleague/news/02a8-2174c9e9019d-f909a77bd77a-1000--2026-27-champions-league-all-the-league-phase-fixtures/)
 - [football-data.org coverage](https://www.football-data.org/coverage)
 - [football-data.org public competition catalog](https://api.football-data.org/v4/competitions)
 - [football-data.org pricing](https://www.football-data.org/pricing)

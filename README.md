@@ -558,8 +558,9 @@ delivery order and operational boundaries.
   [#154](https://github.com/theMompfdie/smart-sports-calendar/issues/154):
   football-data.org is the operator-selected conditional candidate for the
   league phase and later stages; the 2026/27 qualifying rounds are explicitly
-  excluded, and no authority is assigned until credentialed qualification is
-  complete
+  excluded; UEFA has published all 144 league-phase fixtures, while the
+  football-data.org free scope currently exposes the correct season and 36
+  teams but no fixtures, so authority remains unassigned
 - UEFA Europa League 2026/27 delivery tracked by
   [#157](https://github.com/theMompfdie/smart-sports-calendar/issues/157),
   with active source qualification in
