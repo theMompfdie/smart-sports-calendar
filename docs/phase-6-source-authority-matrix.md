@@ -7,10 +7,12 @@ This matrix tracks the five candidate competitions in Phase 6 master issue
  #154 and must be extended one competition at a time through the corresponding
 competition tracker.
 
-Evidence was first reviewed on 2026-08-28 and extended to the Europa League,
-Conference League, and Nations League on 2026-08-29. Provider coverage, terms,
-plans, competition formats, and season data can change. Every outcome requires
-a dated competition-specific qualification record before implementation.
+Evidence was first reviewed on 2026-08-28, extended to the Europa League,
+Conference League, and Nations League on 2026-08-29, and updated with the
+Champions League readiness observation on 2026-08-30. Provider coverage,
+terms, plans, competition formats, and season data can change. Every outcome
+requires a dated competition-specific qualification record before
+implementation.
 
 The operator requires the selected UEFA Champions League fixture source to
 cost EUR 0. Free registration and a free API credential are permitted. This
@@ -63,7 +65,7 @@ create credentials, or approve release inclusion.
 | Candidate | Cost fit | Technical fit | Rights/terms fit | Current decision |
 | --- | --- | --- | --- | --- |
 | Official UEFA public pages and regulations | Free | No documented automation contract or stable machine fixture identity | Authoritative manual evidence only | Manual verification; not an automated writer |
-| football-data.org `CL` / 2001 | Free registration and free tier | Promising main-competition fixture identity and lifecycle fields; 2026/27 credentialed evidence pending | One-application use, secret key, attribution, cancellation exit obligation | Preferred conditional candidate for league phase and later |
+| football-data.org `CL` / 2001 | Free registration and free tier | Correct 2026/27 season and 36 teams observed; fixture collection still empty on 2026-08-30 | One-application use, secret key, attribution, cancellation exit obligation | Preferred conditional candidate; not ready for the first successful observation |
 | football-data.org `CLQ` / 2174 | Paid tier | Separate qualification competition | Same football-data.org terms | Rejected by zero-cost constraint |
 | API-Football | Free registration, 100 requests/day | Broad technical coverage and existing transport | Provider grants no competition-data licence; UEFA permission not recorded | Rejected as authority under current evidence |
 | Sportmonks | Champions League requires paid plan | Strongest documented hybrid lifecycle model | Paid plan terms would require separate acceptance | Rejected by zero-cost constraint |
@@ -131,7 +133,8 @@ scope-choice gate but does not yet qualify the provider or assign authority.
 
 The Champions League track cannot create an implementation issue until:
 
-1. the free football-data.org `CL` scope exposes 2026/27 data;
+1. the free football-data.org `CL` scope exposes all 144 confirmed 2026/27
+   league-phase fixtures rather than the currently empty fixture collection;
 2. two sanitized credentialed observations prove identity, structure,
    pagination, quota fit, and stable fingerprints; and
 3. the operator accepts the current terms and attribution requirement when

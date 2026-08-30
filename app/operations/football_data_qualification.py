@@ -56,13 +56,13 @@ class FootballDataQualificationProfile:
             raise ValueError("Qualification profile counts must be positive.")
         if self.expected_team_count % 2:
             raise ValueError("Qualification profile requires an even team count.")
-        if self.expected_matchdays != (self.expected_team_count - 1) * 2:
-            raise ValueError("Qualification profile has invalid matchday semantics.")
+        if self.expected_matchdays <= 0:
+            raise ValueError("Qualification profile matchdays must be positive.")
         if self.expected_match_count != (
-            self.expected_team_count * (self.expected_team_count - 1)
+            self.expected_team_count * self.expected_matchdays // 2
         ):
-            raise ValueError("Qualification profile is not a double round robin.")
-        if self.match_stage_filter not in {None, "REGULAR_SEASON"}:
+            raise ValueError("Qualification profile has inconsistent schedule counts.")
+        if self.match_stage_filter not in {None, "LEAGUE_STAGE", "REGULAR_SEASON"}:
             raise ValueError("Qualification profile has an unsupported stage filter.")
 
 
@@ -94,12 +94,23 @@ CHAMPIONSHIP_PROFILE = FootballDataQualificationProfile(
     expected_matchdays=46,
     match_stage_filter="REGULAR_SEASON",
 )
+CHAMPIONS_LEAGUE_LEAGUE_PHASE_PROFILE = FootballDataQualificationProfile(
+    key="champions-league-league-phase",
+    competition_name="UEFA Champions League league phase",
+    competition_code="CL",
+    competition_id=2001,
+    expected_team_count=36,
+    expected_match_count=144,
+    expected_matchdays=8,
+    match_stage_filter="LEAGUE_STAGE",
+)
 QUALIFICATION_PROFILES = {
     profile.key: profile
     for profile in (
         PREMIER_LEAGUE_PROFILE,
         BUNDESLIGA_PROFILE,
         CHAMPIONSHIP_PROFILE,
+        CHAMPIONS_LEAGUE_LEAGUE_PHASE_PROFILE,
     )
 }
 
@@ -536,9 +547,7 @@ def _validate_schedule(
     if set(appearances) != team_ids or any(
         count != profile.expected_matchdays for count in appearances.values()
     ):
-        raise QualificationError(
-            "Provider schedule is not a complete double round robin."
-        )
+        raise QualificationError("Provider schedule has incomplete team appearances.")
     if set(matchday_counts) != expected_matchdays or any(
         count != profile.expected_team_count // 2 for count in matchday_counts.values()
     ):
