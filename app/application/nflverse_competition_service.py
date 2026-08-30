@@ -15,6 +15,7 @@ from app.database.source_mappings_repository import (
 )
 from app.database.sports_repository import SportsRepository
 from app.domain.competition_lifecycle import CompetitionFormat
+from app.domain.operator_notice import OperatorNotice
 from app.providers.contracts import (
     NormalizedFixture,
     NormalizedFixtureBatch,
@@ -35,6 +36,7 @@ NFLVERSE_SOURCE_KEY = "nflverse"
 NFLVERSE_ATTRIBUTION = (
     "Schedule data provided by nflverse under CC BY 4.0: https://nflverse.nflverse.com/"
 )
+NFL_FLEX_SCHEDULING_NOTICE = OperatorNotice("Subject to NFL flex scheduling.")
 
 
 def register_nflverse_source(
@@ -260,6 +262,6 @@ class NflverseCompetitionService:
                 "provider_espn_id": game.espn,
                 "provider_old_game_id": game.old_game_id,
                 "provider_gsis_id": game.gsis,
-                "schedule_notice": "Subject to NFL flex scheduling.",
             },
+            operator_notice=NFL_FLEX_SCHEDULING_NOTICE,
         )

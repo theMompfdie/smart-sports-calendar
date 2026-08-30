@@ -27,6 +27,7 @@ from app.domain.competition_lifecycle import (
     FixtureParticipantResolution,
     TournamentStageKind,
 )
+from app.domain.operator_notice import OperatorNotice
 from app.providers.api_football.exceptions import ProviderIntegrityError
 
 from tests.application.test_api_football_fixture_normalization_service import (
@@ -150,6 +151,46 @@ def test_repeated_identical_import_is_a_write_free_skip(tmp_path: Path) -> None:
             "SELECT id, updated_at FROM sports_events ORDER BY id"
         ).fetchall()
     assert after == before
+
+
+def test_import_persists_updates_and_removes_typed_operator_notice(
+    tmp_path: Path,
+) -> None:
+    context = create_context(tmp_path)
+    fixture = context.service.normalize_current_premier_league()[0]
+    importer = create_importer(context.database_path)
+    import_scope = scope(context.competition_id, context.season_id)
+    initial = replace(
+        fixture,
+        operator_notice=OperatorNotice("Subject to schedule changes."),
+    )
+
+    created = importer.import_fixtures((initial,), import_scope).items[0]
+    assert created.event_id is not None
+    events = SportsEventsRepository(context.database_path)
+    event = events.get_by_id(created.event_id)
+    assert event is not None
+    assert event.metadata is not None
+    assert event.metadata["operator_notice"] == "Subject to schedule changes."
+
+    changed = replace(initial, operator_notice=OperatorNotice("Schedule confirmed."))
+    changed_result = importer.import_fixtures(
+        (changed,), replace(import_scope, observation_id="notice-changed")
+    ).items[0]
+    changed_event = events.get_by_id(created.event_id)
+    assert changed_result.decision is FixtureImportDecision.UPDATE
+    assert changed_event is not None
+    assert changed_event.metadata is not None
+    assert changed_event.metadata["operator_notice"] == "Schedule confirmed."
+
+    removed_result = importer.import_fixtures(
+        (replace(changed, operator_notice=None),),
+        replace(import_scope, observation_id="notice-removed"),
+    ).items[0]
+    removed_event = events.get_by_id(created.event_id)
+    assert removed_result.decision is FixtureImportDecision.UPDATE
+    assert removed_event is not None
+    assert removed_event.metadata is None
 
 
 def test_confirmed_kickoff_updates_but_tbd_preserves_known_time(
@@ -368,6 +409,27 @@ def test_provider_metadata_cannot_override_reserved_tournament_lifecycle(
     )
 
     with pytest.raises(ProviderIntegrityError, match="reserved tournament"):
+        create_importer(context.database_path).import_fixtures(
+            (fixture,),
+            scope(context.competition_id, context.season_id),
+        )
+
+    with sqlite3.connect(context.database_path) as connection:
+        assert (
+            connection.execute("SELECT COUNT(*) FROM sports_events").fetchone()[0] == 0
+        )
+
+
+def test_provider_metadata_cannot_override_typed_operator_notice(
+    tmp_path: Path,
+) -> None:
+    context = create_context(tmp_path)
+    fixture = replace(
+        context.service.normalize_current_premier_league()[0],
+        metadata={"operator_notice": "Unvalidated provider text"},
+    )
+
+    with pytest.raises(ProviderIntegrityError, match="operator notice"):
         create_importer(context.database_path).import_fixtures(
             (fixture,),
             scope(context.competition_id, context.season_id),

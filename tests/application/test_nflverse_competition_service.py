@@ -68,7 +68,10 @@ def test_service_normalizes_exact_nfl_scope_with_stable_identity(tmp_path) -> No
     assert fixture.status == "scheduled"
     assert fixture.stage == "regular-season"
     assert fixture.round_name.startswith("week-")
-    assert fixture.metadata["schedule_notice"] == "Subject to NFL flex scheduling."
+    assert fixture.operator_notice is not None
+    assert fixture.operator_notice.text == "Subject to NFL flex scheduling."
+    assert fixture.metadata is not None
+    assert "schedule_notice" not in fixture.metadata
     assert all(item.participants_resolved for item in batch.fixtures)
 
 

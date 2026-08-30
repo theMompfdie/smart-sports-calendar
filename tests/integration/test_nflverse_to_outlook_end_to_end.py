@@ -1,3 +1,4 @@
+import json
 import logging
 import sqlite3
 from dataclasses import dataclass
@@ -257,6 +258,10 @@ def test_nfl_snapshot_synchronizes_272_events_and_is_idempotent(
         "Schedule data provided by nflverse under CC BY 4.0" in graph_body(operation)
         for operation in harness.graph.operations
     )
+    assert all(
+        "Notice: Subject to NFL flex scheduling." in graph_body(operation)
+        for operation in harness.graph.operations
+    )
 
     vienna_starts = [
         graph_start(operation).astimezone(VIENNA)
@@ -274,6 +279,42 @@ def test_nfl_snapshot_synchronizes_272_events_and_is_idempotent(
     assert unchanged_import.items_unchanged == 272
     assert unchanged_sync.items_unchanged == 272
     assert len(harness.graph.operations) == first_operation_count
+
+
+def test_changed_operator_notice_updates_one_stable_outlook_event(
+    tmp_path: Path,
+) -> None:
+    harness = NflverseOutlookHarness.create(tmp_path / "nfl-notice.db")
+    harness.provider.import_current_competition()
+    harness.synchronize_all()
+    game_id = harness.adapter.rows[0]["game_id"]
+    before = harness.calendar_mapping_for_game(game_id)
+    operation_count = len(harness.graph.operations)
+    with sqlite3.connect(harness.database_path) as connection:
+        row = connection.execute(
+            "SELECT metadata_json FROM sports_events WHERE id = ?",
+            (before.event_id,),
+        ).fetchone()
+        assert row is not None
+        metadata = json.loads(row[0])
+        metadata["operator_notice"] = "Schedule time confirmed."
+        connection.execute(
+            "UPDATE sports_events SET metadata_json = ? WHERE id = ?",
+            (json.dumps(metadata, sort_keys=True), before.event_id),
+        )
+
+    changed_sync = harness.calendar.synchronize(CALENDAR_ID, 500)
+    after = harness.calendar_mapping_for_game(game_id)
+
+    assert changed_sync.items_updated == 1
+    assert changed_sync.items_unchanged == 271
+    assert len(harness.graph.operations) == operation_count + 1
+    operation = harness.graph.operations[-1]
+    assert operation.method == "PATCH"
+    assert operation.event_id == before.outlook_event_id
+    assert "Notice: Schedule time confirmed." in graph_body(operation)
+    assert after.outlook_event_id == before.outlook_event_id
+    assert after.transaction_id == before.transaction_id
 
 
 def test_nfl_flex_change_updates_one_stable_outlook_event(tmp_path: Path) -> None:
