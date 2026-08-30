@@ -601,7 +601,12 @@ delivery order and operational boundaries.
   16-participant League A group phase; Leagues B, C, and D and all later stages
   remain excluded, and isolated live staging is tracked by
   [#172](https://github.com/theMompfdie/smart-sports-calendar/issues/172)
-- European Championship Qualification
+- UEFA EURO 2028 qualification is tracked by
+  [#176](https://github.com/theMompfdie/smart-sports-calendar/issues/176) and
+  [#177](https://github.com/theMompfdie/smart-sports-calendar/issues/177), but
+  is explicitly deferred from `v0.6.0-beta.1`. Evidence is retained for a
+  post-draw recheck after 6 December 2026 and any implementation belongs to a
+  separately approved December release.
 
 The Champions League, Europa League, and Conference League were evaluated for
 Phase 5 and deferred because their hybrid qualifying, league, and knockout
@@ -610,11 +615,27 @@ lifecycle requires a dedicated capability model. They are not part of the
 
 ### Phase 7 – NFL Provider
 
-**Status:** _Planned_
+**Status:** _In progress_ through
+[#178](https://github.com/theMompfdie/smart-sports-calendar/issues/178).
 
-- NFL teams
-- regular season and playoffs
-- schedule updates
+- [#179](https://github.com/theMompfdie/smart-sports-calendar/issues/179)
+  qualifies the zero-cost nflverse schedule release for exactly the NFL 2026
+  regular season: 32 teams, 272 games, and weeks 1–18
+- the initial authority remains non-destructive because late-season times are
+  subject to NFL flex scheduling and the community feed has no authoritative
+  snapshot-completeness marker
+- preseason and postseason remain separate, unqualified scopes
+- raw NFL/nflverse data, logos, databases, and Outlook exports remain outside
+  the public repository; generated events require nflverse and CC BY 4.0
+  attribution
+- implementation, mocked-Graph proof, staging, and release remain separate
+  gated child issues
+
+Qualification records:
+
+- [NFL source qualification](docs/nfl-source-qualification.md)
+- [Phase 7 source matrix](docs/phase-7-source-authority-matrix.md)
+- [ADR 0013](docs/adr/0013-select-nflverse-for-nfl-regular-season.md)
 
 ## Release History
 
