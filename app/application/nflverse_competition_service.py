@@ -3,9 +3,16 @@
 from dataclasses import dataclass
 from datetime import date
 
+from app.config.settings import NflverseSettings
 from app.database.competitions_repository import CompetitionsRepository
+from app.database.data_sources_repository import DataSource, DataSourcesRepository
 from app.database.participants_repository import Participant, ParticipantsRepository
+from app.database.season_participants_repository import SeasonParticipantsRepository
 from app.database.seasons_repository import SeasonsRepository
+from app.database.source_mappings_repository import (
+    SourceMappingConflictError,
+    SourceMappingsRepository,
+)
 from app.database.sports_repository import SportsRepository
 from app.domain.competition_lifecycle import CompetitionFormat
 from app.providers.contracts import (
@@ -15,6 +22,7 @@ from app.providers.contracts import (
     RateLimitSnapshot,
 )
 from app.providers.nflverse.adapter import NflverseCompetitionAdapter
+from app.providers.nflverse.client import SCHEDULE_URL
 from app.providers.nflverse.exceptions import NflverseIntegrityError
 from app.providers.nflverse.models import NflverseGame
 from app.providers.nflverse.profiles import (
@@ -22,6 +30,31 @@ from app.providers.nflverse.profiles import (
     NflverseCompetitionProfile,
 )
 from app.providers.nflverse.team_mappings import NFLVERSE_TEAM_MAPPING
+
+NFLVERSE_SOURCE_KEY = "nflverse"
+NFLVERSE_ATTRIBUTION = (
+    "Schedule data provided by nflverse under CC BY 4.0: https://nflverse.nflverse.com/"
+)
+
+
+def register_nflverse_source(
+    settings: NflverseSettings,
+    repository: DataSourcesRepository,
+) -> DataSource:
+    return repository.upsert(
+        source_key=NFLVERSE_SOURCE_KEY,
+        name="nflverse",
+        base_url=SCHEDULE_URL,
+        is_active=settings.enabled,
+        metadata={
+            "attribution": NFLVERSE_ATTRIBUTION,
+            "authentication": "none",
+            "automated_use": "private",
+            "license": "CC-BY-4.0",
+            "provider": "nflverse",
+            "schedule_url_policy": "fixed",
+        },
+    )
 
 
 @dataclass(frozen=True)
@@ -43,6 +76,11 @@ class NflverseCompetitionService:
         seasons_repository: SeasonsRepository,
         participants_repository: ParticipantsRepository,
         profile: NflverseCompetitionProfile = NFL_2026_REGULAR_SEASON_PROFILE,
+        *,
+        settings: NflverseSettings | None = None,
+        season_participants_repository: SeasonParticipantsRepository | None = None,
+        data_sources_repository: DataSourcesRepository | None = None,
+        source_mappings_repository: SourceMappingsRepository | None = None,
     ) -> None:
         if adapter.profile != profile:
             raise ValueError("nflverse adapter and service profiles differ.")
@@ -51,6 +89,10 @@ class NflverseCompetitionService:
         self._competitions_repository = competitions_repository
         self._seasons_repository = seasons_repository
         self._participants_repository = participants_repository
+        self._settings = settings
+        self._season_participants_repository = season_participants_repository
+        self._data_sources_repository = data_sources_repository
+        self._source_mappings_repository = source_mappings_repository
         self.profile = profile
 
     def fetch_normalized_snapshot(self) -> NormalizedFixtureBatch:
@@ -116,9 +158,76 @@ class NflverseCompetitionService:
                     "Canonical NFL participant mapping is incomplete."
                 )
             participants[abbreviation] = participant
+        self._persist_source_mappings(competition.id, season.id, participants)
         return _CanonicalContext(
             sport.id, competition.id, season.id, start, end, participants
         )
+
+    def _persist_source_mappings(
+        self,
+        competition_id: int,
+        season_id: int,
+        participants: dict[str, Participant],
+    ) -> None:
+        dependencies = (
+            self._settings,
+            self._season_participants_repository,
+            self._data_sources_repository,
+            self._source_mappings_repository,
+        )
+        if all(item is None for item in dependencies):
+            return
+        if any(item is None for item in dependencies):
+            raise NflverseIntegrityError(
+                "nflverse source mapping dependencies are incomplete."
+            )
+        settings = self._settings
+        memberships = self._season_participants_repository
+        sources = self._data_sources_repository
+        mappings = self._source_mappings_repository
+        assert settings is not None
+        assert memberships is not None
+        assert sources is not None
+        assert mappings is not None
+        source = register_nflverse_source(settings, sources)
+        self._upsert_mapping(
+            mappings, source.id, "competition", competition_id, "nfl", {}
+        )
+        self._upsert_mapping(
+            mappings, source.id, "season", season_id, str(self.profile.season), {}
+        )
+        for abbreviation, participant in participants.items():
+            self._upsert_mapping(
+                mappings,
+                source.id,
+                "participant",
+                participant.id,
+                abbreviation,
+                {"provider_abbreviation": abbreviation},
+            )
+            memberships.upsert(season_id=season_id, participant_id=participant.id)
+
+    @staticmethod
+    def _upsert_mapping(
+        repository: SourceMappingsRepository,
+        source_id: int,
+        object_type: str,
+        internal_id: int,
+        external_id: str,
+        metadata: dict[str, object],
+    ) -> None:
+        try:
+            repository.upsert(
+                source_id=source_id,
+                object_type=object_type,
+                internal_id=internal_id,
+                external_id=external_id,
+                metadata=metadata,
+            )
+        except SourceMappingConflictError as error:
+            raise NflverseIntegrityError(
+                "nflverse mapping conflicts with an existing stable mapping."
+            ) from error
 
     @staticmethod
     def _normalize(game: NflverseGame, context: _CanonicalContext) -> NormalizedFixture:

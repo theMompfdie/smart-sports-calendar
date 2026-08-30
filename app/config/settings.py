@@ -57,6 +57,16 @@ class OpenLigaDBSettings:
 
 
 @dataclass(frozen=True)
+class NflverseSettings:
+    enabled: bool
+    connect_timeout_seconds: float = 5.0
+    read_timeout_seconds: float = 30.0
+    max_attempts: int = 3
+    max_redirects: int = 3
+    minimum_poll_interval_seconds: int = 21600
+
+
+@dataclass(frozen=True)
 class OefbIcalSettings:
     enabled: bool
     feed_url: str = field(default="", repr=False)
@@ -93,6 +103,9 @@ class Settings:
     )
     openligadb: OpenLigaDBSettings = field(
         default_factory=lambda: OpenLigaDBSettings(enabled=False)
+    )
+    nflverse: NflverseSettings = field(
+        default_factory=lambda: NflverseSettings(enabled=False)
     )
     oefb_ical: OefbIcalSettings = field(
         default_factory=lambda: OefbIcalSettings(enabled=False)
@@ -157,6 +170,20 @@ def get_positive_integer_environment_variable(
     if value <= 0:
         raise ValueError(f"{name} must be greater than zero.")
 
+    return value
+
+
+def get_non_negative_integer_environment_variable(
+    name: str,
+    default: int,
+) -> int:
+    raw_value = os.getenv(name, str(default))
+    try:
+        value = int(raw_value)
+    except ValueError as error:
+        raise ValueError(f"{name} must be an integer.") from error
+    if value < 0:
+        raise ValueError(f"{name} must not be negative.")
     return value
 
 
@@ -424,6 +451,42 @@ def load_openligadb_settings() -> OpenLigaDBSettings:
     )
 
 
+def load_nflverse_settings() -> NflverseSettings:
+    try:
+        enabled = get_boolean_environment_variable("NFLVERSE_ENABLED", default=False)
+        max_attempts = get_positive_integer_environment_variable(
+            "NFLVERSE_MAX_ATTEMPTS", default=3
+        )
+        max_redirects = get_non_negative_integer_environment_variable(
+            "NFLVERSE_MAX_REDIRECTS", default=3
+        )
+        minimum_poll_interval_seconds = get_positive_integer_environment_variable(
+            "NFLVERSE_MINIMUM_POLL_INTERVAL_SECONDS", default=21600
+        )
+    except ValueError as error:
+        raise ProviderConfigurationError(str(error)) from error
+    if max_attempts > 10:
+        raise ProviderConfigurationError("NFLVERSE_MAX_ATTEMPTS must not exceed 10.")
+    if max_redirects > 10:
+        raise ProviderConfigurationError("NFLVERSE_MAX_REDIRECTS must not exceed 10.")
+    if minimum_poll_interval_seconds < 21600:
+        raise ProviderConfigurationError(
+            "NFLVERSE_MINIMUM_POLL_INTERVAL_SECONDS must be at least 21600."
+        )
+    return NflverseSettings(
+        enabled=enabled,
+        connect_timeout_seconds=get_positive_float_environment_variable(
+            "NFLVERSE_CONNECT_TIMEOUT_SECONDS", default=5.0
+        ),
+        read_timeout_seconds=get_positive_float_environment_variable(
+            "NFLVERSE_READ_TIMEOUT_SECONDS", default=30.0
+        ),
+        max_attempts=max_attempts,
+        max_redirects=max_redirects,
+        minimum_poll_interval_seconds=minimum_poll_interval_seconds,
+    )
+
+
 def load_oefb_ical_settings() -> OefbIcalSettings:
     try:
         enabled = get_boolean_environment_variable("OEFB_ICAL_ENABLED", default=False)
@@ -662,6 +725,7 @@ def load_settings() -> Settings:
         api_football=load_api_football_settings(),
         football_data=load_football_data_settings(),
         openligadb=load_openligadb_settings(),
+        nflverse=load_nflverse_settings(),
         oefb_ical=load_oefb_ical_settings(),
         source_jobs=load_source_jobs(),
     )
