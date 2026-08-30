@@ -106,4 +106,3 @@ run simultaneously as another authoritative writer.
 - [nflverse schedules release](https://github.com/nflverse/nflverse-data/releases/tag/schedules)
 - [CC BY 4.0 licence](https://github.com/nflverse/nflverse-data/blob/main/LICENSE.md)
 - [NFL schedule structure](https://operations.nfl.com/gameday/nfl-schedule/creating-the-nfl-schedule)
-

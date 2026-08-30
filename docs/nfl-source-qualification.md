@@ -240,4 +240,3 @@ Implementation must add:
 - [NFL schedule structure](https://operations.nfl.com/gameday/nfl-schedule/creating-the-nfl-schedule)
 - [NFL 2026 flex-scheduling procedures](https://www.nfl.com/news/2026-flexible-scheduling-procedures-and-scheduling-for-week-18)
 - [NFL 2026 official schedule](https://www.nfl.com/schedules/2026/by-team)
-

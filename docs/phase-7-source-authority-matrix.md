@@ -80,4 +80,3 @@ collection. Isolated staging remains a later child and release gate.
 - [ADR 0013](adr/0013-select-nflverse-for-nfl-regular-season.md)
 - [Public repository data safety](public-repository-data-safety.md)
 - [Provider integration contract](provider-integration-contract.md)
-
