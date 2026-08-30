@@ -373,10 +373,9 @@ def test_graph_failure_and_interrupted_run_recover_without_duplicates(
     assert harness.table_count("sports_events") == 272
     assert harness.table_count("calendar_event_mappings") == 272
     assert len(harness.graph.events) == 272
-    assert (
-        [operation.method for operation in harness.graph.operations].count("POST")
-        == 273
-    )
+    assert [operation.method for operation in harness.graph.operations].count(
+        "POST"
+    ) == 273
     retried = next(
         mapping
         for mapping in harness.calendar_mappings.get_by_status("synced")
