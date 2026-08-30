@@ -354,6 +354,7 @@ def phase_7_nfl_candidate_evidence() -> StagingEvidence:
                 authoritative=True,
                 complete=False,
                 scope_kind="partial",
+                scope_stage="regular-season",
                 removal_eligible=False,
                 error_category=None,
                 filtered=False,
@@ -814,6 +815,22 @@ def test_validate_phase_7_nfl_candidate_accepts_converged_evidence() -> None:
                 run,
             ),
             "round coverage is invalid for nfl",
+        ),
+        (
+            lambda authority, scope, run: (
+                authority,
+                scope,
+                replace(run, scope_stage=None),
+            ),
+            "latest provider run is invalid for nfl",
+        ),
+        (
+            lambda authority, scope, run: (
+                authority,
+                scope,
+                replace(run, scope_stage="postseason"),
+            ),
+            "latest provider run is invalid for nfl",
         ),
         (
             lambda authority, scope, run: (
