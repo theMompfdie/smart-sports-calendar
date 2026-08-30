@@ -4,6 +4,7 @@ import pytest
 from app.providers.api_football.transport import HttpResponse
 from app.providers.nflverse.client import SCHEDULE_URL, NflverseClient
 from app.providers.nflverse.exceptions import NflverseRequestError, NflverseSchemaError
+from app.providers.nflverse.transport import MAX_RESPONSE_BYTES
 
 from tests.providers.nflverse.support import csv_bytes
 
@@ -70,11 +71,33 @@ def test_client_retries_transient_failure() -> None:
     assert result.attempt_count == 2
 
 
+@pytest.mark.parametrize("failure", [OSError("offline"), TimeoutError("timeout")])
+def test_client_exhausts_transient_network_failures(failure: Exception) -> None:
+    with pytest.raises(NflverseRequestError, match="could not be reached"):
+        client(Transport([failure, failure]), max_attempts=2).fetch_schedule()
+
+
+def test_client_exhausts_retryable_http_failure() -> None:
+    with pytest.raises(NflverseRequestError, match="HTTP 503"):
+        client(
+            Transport([response(503), response(503)]), max_attempts=2
+        ).fetch_schedule()
+
+
+def test_client_enforces_redirect_limit() -> None:
+    redirect = response(
+        302, {"Location": "https://release-assets.githubusercontent.com/file.csv"}
+    )
+    with pytest.raises(NflverseRequestError, match="redirect limit"):
+        client(Transport([redirect, redirect]), max_redirects=1).fetch_schedule()
+
+
 @pytest.mark.parametrize(
     "provider_response,message",
     [
         (response(200, {"Content-Type": "text/html"}), "content type"),
         (response(200, body=b"\xff"), "UTF-8"),
+        (response(200, body=b"x" * (MAX_RESPONSE_BYTES + 1)), "safe limit"),
         (response(404), "HTTP 404"),
     ],
 )
