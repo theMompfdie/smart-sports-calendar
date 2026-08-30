@@ -10,7 +10,9 @@ competition-scoped runtime dispatch. Issue #119 adds the isolated OpenLigaDB
 DFB-Pokal writer with an invariant permanent-partial observation scope. Issue
  #132 reuses that provider boundary for an independent removal-disabled 2.
 Bundesliga job. Issue #135 adds the qualified EFL Championship regular-season
-stage without admitting the separate play-off stage.
+stage without admitting the separate play-off stage. Phase 6 issue #170 adds a
+third OpenLigaDB profile for only the UEFA Nations League A 2026/27 group
+phase.
 
 ## Source jobs
 
@@ -103,9 +105,11 @@ partial pages, offset drift, duplicates, and mixed stages fail before canonical
 writes or removal evidence.
 
 OpenLigaDB jobs share one bounded client but have independent runtime locks and
-retry/run-reporting boundaries. Both the DFB-Pokal and initial 2. Bundesliga
-runtime declare `partial`, `complete=false`, and `removal_eligible=false`.
-Missing records can therefore never advance cancellation or deletion evidence.
+retry/run-reporting boundaries. The DFB-Pokal, initial 2. Bundesliga, and UEFA
+Nations League A group-phase runtimes declare `partial`, `complete=false`, and
+`removal_eligible=false`. The Nations League observation is also `filtered`
+because only provider groups 1 through 4 are admitted. Missing or excluded
+records can therefore never advance cancellation or deletion evidence.
 
 Outlook calendar synchronization is a separate scheduled job controlled by
 `HEARTBEAT_INTERVAL`. Source jobs are registered first so the initial import
@@ -189,6 +193,14 @@ the existing non-empty, exact-boundary, authority, replay, and two-observation
 safeguards.
 
 Draw-dependent fixtures use explicit resolved/unresolved participant slots.
+
+Issue #170 applies this contract to `uefa_nations_league/2026_27` without
+expanding it. OpenLigaDB `nla` / 5978 is accepted only for the 48-fixture,
+16-participant League A group phase. The profile validates four disjoint groups
+of four teams and a complete directed double round robin within each group.
+Provider groups outside 1 through 4 are ignored before normalization. Leagues
+B, C, and D plus every later stage remain unassigned and cannot contribute
+canonical or removal evidence.
 Any unresolved slot produces `DEFER`, creates no placeholder participant or
 calendar event, and cannot replace the last known good participants of an
 already mapped event. First/second-leg metadata is diagnostic; stable source

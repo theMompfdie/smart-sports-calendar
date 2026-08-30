@@ -39,7 +39,7 @@ def test_initialize_competitions_catalog_creates_reviewed_competitions(
         sports_repository=sports_repository,
     )
 
-    assert len(competitions) == 6
+    assert len(competitions) == 7
 
     by_key = {competition.competition_key: competition for competition in competitions}
     premier_league = by_key["premier_league"]
@@ -48,6 +48,7 @@ def test_initialize_competitions_catalog_creates_reviewed_competitions(
     second_bundesliga = by_key["second_bundesliga"]
     dfb_pokal = by_key["dfb_pokal"]
     oefb_cup = by_key["oefb_cup"]
+    nations_league = by_key["uefa_nations_league"]
     football = sports_repository.get_by_key("football")
 
     assert football is not None
@@ -105,6 +106,15 @@ def test_initialize_competitions_catalog_creates_reviewed_competitions(
     assert oefb_cup.metadata == {
         "region": "Austria",
         "calendar_category": "SMART | Austria",
+    }
+    assert nations_league.sport_id == football.id
+    assert nations_league.name == "UEFA Nations League"
+    assert nations_league.short_name == "UNL"
+    assert nations_league.country_code == "INT"
+    assert nations_league.competition_type == "hybrid_tournament"
+    assert nations_league.metadata == {
+        "region": "Europe",
+        "calendar_category": "SMART | UEFA",
     }
 
 

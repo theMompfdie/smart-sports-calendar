@@ -20,16 +20,18 @@ from app.database.seasons_repository import SeasonsRepository
 from app.database.source_mappings_repository import SourceMappingsRepository
 from app.database.sports_catalog import initialize_sports_catalog
 from app.database.sports_repository import SportsRepository
-from app.domain.competition_lifecycle import CompetitionFormat
+from app.domain.competition_lifecycle import CompetitionFormat, TournamentStageKind
 from app.providers.openligadb.exceptions import OpenLigaDBIntegrityError
 from app.providers.openligadb.models import parse_snapshot
 from app.providers.openligadb.profiles import (
     DFB_POKAL_PROFILE,
+    NATIONS_LEAGUE_A_PROFILE,
     SECOND_BUNDESLIGA_PROFILE,
 )
 
 from tests.providers.openligadb.support import (
     FETCHED_AT,
+    nations_league_a_payloads,
     payloads,
     second_bundesliga_payloads,
 )
@@ -178,5 +180,61 @@ def test_service_normalizes_complete_second_bundesliga_snapshot(
     assert mappings == [
         ("competition", 1),
         ("participant", 18),
+        ("season", 1),
+    ]
+
+
+def test_service_normalizes_nations_league_a_hybrid_group_phase(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "nations-league-a.db"
+    Database(database_path).initialize()
+    sports = SportsRepository(database_path)
+    competitions = CompetitionsRepository(database_path)
+    seasons = SeasonsRepository(database_path)
+    participants = ParticipantsRepository(database_path)
+    memberships = SeasonParticipantsRepository(database_path)
+    initialize_sports_catalog(sports)
+    initialize_competitions_catalog(competitions, sports)
+    initialize_seasons_catalog(seasons, competitions, sports)
+    initialize_participants_catalog(
+        participants, memberships, sports, competitions, seasons
+    )
+    snapshot = parse_snapshot(
+        *nations_league_a_payloads(include_later_stage_fixture=True),
+        profile=NATIONS_LEAGUE_A_PROFILE,
+        fetched_at_utc=FETCHED_AT,
+        request_attempts=3,
+    )
+    service = OpenLigaDBCompetitionService(
+        settings=OpenLigaDBSettings(enabled=True),
+        adapter=SnapshotAdapter(snapshot, NATIONS_LEAGUE_A_PROFILE),
+        sports_repository=sports,
+        competitions_repository=competitions,
+        seasons_repository=seasons,
+        participants_repository=participants,
+        season_participants_repository=memberships,
+        data_sources_repository=DataSourcesRepository(database_path),
+        source_mappings_repository=SourceMappingsRepository(database_path),
+        profile=NATIONS_LEAGUE_A_PROFILE,
+    )
+
+    batch = service.fetch_normalized_snapshot()
+
+    assert batch.competition_format is CompetitionFormat.HYBRID_TOURNAMENT
+    assert len(batch.fixtures) == 48
+    assert {fixture.stage for fixture in batch.fixtures} == {"league_a_group_phase"}
+    assert {fixture.stage_kind for fixture in batch.fixtures} == {
+        TournamentStageKind.LEAGUE_PHASE
+    }
+    assert {fixture.sequence_number for fixture in batch.fixtures} == {1, 2, 3, 4}
+    with sqlite3.connect(database_path) as connection:
+        mappings = connection.execute(
+            "SELECT object_type, COUNT(*) FROM source_mappings "
+            "GROUP BY object_type ORDER BY object_type"
+        ).fetchall()
+    assert mappings == [
+        ("competition", 1),
+        ("participant", 16),
         ("season", 1),
     ]

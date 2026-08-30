@@ -124,7 +124,10 @@ are permanently partial: they
 may create or update known fixtures but never infer cancellation or removal.
 The same public provider is qualified and implemented as the preferred no-cost
 2026/27 2. Bundesliga authority. Its initial runtime is removal-disabled and
-passed isolated staging. The official ÖFB competition iCalendar feed provides
+passed isolated staging. OpenLigaDB also provides the implemented, bounded
+2026/27 UEFA Nations League A group-phase authority: exactly 48 fixtures and
+16 participants, permanently removal-disabled, with every other league and
+later stage excluded. The official ÖFB competition iCalendar feed provides
 the private 2026/27 ÖFB-Cup authority through a strict permanent-partial
 contract; it can create or update stable fixtures but absence is never
 destructive.
@@ -172,6 +175,17 @@ Phase 5 decision records:
 - [ÖFB-Cup authority selection ADR](docs/adr/0010-select-oefb-calendar-for-oefb-cup.md)
 - [Phase 5 multi-competition staging validation](docs/phase-5-multi-competition-staging-validation.md)
 - [v0.5.0-beta.1 release checklist](docs/v0.5.0-beta.1-release-checklist.md)
+
+Phase 6 decision records:
+
+- [hybrid UEFA lifecycle ADR](docs/adr/0011-model-hybrid-uefa-lifecycle.md)
+- [source and authority matrix](docs/phase-6-source-authority-matrix.md)
+- [Champions League source qualification](docs/uefa-champions-league-source-qualification.md)
+- [Europa League source qualification](docs/uefa-europa-league-source-qualification.md)
+- [Conference League source qualification](docs/uefa-conference-league-source-qualification.md)
+- [Nations League source qualification](docs/uefa-nations-league-source-qualification.md)
+- [OpenLigaDB Nations League A selection ADR](docs/adr/0012-select-openligadb-for-nations-league-a.md)
+- [OpenLigaDB Nations League A import](docs/openligadb-nations-league-a-import.md)
 
 ### Database and Persistence
 
@@ -577,11 +591,13 @@ delivery order and operational boundaries.
   exists, and no paid provider or authority is approved
 - UEFA Nations League 2026/27 delivery tracked by
   [#163](https://github.com/theMompfdie/smart-sports-calendar/issues/163),
-  with active source and scope qualification in
-  [#164](https://github.com/theMompfdie/smart-sports-calendar/issues/164):
-  OpenLigaDB passed two stable technical observations and an exact manual UEFA
-  comparison for the 48-fixture League A group phase; broader paid scopes,
-  ODbL acceptance, release inclusion, and authority remain unapproved
+  with completed source and scope qualification in
+  [#164](https://github.com/theMompfdie/smart-sports-calendar/issues/164) and
+  implementation in
+  [#170](https://github.com/theMompfdie/smart-sports-calendar/issues/170):
+  OpenLigaDB is the selected EUR 0 authority for exactly the 48-fixture,
+  16-participant League A group phase; Leagues B, C, and D and all later stages
+  remain excluded, and isolated live staging is still pending
 - European Championship Qualification
 
 The Champions League, Europa League, and Conference League were evaluated for

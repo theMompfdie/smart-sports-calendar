@@ -106,6 +106,28 @@ SECOND_BUNDESLIGA_TEAM_MAPPINGS: dict[int, OpenLigaDBTeamMapping] = {
     199: OpenLigaDBTeamMapping("fc_heidenheim", "1. FC Heidenheim 1846"),
 }
 
+# Country names are independently reviewed against UEFA's published League A
+# groups. Provider IDs are deliberately learned into the private source-mapping
+# repository on first import instead of being copied into the source tree.
+NATIONS_LEAGUE_A_TEAM_MAPPINGS_BY_NAME: dict[str, str] = {
+    "Belgien": "belgium",
+    "Dänemark": "denmark",
+    "Deutschland": "germany",
+    "England": "england_national_team",
+    "Frankreich": "france",
+    "Griechenland": "greece",
+    "Italien": "italy",
+    "Kroatien": "croatia",
+    "Niederlande": "netherlands",
+    "Norwegen": "norway",
+    "Portugal": "portugal",
+    "Serbien": "serbia",
+    "Spanien": "spain",
+    "Tschechien": "czechia",
+    "Türkei": "turkiye",
+    "Wales": "wales_national_team",
+}
+
 TEAM_MAPPINGS_BY_COMPETITION_KEY = {
     "dfb_pokal": DFB_POKAL_TEAM_MAPPINGS,
     "second_bundesliga": SECOND_BUNDESLIGA_TEAM_MAPPINGS,
@@ -115,6 +137,8 @@ TEAM_MAPPINGS_BY_COMPETITION_KEY = {
 def resolve_team_key(
     competition_key: str, provider_id: int, provider_name: str
 ) -> str | None:
+    if competition_key == "uefa_nations_league":
+        return NATIONS_LEAGUE_A_TEAM_MAPPINGS_BY_NAME.get(provider_name.strip())
     mapping = TEAM_MAPPINGS_BY_COMPETITION_KEY.get(competition_key, {}).get(provider_id)
     if mapping is None or not mapping.accepts_provider_name(provider_name):
         return None
@@ -122,6 +146,8 @@ def resolve_team_key(
 
 
 def get_reviewed_team_keys(competition_key: str) -> frozenset[str]:
+    if competition_key == "uefa_nations_league":
+        return frozenset(NATIONS_LEAGUE_A_TEAM_MAPPINGS_BY_NAME.values())
     return frozenset(
         mapping.participant_key
         for mapping in TEAM_MAPPINGS_BY_COMPETITION_KEY.get(

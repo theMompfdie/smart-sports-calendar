@@ -9,7 +9,8 @@ competition tracker.
 
 Evidence was first reviewed on 2026-08-28, extended to the Europa League,
 Conference League, and Nations League on 2026-08-29, and updated with the
-Champions League readiness observation on 2026-08-30. Provider coverage,
+Champions League readiness observation and Nations League authority decision
+on 2026-08-30. Provider coverage,
 terms, plans, competition formats, and season data can change. Every outcome
 requires a dated competition-specific qualification record before
 implementation.
@@ -30,12 +31,11 @@ through final may be evaluated without requiring qualification. No Conference
 League provider or recurring-cost boundary is selected, and no zero-cost
 2026/27 automated candidate is currently observable.
 
-For the Nations League, the active edition is 2026/27. The zero-cost League A
-group-phase candidate passed two stable technical observations and an exact
-manual UEFA comparison on 2026-08-30. No release boundary is selected. The
-operator must still choose between that bounded scope, a paid all-leagues
-scope, or deferral and accept the selected provider terms before
-implementation.
+For the Nations League, the active edition is 2026/27. The operator selected
+the zero-cost OpenLigaDB League A group-phase authority on 2026-08-30 after two
+stable technical observations and an exact manual UEFA comparison. The release
+boundary is exactly 48 fixtures and 16 participants; every other league and
+later stage remains excluded.
 
 Decision meanings:
 
@@ -60,7 +60,7 @@ create credentials, or approve release inclusion.
 | UEFA Champions League | 2026/27 | Conditional | football-data.org API v4 `CL` / 2001, free tier; operator-selected 2026-08-28 | Unassigned pending credentialed qualification | League phase through final; 2026/27 qualifying rounds explicitly excluded | [Champions League qualification](uefa-champions-league-source-qualification.md) |
 | UEFA Europa League | 2026/27 | Conditional | OpenLigaDB `uel2026` / 6000 is the zero-cost candidate but currently incomplete; football-data.org `EL` / 2146 and Sportmonks league 5 are paid alternatives pending operator decision | Unassigned pending source, cost, and live qualification | League phase through final is the approved candidate boundary; qualification is separate and optional | [Europa League qualification](uefa-europa-league-source-qualification.md) |
 | UEFA Conference League | 2026/27 | Conditional | No zero-cost 2026/27 candidate currently exists; Sportmonks league 2286 and football-data.org `UCL` / 2154 are paid alternatives pending operator decision | Unassigned pending source, cost, and live qualification | League phase through final is the approved candidate boundary; qualification is separate and optional | [Conference League qualification](uefa-conference-league-source-qualification.md) |
-| UEFA Nations League | 2026/27 | Conditional | OpenLigaDB `nla` / 5978 passed the technical League A group-phase gates; Sportmonks season 27797 and football-data.org `UNL` / 2182 are paid broader candidates | Unassigned pending scope, terms, and release decision | Not selected: League A, all league phases, full edition, or defer | [Nations League qualification](uefa-nations-league-source-qualification.md) |
+| UEFA Nations League | 2026/27 | Qualified | OpenLigaDB `nla` / 5978, free and credential-free; selected 2026-08-30 | Sole bounded League A group-phase authority when explicitly enabled | Exactly 48 League A group-phase fixtures and 16 participants; B/C/D and all later stages excluded | [Nations League qualification](uefa-nations-league-source-qualification.md) |
 | UEFA European Championship Qualification | Exact active cycle pending | Pending | Not evaluated for Phase 6 | Unassigned | Not approved | Future competition track |
 
 ## Champions League candidate summary
@@ -98,7 +98,7 @@ create credentials, or approve release inclusion.
 | Candidate | Cost fit | Technical fit | Rights/terms fit | Current decision |
 | --- | --- | --- | --- | --- |
 | Official UEFA public pages and regulations | Free | Complete manual 2026/27 league-phase fixture evidence; no stable machine contract | Authoritative manual evidence; automated collection prohibited | Manual verification only |
-| OpenLigaDB `nla` / 5978 | Free and credential-free | Two stable 48-fixture/16-team observations and exact manual UEFA pairing/kickoff match; later rounds remain excluded | ODbL applies; community-maintained rather than official | Technically validated conditional candidate for League A group phase only |
+| OpenLigaDB `nla` / 5978 | Free and credential-free | Two stable 48-fixture/16-team observations and exact manual UEFA pairing/kickoff match; later rounds remain excluded | ODbL accepted for the bounded private-calendar use; community-maintained rather than official | Selected authority for League A group phase only; implementation #170 |
 | OpenLigaDB `unl` / 4955 | Free and credential-free | Zero fixtures and zero participants despite a current catalog entry | Same OpenLigaDB conditions | Rejected as current all-leagues or removal evidence |
 | football-data.org `UNL` / 2182 | Pro plan, currently EUR 199/month | Existing integration; public season 2507 covers the 2026 league phase | One-application use, secret key, attribution, and cancellation exit obligation | Paid conditional candidate pending scope approval and live evidence |
 | Sportmonks season 27797 | Starter from EUR 29/month; card-backed trial | Documents all four leagues and exactly 156 league-phase fixtures; new adapter required | Subscription/domain terms, no raw resale, completeness disclaimer, separate media rights | Preferred paid full-league-phase candidate pending operator approval |
@@ -196,24 +196,14 @@ paths require payment. Qualification remains separate and non-blocking.
 
 ## Nations League operator decision and required next gate
 
-The active edition is 2026/27, but no release boundary or provider is approved.
-OpenLigaDB `nla` / 5978 passed the technical gates for a possible zero-cost
-League A group-phase boundary through two stable observations and an exact
-manual UEFA pairing and kickoff comparison. It cannot establish Leagues B, C,
-D, later play-offs, or finals.
+On 2026-08-30 the operator selected OpenLigaDB `nla` / 5978 at EUR 0 for only
+the League A group phase and accepted its ODbL conditions. Issue #170 owns the
+catalog, mapping, runtime, lifecycle, tests, attribution, documentation, and
+isolated-staging work. Runtime assignment remains opt-in configuration.
 
-The Nations League track cannot create credentialed-validation or
-implementation work until:
-
-1. the operator selects League A group phase, League A through finals, all four
-   league phases, the full edition, or deferral;
-2. the operator selects an acceptable provider and recurring-cost boundary;
-3. the completed technical League A evidence remains valid; any broader scope
-   requires separate observations and reproducible fingerprints;
-4. later 2027 and 2028 stages remain incremental until independently bounded;
-   and
-5. selected-provider terms, attribution, persistence, cancellation, and secret
-   handling are accepted explicitly.
-
-OpenLigaDB `unl` / 4955 is empty and cannot provide completeness or removal
-evidence. No authority, paid plan, trial, or registration is approved.
+The implementation must preserve the exact four-group, 48-fixture,
+16-participant contract and permanent removal-disabled behavior. Leagues B, C,
+D, later play-offs, and finals need independent qualification and cannot reuse
+this authority implicitly. OpenLigaDB `unl` / 4955 remains empty and cannot
+provide completeness or removal evidence. Paid plans, trials, and automatic
+fallback writers remain unapproved.
