@@ -83,4 +83,7 @@ fixture behavior.
 Before release inclusion, isolated staging must repeat the live qualification
 and prove the same lifecycle behavior using only staging database, Outlook
 calendar, configuration, and logs. Production promotion remains manual and is
-out of scope for #170.
+out of scope for #170. The operator procedure and secret-safe evidence command
+are defined in
+[`nations-league-a-staging-validation.md`](nations-league-a-staging-validation.md)
+and tracked by #172.
