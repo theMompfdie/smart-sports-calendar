@@ -49,7 +49,10 @@ from app.providers.contracts import SourceJobDefinition, SourceRole, SourceScope
 from app.providers.nflverse.models import parse_snapshot
 from app.providers.nflverse.profiles import NFL_2026_REGULAR_SEASON_PROFILE
 from app.synchronization.event_synchronizer import EventSynchronizer
-from app.synchronization.outlook_event_payload_builder import OutlookEventPayloadBuilder
+from app.synchronization.outlook_event_payload_builder import (
+    OutlookEventPayloadBuilder,
+    OutlookEventPresentation,
+)
 from app.synchronization.synchronization_orchestrator import SynchronizationOrchestrator
 from app.synchronization.synchronization_runtime_service import (
     SynchronizationRuntimeService,
@@ -95,7 +98,11 @@ class NflverseOutlookHarness:
     source_id: int
 
     @classmethod
-    def create(cls, database_path: Path) -> "NflverseOutlookHarness":
+    def create(
+        cls,
+        database_path: Path,
+        payload_builder: OutlookEventPayloadBuilder | None = None,
+    ) -> "NflverseOutlookHarness":
         Database(database_path).initialize()
         sports = SportsRepository(database_path)
         competitions = CompetitionsRepository(database_path)
@@ -166,7 +173,7 @@ class NflverseOutlookHarness:
         calendar = SynchronizationOrchestrator(
             query_repository=SynchronizationQueryRepository(database_path),
             event_synchronizer=EventSynchronizer(
-                OutlookEventPayloadBuilder(),
+                payload_builder or OutlookEventPayloadBuilder(),
                 graph,  # type: ignore[arg-type]
                 calendar_mappings,
             ),
@@ -237,6 +244,17 @@ def graph_start(operation: CapturedGraphOperation) -> datetime:
     return datetime.fromisoformat(date_time).replace(tzinfo=ZoneInfo(time_zone))
 
 
+def graph_end(operation: CapturedGraphOperation) -> datetime:
+    assert operation.payload is not None
+    end = operation.payload["end"]
+    assert isinstance(end, dict)
+    date_time = end["dateTime"]
+    time_zone = end["timeZone"]
+    assert isinstance(date_time, str)
+    assert isinstance(time_zone, str)
+    return datetime.fromisoformat(date_time).replace(tzinfo=ZoneInfo(time_zone))
+
+
 def test_nfl_snapshot_synchronizes_272_events_and_is_idempotent(
     tmp_path: Path,
 ) -> None:
@@ -262,6 +280,10 @@ def test_nfl_snapshot_synchronizes_272_events_and_is_idempotent(
         "Notice: Subject to NFL flex scheduling." in graph_body(operation)
         for operation in harness.graph.operations
     )
+    assert all(
+        graph_end(operation) - graph_start(operation) == timedelta(hours=3)
+        for operation in harness.graph.operations
+    )
 
     vienna_starts = [
         graph_start(operation).astimezone(VIENNA)
@@ -279,6 +301,51 @@ def test_nfl_snapshot_synchronizes_272_events_and_is_idempotent(
     assert unchanged_import.items_unchanged == 272
     assert unchanged_sync.items_unchanged == 272
     assert len(harness.graph.operations) == first_operation_count
+
+
+def test_three_hour_duration_updates_existing_events_without_duplicates(
+    tmp_path: Path,
+) -> None:
+    legacy_builder = OutlookEventPayloadBuilder(
+        OutlookEventPresentation(fallback_duration_minutes_by_sport=())
+    )
+    harness = NflverseOutlookHarness.create(
+        tmp_path / "nfl-duration-upgrade.db",
+        payload_builder=legacy_builder,
+    )
+    harness.provider.import_current_competition()
+    harness.synchronize_all()
+    original_outlook_ids = set(harness.graph.events)
+    original_operation_count = len(harness.graph.operations)
+
+    harness.calendar = SynchronizationOrchestrator(
+        query_repository=SynchronizationQueryRepository(harness.database_path),
+        event_synchronizer=EventSynchronizer(
+            OutlookEventPayloadBuilder(),
+            harness.graph,  # type: ignore[arg-type]
+            harness.calendar_mappings,
+        ),
+        sync_runs_repository=harness.runs,
+    )
+    changed = harness.calendar.synchronize(CALENDAR_ID, 500)
+    duration_updates = harness.graph.operations[original_operation_count:]
+
+    assert changed.items_created == 0
+    assert changed.items_updated == 272
+    assert set(harness.graph.events) == original_outlook_ids
+    assert {operation.method for operation in duration_updates} == {"PATCH"}
+    assert all(
+        graph_end(operation) - graph_start(operation) == timedelta(hours=3)
+        for operation in duration_updates
+    )
+
+    operation_count_after_update = len(harness.graph.operations)
+    unchanged = harness.calendar.synchronize(CALENDAR_ID, 500)
+
+    assert unchanged.items_unchanged == 272
+    assert unchanged.items_created == 0
+    assert unchanged.items_updated == 0
+    assert len(harness.graph.operations) == operation_count_after_update
 
 
 def test_changed_operator_notice_updates_one_stable_outlook_event(

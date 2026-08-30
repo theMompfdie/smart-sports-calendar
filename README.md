@@ -628,6 +628,9 @@ lifecycle requires a dedicated capability model. They are not part of the
 - raw NFL/nflverse data, logos, databases, and Outlook exports remain outside
   the public repository; generated events require nflverse and CC BY 4.0
   attribution
+- NFL Outlook events without an explicit provider end time reserve a
+  deterministic three-hour calendar window; other sports retain the generic
+  two-hour fallback
 - implementation, mocked-Graph proof, staging, and release remain separate
   gated child issues
 

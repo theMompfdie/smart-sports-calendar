@@ -25,6 +25,9 @@ class OutlookEventPresentation:
     categories: tuple[str, ...] = ("SMART Sports Calendar",)
     reminder_minutes_before_start: int = 15
     default_duration_minutes: int = 120
+    fallback_duration_minutes_by_sport: tuple[tuple[str, int], ...] = (
+        ("american_football", 180),
+    )
     show_as: str = "busy"
     cancelled_prefix: str = "[CANCELLED]"
     cancelled_category: str = "Cancelled"
@@ -34,6 +37,27 @@ class OutlookEventPresentation:
             raise ValueError("Reminder minutes must not be negative.")
         if self.default_duration_minutes <= 0:
             raise ValueError("Default duration minutes must be positive.")
+        sport_keys: set[str] = set()
+        for sport_key, duration_minutes in self.fallback_duration_minutes_by_sport:
+            if not sport_key or sport_key != sport_key.strip():
+                raise ValueError("Fallback-duration sport keys must be normalized.")
+            if sport_key in sport_keys:
+                raise ValueError("Fallback-duration sport keys must be unique.")
+            if duration_minutes <= 0:
+                raise ValueError("Fallback duration minutes must be positive.")
+            sport_keys.add(sport_key)
+
+    def fallback_duration_minutes_for(self, sport_key: str) -> int:
+        return next(
+            (
+                duration_minutes
+                for configured_sport_key, duration_minutes in (
+                    self.fallback_duration_minutes_by_sport
+                )
+                if configured_sport_key == sport_key
+            ),
+            self.default_duration_minutes,
+        )
 
 
 @dataclass(frozen=True)
@@ -89,7 +113,13 @@ class OutlookEventPayloadBuilder:
             end=(
                 self._build_date_time(event.end_time, event.timezone)
                 if event.end_time is not None
-                else self._build_fallback_end(event.start_time, event.timezone)
+                else self._build_fallback_end(
+                    event.start_time,
+                    event.timezone,
+                    self._presentation.fallback_duration_minutes_for(
+                        synchronization_event.sport.sport_key
+                    ),
+                )
             ),
             location=self._build_location(
                 event.venue_name,
@@ -217,6 +247,7 @@ class OutlookEventPayloadBuilder:
         self,
         start_value: str,
         time_zone: str,
+        duration_minutes: int,
     ) -> OutlookDateTime:
         try:
             zone = ZoneInfo(time_zone)
@@ -234,8 +265,7 @@ class OutlookEventPayloadBuilder:
             zoned_start = parsed_start.astimezone(zone)
 
         end = (
-            zoned_start.astimezone(UTC)
-            + timedelta(minutes=self._presentation.default_duration_minutes)
+            zoned_start.astimezone(UTC) + timedelta(minutes=duration_minutes)
         ).astimezone(zone)
         return OutlookDateTime(
             date_time=end.replace(tzinfo=None).isoformat(timespec="seconds"),

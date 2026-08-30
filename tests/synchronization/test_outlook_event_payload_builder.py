@@ -58,10 +58,12 @@ def make_aggregate(
     *,
     event: SportsEvent | None = None,
     complete: bool = True,
+    sport_key: str = "football",
+    sport_name: str = "Football",
     source_attribution: str | None = None,
     operator_notice: OperatorNotice | None = None,
 ) -> SynchronizationEvent:
-    sport = Sport(1, "football", "Football", None, None, TIMESTAMP, TIMESTAMP)
+    sport = Sport(1, sport_key, sport_name, None, None, TIMESTAMP, TIMESTAMP)
 
     if not complete:
         return SynchronizationEvent(
@@ -224,6 +226,45 @@ def test_build_adds_fallback_end_to_minimal_event() -> None:
     assert "Participants:" not in payload.body
 
 
+def test_build_uses_three_hour_fallback_for_american_football() -> None:
+    event = make_sports_event(
+        start_time="2026-09-10T00:20:00+00:00",
+        end_time=None,
+        timezone="UTC",
+    )
+
+    payload = OutlookEventPayloadBuilder().build(
+        make_aggregate(
+            event=event,
+            sport_key="american_football",
+            sport_name="American Football",
+        )
+    )
+
+    assert payload.end is not None
+    assert payload.end.date_time == "2026-09-10T03:20:00"
+    assert payload.end.time_zone == "UTC"
+
+
+def test_build_prefers_explicit_end_for_american_football() -> None:
+    event = make_sports_event(
+        start_time="2026-09-10T00:20:00+00:00",
+        end_time="2026-09-10T02:50:00+00:00",
+        timezone="UTC",
+    )
+
+    payload = OutlookEventPayloadBuilder().build(
+        make_aggregate(
+            event=event,
+            sport_key="american_football",
+            sport_name="American Football",
+        )
+    )
+
+    assert payload.end is not None
+    assert payload.end.date_time == "2026-09-10T02:50:00"
+
+
 def test_build_appends_authoritative_source_attribution() -> None:
     attribution = "Football data provided by the Football-Data.org API"
 
@@ -284,9 +325,36 @@ def test_build_fallback_end_uses_absolute_duration_across_dst_change() -> None:
     assert payload.end.date_time == "2026-10-25T02:30:00"
 
 
+def test_american_football_fallback_uses_absolute_duration_across_dst() -> None:
+    event = make_sports_event(
+        start_time="2026-10-25T00:30:00+00:00",
+        end_time=None,
+        timezone="Europe/London",
+    )
+
+    payload = OutlookEventPayloadBuilder().build(
+        make_aggregate(
+            event=event,
+            sport_key="american_football",
+            sport_name="American Football",
+        )
+    )
+
+    assert payload.start.date_time == "2026-10-25T01:30:00"
+    assert payload.end is not None
+    assert payload.end.date_time == "2026-10-25T03:30:00"
+
+
 def test_presentation_rejects_non_positive_default_duration() -> None:
     with pytest.raises(ValueError, match="Default duration minutes must be positive"):
         OutlookEventPresentation(default_duration_minutes=0)
+
+
+def test_presentation_rejects_non_positive_sport_duration() -> None:
+    with pytest.raises(ValueError, match="Fallback duration minutes must be positive"):
+        OutlookEventPresentation(
+            fallback_duration_minutes_by_sport=(("american_football", 0),)
+        )
 
 
 def test_build_represents_cancelled_event_deterministically() -> None:
