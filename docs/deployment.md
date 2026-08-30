@@ -132,6 +132,12 @@ The complete provider settings are:
 | `OPENLIGADB_RETRY_BASE_DELAY_SECONDS` | `1` | Positive finite first backoff delay |
 | `OPENLIGADB_RETRY_MAX_DELAY_SECONDS` | `30` | Positive finite cap, not lower than the base delay |
 | `OPENLIGADB_MINIMUM_REQUEST_INTERVAL_SECONDS` | `1` | Positive minimum spacing between public provider requests |
+| `NFLVERSE_ENABLED` | `false` | Enables the approved public nflverse NFL 2026 regular-season adapter; requires exactly one matching authoritative job |
+| `NFLVERSE_CONNECT_TIMEOUT_SECONDS` | `5` | Positive finite connection timeout |
+| `NFLVERSE_READ_TIMEOUT_SECONDS` | `30` | Positive finite response timeout |
+| `NFLVERSE_MAX_ATTEMPTS` | `3` | Positive bounded request-attempt count, maximum `10` |
+| `NFLVERSE_MAX_REDIRECTS` | `3` | Non-negative bounded redirect count, maximum `10` |
+| `NFLVERSE_MINIMUM_POLL_INTERVAL_SECONDS` | `21600` | Enforces the qualified minimum six-hour polling interval |
 | `OEFB_ICAL_ENABLED` | `false` | Enables the private official ÖFB-Cup iCalendar authority; requires its matching authoritative job |
 | `OEFB_ICAL_FEED_URL` | empty | Required only when enabled; opaque HTTPS subscription URL supplied through the deployment secret store and never logged |
 | `OEFB_ICAL_CONNECT_TIMEOUT_SECONDS` | `5` | Positive finite connection timeout |
@@ -149,6 +155,8 @@ and the Championship `REGULAR_SEASON` complete-stage scope. `openligadb`
 supports the authoritative 2026/27 DFB-Pokal and 2. Bundesliga scopes and
 requires no credential. `oefb_ical` supports only the private, permanently
 partial 2026/27 ÖFB-Cup scope and never derives removal evidence from absence.
+`nflverse` supports exactly one authoritative NFL 2026 regular-season job,
+requires no credential, and remains permanently partial and removal-ineligible.
 Keep the football-data.org token and opaque ÖFB feed URL in Portainer or another
 ignored operator secret store. See
 [source orchestration](source-orchestration.md).

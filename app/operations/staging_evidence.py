@@ -103,6 +103,10 @@ class CandidateAuthorityRequirement:
     expected_participant_mapping_count: int | None = None
     expected_stage_counts: tuple[tuple[str, int], ...] | None = None
     expected_round_counts: tuple[tuple[str, int], ...] | None = None
+    expected_round_keys: tuple[str, ...] | None = None
+    expected_unchanged_count: int | None = None
+    sport_key: str = "football"
+    season_key: str = "2026_27"
 
 
 PHASE_5_AUTHORITIES = {
@@ -177,6 +181,24 @@ PHASE_6_NATIONS_LEAGUE_A_AUTHORITIES = {
             ("group-a-3", 12),
             ("group-a-4", 12),
         ),
+    ),
+}
+
+PHASE_7_NFL_AUTHORITIES = {
+    **PHASE_6_NATIONS_LEAGUE_A_AUTHORITIES,
+    "nflverse-nfl-2026": CandidateAuthorityRequirement(
+        source_key="nflverse",
+        competition_key="nfl",
+        scope_kind="partial",
+        complete=False,
+        removal_eligible=False,
+        expected_fixture_count=272,
+        expected_participant_mapping_count=32,
+        expected_stage_counts=(("regular-season", 272),),
+        expected_round_keys=tuple(f"week-{week}" for week in range(1, 19)),
+        expected_unchanged_count=272,
+        sport_key="american_football",
+        season_key="2026",
     ),
 }
 
@@ -561,11 +583,21 @@ def validate_nations_league_a_candidate(evidence: StagingEvidence) -> None:
     )
 
 
+def validate_phase_7_nfl_candidate(evidence: StagingEvidence) -> None:
+    _validate_candidate(
+        evidence,
+        requirements=PHASE_7_NFL_AUTHORITIES,
+        candidate_name="Phase 7 NFL",
+        require_write_free_calendar_run=True,
+    )
+
+
 def _validate_candidate(
     evidence: StagingEvidence,
     *,
     requirements: Mapping[str, CandidateAuthorityRequirement],
     candidate_name: str,
+    require_write_free_calendar_run: bool = False,
 ) -> None:
     errors: list[str] = []
     if evidence.database_quick_check != "ok":
@@ -619,9 +651,9 @@ def _validate_candidate(
         authority = authorities.get(job_key)
         if authority is not None and (
             authority.source_key != source_key
-            or authority.sport_key != "football"
+            or authority.sport_key != requirement.sport_key
             or authority.competition_key != competition_key
-            or authority.season_key != "2026_27"
+            or authority.season_key != requirement.season_key
             or authority.role != "authoritative"
             or authority.interval_seconds != 21600
         ):
@@ -631,7 +663,7 @@ def _validate_candidate(
         if fixture_scope is not None:
             if fixture_scope.source_key != source_key:
                 errors.append(f"fixture source is invalid for {competition_key}")
-            if fixture_scope.season_key != "2026_27":
+            if fixture_scope.season_key != requirement.season_key:
                 errors.append(f"fixture season is invalid for {competition_key}")
             if fixture_scope.fixtures_total <= 0:
                 errors.append(f"fixture scope is empty for {competition_key}")
@@ -694,6 +726,10 @@ def _validate_candidate(
                 != dict(requirement.expected_round_counts)
             ):
                 errors.append(f"round counts are invalid for {competition_key}")
+            if requirement.expected_round_keys is not None and set(
+                fixture_scope.round_counts
+            ) != set(requirement.expected_round_keys):
+                errors.append(f"round coverage is invalid for {competition_key}")
 
         provider_run = provider_runs.get(job_key)
         if provider_run is None:
@@ -702,7 +738,7 @@ def _validate_candidate(
             provider_run.status != "completed"
             or provider_run.source_key != source_key
             or provider_run.competition_key != competition_key
-            or provider_run.season_key != "2026_27"
+            or provider_run.season_key != requirement.season_key
             or provider_run.authoritative is not True
             or provider_run.complete is not requirement.complete
             or provider_run.scope_kind != requirement.scope_kind
@@ -714,8 +750,41 @@ def _validate_candidate(
                 and provider_run.filtered is not requirement.filtered
             )
             or provider_run.items_failed != 0
+            or (
+                requirement.expected_unchanged_count is not None
+                and (
+                    provider_run.items_processed != requirement.expected_unchanged_count
+                    or provider_run.items_unchanged
+                    != requirement.expected_unchanged_count
+                    or provider_run.items_created != 0
+                    or provider_run.items_updated != 0
+                    or provider_run.items_cancelled != 0
+                    or provider_run.items_deleted != 0
+                    or provider_run.items_deferred != 0
+                )
+            )
         ):
             errors.append(f"latest provider run is invalid for {competition_key}")
+
+    if require_write_free_calendar_run:
+        calendar_run = next(
+            (run for run in evidence.recent_runs if run.run_type == "calendar_sync"),
+            None,
+        )
+        if calendar_run is None:
+            errors.append("recent calendar synchronization run is missing")
+        elif (
+            calendar_run.status != "completed"
+            or calendar_run.items_processed <= 0
+            or calendar_run.items_unchanged != calendar_run.items_processed
+            or calendar_run.items_created != 0
+            or calendar_run.items_updated != 0
+            or calendar_run.items_cancelled != 0
+            or calendar_run.items_deleted != 0
+            or calendar_run.items_deferred != 0
+            or calendar_run.items_failed != 0
+        ):
+            errors.append("latest calendar synchronization run is not write-free")
 
     if errors:
         raise StagingEvidenceValidationError("; ".join(errors))
@@ -779,6 +848,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             "be fully converged."
         ),
     )
+    validation_group.add_argument(
+        "--validate-phase-7-nfl-candidate",
+        action="store_true",
+        help=(
+            "Require the exact released Phase 6 authorities plus the permanently "
+            "partial NFL 2026 regular-season nflverse authority to be fully "
+            "converged."
+        ),
+    )
     arguments = parser.parse_args(argv)
 
     try:
@@ -790,6 +868,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             validate_phase_5_candidate(evidence)
         elif arguments.validate_nations_league_a_candidate:
             validate_nations_league_a_candidate(evidence)
+        elif arguments.validate_phase_7_nfl_candidate:
+            validate_phase_7_nfl_candidate(evidence)
     except (FileNotFoundError, RuntimeError, ValueError, sqlite3.Error) as error:
         parser.exit(status=1, message=f"staging evidence failed: {error}\n")
 
