@@ -186,6 +186,7 @@ Phase 6 decision records:
 - [Nations League source qualification](docs/uefa-nations-league-source-qualification.md)
 - [OpenLigaDB Nations League A selection ADR](docs/adr/0012-select-openligadb-for-nations-league-a.md)
 - [OpenLigaDB Nations League A import](docs/openligadb-nations-league-a-import.md)
+- [Public repository and runtime data safety](docs/public-repository-data-safety.md)
 - [Nations League A isolated staging validation](docs/nations-league-a-staging-validation.md)
 
 ### Database and Persistence
@@ -729,3 +730,11 @@ and
 ## License
 
 This project is licensed under the MIT License.
+
+The MIT License applies to the software, not to provider-derived runtime data,
+private Outlook content, generated databases, credentials, backups, or source
+documents. Before any repository visibility change, follow the
+[public-repository data-safety policy](docs/public-repository-data-safety.md)
+and run `python scripts/check_publication_safety.py`. Production source
+subscriptions must remain at EUR 0 recurring cost unless a future explicit
+operator decision changes that policy.

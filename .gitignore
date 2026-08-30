@@ -222,8 +222,24 @@ data/
 logs/
 *.db
 *.db-journal
+*.db-shm
+*.db-wal
 *.sqlite
 *.sqlite3
+
+# Private provider data and operator exports
+backups/
+exports/
+private/
+provider-data/
+raw-provider-data/
+manifests/private/
+*.ics
+*.ical
+*.p12
+*.pfx
+*.pem
+*.key
 
 # Local configuration and secrets
 .env.*
