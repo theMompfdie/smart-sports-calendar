@@ -7,6 +7,7 @@ from app.database.sports_repository import SportsRepository
 
 @dataclass(frozen=True)
 class SeasonCatalogEntry:
+    sport_key: str
     competition_key: str
     season_key: str
     name: str
@@ -17,6 +18,7 @@ class SeasonCatalogEntry:
 
 SEASON_CATALOG = (
     SeasonCatalogEntry(
+        sport_key="football",
         competition_key="premier_league",
         season_key="2026_27",
         name="2026/27",
@@ -24,6 +26,7 @@ SEASON_CATALOG = (
         end_date="2027-05-30",
     ),
     SeasonCatalogEntry(
+        sport_key="football",
         competition_key="bundesliga",
         season_key="2026_27",
         name="2026/27",
@@ -31,6 +34,7 @@ SEASON_CATALOG = (
         end_date="2027-05-22",
     ),
     SeasonCatalogEntry(
+        sport_key="football",
         competition_key="championship",
         season_key="2026_27",
         name="2026/27",
@@ -38,6 +42,7 @@ SEASON_CATALOG = (
         end_date="2027-05-01",
     ),
     SeasonCatalogEntry(
+        sport_key="football",
         competition_key="second_bundesliga",
         season_key="2026_27",
         name="2026/27",
@@ -45,6 +50,7 @@ SEASON_CATALOG = (
         end_date="2027-05-23",
     ),
     SeasonCatalogEntry(
+        sport_key="football",
         competition_key="dfb_pokal",
         season_key="2026_27",
         name="2026/27",
@@ -52,6 +58,7 @@ SEASON_CATALOG = (
         end_date="2027-05-29",
     ),
     SeasonCatalogEntry(
+        sport_key="football",
         competition_key="oefb_cup",
         season_key="2026_27",
         name="2026/27",
@@ -59,11 +66,20 @@ SEASON_CATALOG = (
         end_date="2027-06-30",
     ),
     SeasonCatalogEntry(
+        sport_key="football",
         competition_key="uefa_nations_league",
         season_key="2026_27",
         name="2026/27 League A group phase",
         start_date="2026-09-24",
         end_date="2026-11-17",
+    ),
+    SeasonCatalogEntry(
+        sport_key="american_football",
+        competition_key="nfl",
+        season_key="2026",
+        name="2026 regular season",
+        start_date="2026-09-09",
+        end_date="2027-01-10",
     ),
 )
 
@@ -73,15 +89,15 @@ def initialize_seasons_catalog(
     competitions_repository: CompetitionsRepository,
     sports_repository: SportsRepository,
 ) -> list[Season]:
-    football = sports_repository.get_by_key("football")
-
-    if football is None:
-        raise RuntimeError("Required sport not found for seasons catalog: football")
-
     seasons: list[Season] = []
     for entry in SEASON_CATALOG:
+        sport = sports_repository.get_by_key(entry.sport_key)
+        if sport is None:
+            raise RuntimeError(
+                f"Required sport not found for seasons catalog: {entry.sport_key}"
+            )
         competition = competitions_repository.get_by_key(
-            sport_id=football.id,
+            sport_id=sport.id,
             competition_key=entry.competition_key,
         )
         if competition is None:
