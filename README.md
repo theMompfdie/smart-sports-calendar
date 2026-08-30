@@ -186,6 +186,7 @@ Phase 6 decision records:
 - [Nations League source qualification](docs/uefa-nations-league-source-qualification.md)
 - [OpenLigaDB Nations League A selection ADR](docs/adr/0012-select-openligadb-for-nations-league-a.md)
 - [OpenLigaDB Nations League A import](docs/openligadb-nations-league-a-import.md)
+- [Nations League A isolated staging validation](docs/nations-league-a-staging-validation.md)
 
 ### Database and Persistence
 
@@ -597,7 +598,8 @@ delivery order and operational boundaries.
   [#170](https://github.com/theMompfdie/smart-sports-calendar/issues/170):
   OpenLigaDB is the selected EUR 0 authority for exactly the 48-fixture,
   16-participant League A group phase; Leagues B, C, and D and all later stages
-  remain excluded, and isolated live staging is still pending
+  remain excluded, and isolated live staging is tracked by
+  [#172](https://github.com/theMompfdie/smart-sports-calendar/issues/172)
 - European Championship Qualification
 
 The Champions League, Europa League, and Conference League were evaluated for
