@@ -30,6 +30,12 @@ from app.application.football_data_premier_league_service import (
     FootballDataCompetitionService,
     register_football_data_source,
 )
+from app.application.nflverse_competition_service import (
+    NflverseCompetitionService,
+    register_nflverse_source,
+)
+from app.application.nflverse_import_orchestrator import NflverseImportOrchestrator
+from app.application.nflverse_import_runtime_service import NflverseImportRuntimeService
 from app.application.oefb_ical_competition_service import (
     OefbIcalCompetitionService,
     register_oefb_ical_source,
@@ -99,6 +105,9 @@ from app.providers.football_data.profiles import (
     FootballDataCompetitionProfile,
     get_competition_profile,
 )
+from app.providers.nflverse.adapter import NflverseCompetitionAdapter
+from app.providers.nflverse.client import NflverseClient
+from app.providers.nflverse.profiles import NFL_2026_REGULAR_SEASON_PROFILE
 from app.providers.oefb_ical.adapter import OefbIcalCupAdapter
 from app.providers.oefb_ical.client import OefbIcalClient
 from app.providers.openligadb.adapter import OpenLigaDBCompetitionAdapter
@@ -217,6 +226,35 @@ class ApplicationContainer:
                 "The ÖFB iCalendar adapter supports exactly one authoritative "
                 "football/oefb_cup/2026_27 source job."
             )
+        active_nflverse_jobs = tuple(
+            job
+            for job in self.settings.source_jobs
+            if job.source_key == "nflverse" and job.enabled
+        )
+        if self.settings.nflverse.enabled != bool(active_nflverse_jobs):
+            raise SourceConfigurationError(
+                "NFLVERSE_ENABLED and the active nflverse source job must be "
+                "configured together."
+            )
+        if active_nflverse_jobs and (
+            len(active_nflverse_jobs) != 1
+            or active_nflverse_jobs[0].scope.sport_key != "american_football"
+            or active_nflverse_jobs[0].scope.competition_key != "nfl"
+            or active_nflverse_jobs[0].scope.season_key != "2026"
+            or active_nflverse_jobs[0].role is not SourceRole.AUTHORITATIVE
+        ):
+            raise SourceConfigurationError(
+                "The nflverse adapter supports exactly one authoritative "
+                "american_football/nfl/2026 source job."
+            )
+        if active_nflverse_jobs and (
+            active_nflverse_jobs[0].interval_seconds
+            < self.settings.nflverse.minimum_poll_interval_seconds
+        ):
+            raise SourceConfigurationError(
+                "The nflverse source job interval must not be shorter than "
+                "NFLVERSE_MINIMUM_POLL_INTERVAL_SECONDS."
+            )
         if active_oefb_ical_jobs and (
             active_oefb_ical_jobs[0].interval_seconds
             < self.settings.oefb_ical.minimum_poll_interval_seconds
@@ -291,6 +329,11 @@ class ApplicationContainer:
             fixture_import_repository=self.fixture_import_repository,
             source_key="oefb_ical",
         )
+        self.nflverse_fixture_import_service = ApiFootballFixtureImportService(
+            data_sources_repository=self.data_sources_repository,
+            fixture_import_repository=self.fixture_import_repository,
+            source_key="nflverse",
+        )
         self.sync_runs_repository = SyncRunsRepository(self.settings.database_path)
         self.graph_token_provider = GraphTokenProvider(
             tenant_id=self.settings.m365_tenant_id,
@@ -320,6 +363,41 @@ class ApplicationContainer:
         self.oefb_ical_client = (
             OefbIcalClient(settings=self.settings.oefb_ical)
             if self.settings.oefb_ical.enabled
+            else None
+        )
+        self.nflverse_client = (
+            NflverseClient(
+                max_attempts=self.settings.nflverse.max_attempts,
+                max_redirects=self.settings.nflverse.max_redirects,
+                connect_timeout_seconds=(
+                    self.settings.nflverse.connect_timeout_seconds
+                ),
+                read_timeout_seconds=self.settings.nflverse.read_timeout_seconds,
+            )
+            if self.settings.nflverse.enabled
+            else None
+        )
+        self.nflverse_adapter = (
+            NflverseCompetitionAdapter(
+                self.nflverse_client, NFL_2026_REGULAR_SEASON_PROFILE
+            )
+            if self.nflverse_client is not None
+            else None
+        )
+        self.nflverse_competition_service = (
+            NflverseCompetitionService(
+                adapter=self.nflverse_adapter,
+                sports_repository=self.sports_repository,
+                competitions_repository=self.competitions_repository,
+                seasons_repository=self.seasons_repository,
+                participants_repository=self.participants_repository,
+                profile=NFL_2026_REGULAR_SEASON_PROFILE,
+                settings=self.settings.nflverse,
+                season_participants_repository=self.season_participants_repository,
+                data_sources_repository=self.data_sources_repository,
+                source_mappings_repository=self.source_mappings_repository,
+            )
+            if self.nflverse_adapter is not None
             else None
         )
         self.oefb_ical_adapter = (
@@ -551,6 +629,28 @@ class ApplicationContainer:
             if self.oefb_ical_import_orchestrator is not None
             else None
         )
+        nflverse_job = next(iter(active_nflverse_jobs), None)
+        self.nflverse_import_orchestrator = (
+            NflverseImportOrchestrator(
+                competition_service=self.nflverse_competition_service,
+                import_service=self.nflverse_fixture_import_service,
+                sync_runs_repository=self.sync_runs_repository,
+                data_sources_repository=self.data_sources_repository,
+                job_definition=nflverse_job,
+            )
+            if self.nflverse_competition_service is not None
+            and nflverse_job is not None
+            else None
+        )
+        self.nflverse_import_runtime_service = (
+            NflverseImportRuntimeService(
+                orchestrator=self.nflverse_import_orchestrator,
+                sync_runs_repository=self.sync_runs_repository,
+                logger=self.logger,
+            )
+            if self.nflverse_import_orchestrator is not None
+            else None
+        )
         self.outlook_event_payload_builder = OutlookEventPayloadBuilder()
         self.event_synchronizer = EventSynchronizer(
             payload_builder=self.outlook_event_payload_builder,
@@ -601,6 +701,13 @@ class ApplicationContainer:
             self.source_registry.register(
                 "oefb_ical",
                 self._run_oefb_ical_source_job,
+                supported_roles=frozenset({SourceRole.AUTHORITATIVE}),
+                writes_canonical=True,
+            )
+        if self.nflverse_import_runtime_service is not None:
+            self.source_registry.register(
+                "nflverse",
+                self._run_nflverse_source_job,
                 supported_roles=frozenset({SourceRole.AUTHORITATIVE}),
                 writes_canonical=True,
             )
@@ -657,6 +764,11 @@ class ApplicationContainer:
                 settings=self.settings.oefb_ical,
                 repository=self.data_sources_repository,
             )
+        if self.settings.nflverse.enabled:
+            register_nflverse_source(
+                settings=self.settings.nflverse,
+                repository=self.data_sources_repository,
+            )
         self._persist_source_assignments()
         self.database.record_startup()
 
@@ -703,6 +815,10 @@ class ApplicationContainer:
         self.logger.info(
             "ÖFB iCalendar provider is %s",
             "enabled" if self.oefb_ical_client is not None else "disabled",
+        )
+        self.logger.info(
+            "nflverse provider is %s",
+            "enabled" if self.nflverse_client is not None else "disabled",
         )
 
         if self.settings.source_jobs:
@@ -790,6 +906,14 @@ class ApplicationContainer:
         if runtime is None:
             raise SourceConfigurationError(
                 "ÖFB iCalendar source job has no configured runtime."
+            )
+        return runtime.run()
+
+    def _run_nflverse_source_job(self) -> object | None:
+        runtime = self.nflverse_import_runtime_service
+        if runtime is None:
+            raise SourceConfigurationError(
+                "nflverse source job has no configured runtime."
             )
         return runtime.run()
 
