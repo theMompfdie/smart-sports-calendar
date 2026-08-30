@@ -192,6 +192,7 @@ PHASE_7_NFL_AUTHORITIES = {
         scope_kind="partial",
         complete=False,
         removal_eligible=False,
+        scope_stage="regular-season",
         expected_fixture_count=272,
         expected_participant_mapping_count=32,
         expected_stage_counts=(("regular-season", 272),),
