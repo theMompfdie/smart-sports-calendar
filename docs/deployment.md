@@ -132,6 +132,12 @@ The complete provider settings are:
 | `OPENLIGADB_RETRY_BASE_DELAY_SECONDS` | `1` | Positive finite first backoff delay |
 | `OPENLIGADB_RETRY_MAX_DELAY_SECONDS` | `30` | Positive finite cap, not lower than the base delay |
 | `OPENLIGADB_MINIMUM_REQUEST_INTERVAL_SECONDS` | `1` | Positive minimum spacing between public provider requests |
+| `NFLVERSE_ENABLED` | `false` | Enables the approved public nflverse NFL 2026 regular-season adapter; requires exactly one matching authoritative job |
+| `NFLVERSE_CONNECT_TIMEOUT_SECONDS` | `5` | Positive finite connection timeout |
+| `NFLVERSE_READ_TIMEOUT_SECONDS` | `30` | Positive finite response timeout |
+| `NFLVERSE_MAX_ATTEMPTS` | `3` | Positive bounded request-attempt count, maximum `10` |
+| `NFLVERSE_MAX_REDIRECTS` | `3` | Non-negative bounded redirect count, maximum `10` |
+| `NFLVERSE_MINIMUM_POLL_INTERVAL_SECONDS` | `21600` | Enforces the qualified minimum six-hour polling interval |
 | `OEFB_ICAL_ENABLED` | `false` | Enables the private official ÖFB-Cup iCalendar authority; requires its matching authoritative job |
 | `OEFB_ICAL_FEED_URL` | empty | Required only when enabled; opaque HTTPS subscription URL supplied through the deployment secret store and never logged |
 | `OEFB_ICAL_CONNECT_TIMEOUT_SECONDS` | `5` | Positive finite connection timeout |
@@ -149,6 +155,8 @@ and the Championship `REGULAR_SEASON` complete-stage scope. `openligadb`
 supports the authoritative 2026/27 DFB-Pokal and 2. Bundesliga scopes and
 requires no credential. `oefb_ical` supports only the private, permanently
 partial 2026/27 ÖFB-Cup scope and never derives removal evidence from absence.
+`nflverse` supports exactly one authoritative NFL 2026 regular-season job,
+requires no credential, and remains permanently partial and removal-ineligible.
 Keep the football-data.org token and opaque ÖFB feed URL in Portainer or another
 ignored operator secret store. See
 [source orchestration](source-orchestration.md).
@@ -323,6 +331,36 @@ Both new OpenLigaDB authorities are permanently removal-disabled. Missing or
 partial observations must preserve last-known-good canonical and Outlook state.
 Publication of the GitHub pre-release does not promote production; production
 promotion remains a separate explicit operator decision.
+
+### Upgrade from v0.6.0-beta.1 to v0.7.0-beta.1
+
+1. Stop the exact application stack and create a transactionally consistent
+   backup of its project-scoped `/data/sports.db` volume.
+2. Verify the backup with a private integrity record and `PRAGMA quick_check`,
+   then keep it outside the Docker volume and public artifacts.
+3. Review `.env.example`. Set `NFLVERSE_ENABLED=true` only together with one
+   authoritative `nflverse-nfl-2026` source job for
+   `american_football/nfl/2026` at an interval of at least 21,600 seconds.
+4. Keep the fixed nflverse URL unchanged. The source needs no credential. Do
+   not add preseason, postseason, another NFL writer, or an automatic fallback.
+5. Check out the verified signed `v0.7.0-beta.1` tag.
+6. Run `docker compose config --quiet` and resolve every missing or invalid
+   setting before starting the container.
+7. Run `docker compose up --detach --build` for exactly one instance attached
+   to the existing project-scoped volume and dedicated Outlook calendar.
+8. Verify startup health, schema `008_add_calendar_sync_revisions`, and exactly
+   nine enabled candidate authorities. Phase 7 adds no database migration.
+9. Require the NFL scope to contain exactly 272 active regular-season fixtures,
+   32 participant mappings, weeks 1–18, 272 synchronized calendar mappings,
+   and zero pending revisions.
+10. Require a completed unchanged nflverse run with 272 unchanged items and a
+    write-free calendar cycle. Validate with
+    `--validate-phase-7-nfl-candidate` before any promotion decision.
+
+The NFL authority is permanently partial and removal-disabled. Missing or
+failed observations preserve last-known-good state. NFL events without an
+explicit source end time use a three-hour fallback; association-football
+events retain the two-hour fallback. Publication does not modify production.
 
 ### Rollback
 

@@ -6,25 +6,28 @@
 
 **Current release:** `v0.6.0-beta.1`
 
+**Release candidate:** `v0.7.0-beta.1`
+
 **Development stage:** Beta
 
 **Completed phases:** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, and Phase 6
 
-**Latest delivery track:** Phase 6 UEFA competition expansion for
-`v0.6.0-beta.1`
-([tracker #150](https://github.com/theMompfdie/smart-sports-calendar/issues/150))
+**Latest delivery track:** Phase 7 NFL provider and 2026 regular-season
+delivery for `v0.7.0-beta.1`
+([tracker #178](https://github.com/theMompfdie/smart-sports-calendar/issues/178))
 
-**Automated tests:** 967 passing tests
+**Automated tests:** 1,048 passing tests
 
 The application foundation, persistent domain model, repository layer,
 Microsoft Graph integration, Outlook synchronization engine, and scheduled
 provider runtimes for the qualified Premier League, Bundesliga, EFL
 Championship regular season, DFB-Pokal, 2. Bundesliga, ÖFB-Cup, UEFA Nations
-League A group phase, and UEFA Champions League league phase are implemented
-and have passed isolated live staging.
+League A group phase, UEFA Champions League league phase, and NFL 2026 regular
+season are implemented and have passed isolated live staging.
 
-The beta includes provider-neutral source selection, eight approved 2026/27
-competition authorities, a hybrid UEFA lifecycle model, isolated
+The release candidate includes provider-neutral source selection, eight
+approved 2026/27 association-football authorities, one approved NFL 2026
+regular-season authority, hybrid UEFA and bounded NFL lifecycle models, isolated
 multi-instance deployment, and secret-safe live staging validation through
 Outlook. It remains a pre-release:
 production promotion is a separate explicit operator decision and is never
@@ -194,8 +197,17 @@ Phase 6 decision records:
 - [Nations League source qualification](docs/uefa-nations-league-source-qualification.md)
 - [OpenLigaDB Nations League A selection ADR](docs/adr/0012-select-openligadb-for-nations-league-a.md)
 - [OpenLigaDB Nations League A import](docs/openligadb-nations-league-a-import.md)
+- [Public repository and runtime data safety](docs/public-repository-data-safety.md)
 - [Nations League A isolated staging validation](docs/nations-league-a-staging-validation.md)
 - [v0.6.0-beta.1 release checklist](docs/v0.6.0-beta.1-release-checklist.md)
+
+Phase 7 decision records:
+
+- [NFL source qualification](docs/nfl-source-qualification.md)
+- [NFL authority selection ADR](docs/adr/0013-select-nflverse-for-nfl-regular-season.md)
+- [Phase 7 source and authority matrix](docs/phase-7-source-authority-matrix.md)
+- [Phase 7 isolated staging validation](docs/phase-7-staging-validation.md)
+- [v0.7.0-beta.1 release checklist](docs/v0.7.0-beta.1-release-checklist.md)
 
 ### Database and Persistence
 
@@ -613,8 +625,12 @@ delivery order and operational boundaries.
   remain excluded; isolated live staging, controlled failure/recovery, and
   backup/restore validation were completed in
   [#172](https://github.com/theMompfdie/smart-sports-calendar/issues/172)
-- UEFA EURO 2028 qualification is deferred to the separate December 2026
-  milestone after the 6 December draw; it is not part of this release
+- UEFA EURO 2028 qualification is tracked by
+  [#176](https://github.com/theMompfdie/smart-sports-calendar/issues/176) and
+  [#177](https://github.com/theMompfdie/smart-sports-calendar/issues/177), but
+  is explicitly deferred from `v0.6.0-beta.1`. Evidence is retained for a
+  post-draw recheck after 6 December 2026 and any implementation belongs to a
+  separately approved December release.
 
 The released Phase 6 subset is deliberately bounded to the Champions League
 league phase and Nations League A group phase. Europa League, Conference
@@ -623,11 +639,39 @@ Nations League stages remain outside `v0.6.0-beta.1`.
 
 ### Phase 7 – NFL Provider
 
-**Status:** _Planned for `v0.7.0-beta.1`; not included in the current release_
+**Status:** _Release candidate qualified; publication pending_ through
+[#178](https://github.com/theMompfdie/smart-sports-calendar/issues/178) and
+[#198](https://github.com/theMompfdie/smart-sports-calendar/issues/198).
 
-- NFL teams
-- regular season and playoffs
-- schedule updates
+- [#179](https://github.com/theMompfdie/smart-sports-calendar/issues/179)
+  qualifies the zero-cost nflverse schedule release for exactly the NFL 2026
+  regular season: 32 teams, 272 games, and weeks 1–18
+- the nflverse CSV transport, strict adapter, 32-team catalog, provider-neutral
+  runtime, SQLite import, scheduler integration, and Outlook synchronization
+  are implemented for exactly the approved scope
+- the authority remains non-destructive because late-season times are
+  subject to NFL flex scheduling and the community feed has no authoritative
+  snapshot-completeness marker
+- preseason and postseason remain separate, unqualified scopes
+- raw NFL/nflverse data, logos, databases, and Outlook exports remain outside
+  the public repository; generated events require nflverse and CC BY 4.0
+  attribution
+- NFL Outlook events without an explicit provider end time reserve a
+  deterministic three-hour calendar window; other sports retain the generic
+  two-hour fallback
+- deterministic SQLite-to-mocked-Graph coverage proves flex updates, restart,
+  failure/recovery, unchanged reruns, attribution, and duplicate prevention
+- isolated live staging accepted 272 fixtures and mappings, write-free reruns,
+  restart convergence, controlled failure/recovery, and an isolated readable
+  backup restore; production promotion remains separate and manual
+
+Qualification records:
+
+- [NFL source qualification](docs/nfl-source-qualification.md)
+- [Phase 7 source matrix](docs/phase-7-source-authority-matrix.md)
+- [ADR 0013](docs/adr/0013-select-nflverse-for-nfl-regular-season.md)
+- [Phase 7 staging record](docs/phase-7-staging-validation.md)
+- [Phase 7 release checklist](docs/v0.7.0-beta.1-release-checklist.md)
 
 ## Release History
 
@@ -642,6 +686,28 @@ Detailed Phase 5 beta release notes are available in
 
 Detailed Phase 6 beta release notes are available in
 [`RELEASE_NOTES_v0.6.0-beta.1.md`](RELEASE_NOTES_v0.6.0-beta.1.md).
+
+Phase 7 release-candidate notes are available in
+[`RELEASE_NOTES_v0.7.0-beta.1.md`](RELEASE_NOTES_v0.7.0-beta.1.md).
+
+### `v0.7.0-beta.1` (release candidate)
+
+- zero-cost nflverse authority for exactly 272 NFL 2026 regular-season games,
+  32 teams, and weeks 1–18
+- stable `game_id` correlation with Eastern-time normalization and safe NFL
+  flex-scheduling updates
+- permanently partial, removal-disabled lifecycle behavior that preserves
+  last-known-good SQLite and Outlook state on omissions or failures
+- visible nflverse CC BY 4.0 attribution and flex-scheduling notice in Outlook
+- deterministic three-hour NFL fallback duration while association football
+  retains the generic two-hour fallback
+- provider-neutral scheduling, SQLite persistence, Graph synchronization,
+  retry, restart, recovery, and unchanged-cycle idempotency coverage
+- isolated live staging and backup/restore acceptance without publishing raw
+  fixture data, private database content, or deployment identifiers
+- explicit exclusion of preseason, postseason, results, statistics, standings,
+  rosters, injuries, venues, weather, media, and logos
+- 1,048 passing automated tests
 
 ### `v0.6.0-beta.1`
 
@@ -745,11 +811,12 @@ The synchronization engine and scheduled provider-to-canonical-to-Outlook
 runtimes are covered by deterministic provider-payload-to-SQLite-to-mocked-
 Graph tests. Live provider and tenant validation remains an explicit,
 credential-safe manual activity and is never part of normal CI. See the
+[Phase 7 NFL staging record](docs/phase-7-staging-validation.md), the
 [Champions League staging record](docs/champions-league-staging-validation.md),
 the
 [Nations League staging record](docs/nations-league-a-staging-validation.md),
 and the
-[`docs/v0.6.0-beta.1-release-checklist.md`](docs/v0.6.0-beta.1-release-checklist.md).
+[`docs/v0.7.0-beta.1-release-checklist.md`](docs/v0.7.0-beta.1-release-checklist.md).
 
 ## Project Goals
 
@@ -765,3 +832,11 @@ and the
 ## License
 
 This project is licensed under the MIT License.
+
+The MIT License applies to the software, not to provider-derived runtime data,
+private Outlook content, generated databases, credentials, backups, or source
+documents. Before any repository visibility change, follow the
+[public-repository data-safety policy](docs/public-repository-data-safety.md)
+and run `python scripts/check_publication_safety.py`. Production source
+subscriptions must remain at EUR 0 recurring cost unless a future explicit
+operator decision changes that policy.

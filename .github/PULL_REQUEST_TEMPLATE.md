@@ -52,6 +52,9 @@ docker compose logs
 
 - [ ] No credentials, tokens, passwords, or certificates were committed
 - [ ] No production data was committed
+- [ ] Publication safety check passes
+- [ ] No raw provider payload, fixture inventory, database, backup, calendar
+  export, or private manifest was committed
 - [ ] The container continues to run as a non-root user
 - [ ] New environment variables are documented in `.env.example`
 - [ ] New dependencies have been reviewed

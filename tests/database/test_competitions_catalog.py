@@ -39,7 +39,7 @@ def test_initialize_competitions_catalog_creates_reviewed_competitions(
         sports_repository=sports_repository,
     )
 
-    assert len(competitions) == 8
+    assert len(competitions) == 9
 
     by_key = {competition.competition_key: competition for competition in competitions}
     premier_league = by_key["premier_league"]
@@ -49,6 +49,7 @@ def test_initialize_competitions_catalog_creates_reviewed_competitions(
     dfb_pokal = by_key["dfb_pokal"]
     oefb_cup = by_key["oefb_cup"]
     nations_league = by_key["uefa_nations_league"]
+    nfl = by_key["nfl"]
     champions_league = by_key["uefa_champions_league"]
     football = sports_repository.get_by_key("football")
 
@@ -125,6 +126,17 @@ def test_initialize_competitions_catalog_creates_reviewed_competitions(
     assert champions_league.metadata == {
         "region": "Europe",
         "calendar_category": "SMART | UEFA",
+    }
+    american_football = sports_repository.get_by_key("american_football")
+    assert american_football is not None
+    assert nfl.sport_id == american_football.id
+    assert nfl.name == "National Football League"
+    assert nfl.short_name == "NFL"
+    assert nfl.country_code == "US"
+    assert nfl.competition_type == "league"
+    assert nfl.metadata == {
+        "region": "United States",
+        "calendar_category": "SMART | NFL",
     }
 
 

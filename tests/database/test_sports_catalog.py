@@ -22,7 +22,7 @@ def test_initialize_sports_catalog_creates_football(
 
     sports = initialize_sports_catalog(repository)
 
-    assert len(sports) == 1
+    assert len(sports) == 2
 
     football = sports[0]
 
@@ -32,6 +32,11 @@ def test_initialize_sports_catalog_creates_football(
     assert football.metadata == {
         "category": "team_sport",
     }
+    american_football = sports[1]
+    assert american_football.sport_key == "american_football"
+    assert american_football.name == "American Football"
+    assert american_football.icon == "🏈"
+    assert american_football.metadata == {"category": "team_sport"}
 
 
 def test_initialize_sports_catalog_can_run_repeatedly(

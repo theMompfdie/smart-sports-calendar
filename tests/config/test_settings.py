@@ -58,6 +58,12 @@ def configure_required_environment(
         "OPENLIGADB_RETRY_BASE_DELAY_SECONDS",
         "OPENLIGADB_RETRY_MAX_DELAY_SECONDS",
         "OPENLIGADB_MINIMUM_REQUEST_INTERVAL_SECONDS",
+        "NFLVERSE_ENABLED",
+        "NFLVERSE_CONNECT_TIMEOUT_SECONDS",
+        "NFLVERSE_READ_TIMEOUT_SECONDS",
+        "NFLVERSE_MAX_ATTEMPTS",
+        "NFLVERSE_MAX_REDIRECTS",
+        "NFLVERSE_MINIMUM_POLL_INTERVAL_SECONDS",
         "OEFB_ICAL_ENABLED",
         "OEFB_ICAL_FEED_URL",
         "OEFB_ICAL_CONNECT_TIMEOUT_SECONDS",
@@ -68,6 +74,42 @@ def configure_required_environment(
         "OEFB_ICAL_MINIMUM_POLL_INTERVAL_SECONDS",
     ):
         monkeypatch.delenv(name, raising=False)
+
+
+def test_load_settings_validates_credential_free_nflverse_transport(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("NFLVERSE_ENABLED", "true")
+    monkeypatch.setenv("NFLVERSE_MAX_ATTEMPTS", "4")
+    monkeypatch.setenv("NFLVERSE_MAX_REDIRECTS", "2")
+
+    settings = load_settings().nflverse
+
+    assert settings.enabled is True
+    assert settings.max_attempts == 4
+    assert settings.max_redirects == 2
+    assert settings.minimum_poll_interval_seconds == 21600
+
+
+@pytest.mark.parametrize(
+    "name,value",
+    [
+        ("NFLVERSE_CONNECT_TIMEOUT_SECONDS", "0"),
+        ("NFLVERSE_READ_TIMEOUT_SECONDS", "nan"),
+        ("NFLVERSE_MAX_ATTEMPTS", "11"),
+        ("NFLVERSE_MAX_REDIRECTS", "-1"),
+        ("NFLVERSE_MINIMUM_POLL_INTERVAL_SECONDS", "3600"),
+    ],
+)
+def test_load_settings_rejects_unsafe_nflverse_limits(
+    monkeypatch: pytest.MonkeyPatch,
+    name: str,
+    value: str,
+) -> None:
+    monkeypatch.setenv(name, value)
+
+    with pytest.raises(ProviderConfigurationError, match=name):
+        load_settings()
 
 
 def test_load_settings_validates_football_data_authority_and_plan_limit(

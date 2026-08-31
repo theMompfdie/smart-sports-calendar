@@ -250,6 +250,7 @@ class ApiFootballFixtureImportService:
             city=fixture.city,
             source_updated_at=fixture.source_updated_at,
             metadata=fixture.metadata,
+            operator_notice=fixture.operator_notice,
             stage_kind=fixture.stage_kind,
             tie_key=fixture.tie_key,
             leg=fixture.leg,

@@ -12,5 +12,11 @@ def initialize_sports_catalog(
             metadata={
                 "category": "team_sport",
             },
-        )
+        ),
+        repository.upsert(
+            sport_key="american_football",
+            name="American Football",
+            icon="🏈",
+            metadata={"category": "team_sport"},
+        ),
     ]

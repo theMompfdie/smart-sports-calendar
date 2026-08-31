@@ -41,11 +41,28 @@ jobs:
 
       - name: Run Ruff linting
         run: |
-          ruff check app tests
+          ruff check app scripts tests
 
       - name: Check Ruff formatting
         run: |
-          ruff format --check app tests
+          ruff format --check app scripts tests
+
+  publication-safety:
+    name: Publication safety
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Reject tracked private runtime data and credentials
+        run: |
+          python scripts/check_publication_safety.py
 
   unit-tests:
     name: Unit tests

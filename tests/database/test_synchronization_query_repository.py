@@ -113,7 +113,10 @@ def test_get_by_event_id_returns_complete_event_aggregate(
         timezone="Europe/London",
         venue_name="Emirates Stadium",
         status="scheduled",
-        metadata={"provider_status": "NS"},
+        metadata={
+            "operator_notice": "Subject to schedule changes.",
+            "provider_status": "NS",
+        },
     )
 
     participants_repository = ParticipantsRepository(database_path)
@@ -195,6 +198,10 @@ def test_get_by_event_id_returns_complete_event_aggregate(
     assert synchronization_event.source_attribution == (
         "Football data provided by the Football-Data.org API"
     )
+    assert synchronization_event.operator_notice is not None
+    assert synchronization_event.operator_notice.text == (
+        "Subject to schedule changes."
+    )
 
     assert len(synchronization_event.participants) == 2
 
@@ -259,6 +266,31 @@ def test_get_by_event_id_supports_missing_optional_relationships(
     assert synchronization_event.statistics == ()
     assert synchronization_event.mapping is None
     assert synchronization_event.source_attribution is None
+    assert synchronization_event.operator_notice is None
+
+
+def test_get_by_event_id_rejects_invalid_canonical_operator_notice(
+    tmp_path: Path,
+) -> None:
+    database_path = create_database(tmp_path)
+    sport = SportsRepository(database_path).upsert(
+        sport_key="football",
+        name="Football",
+    )
+    event = SportsEventsRepository(database_path).upsert(
+        sport_id=sport.id,
+        event_key="invalid_operator_notice",
+        event_type="match",
+        title="Invalid notice event",
+        start_time="2026-08-21T19:00:00+00:00",
+        metadata={"operator_notice": "unsafe\nnotice"},
+    )
+
+    with pytest.raises(RuntimeError, match="operator notice is invalid"):
+        SynchronizationQueryRepository(database_path).get_by_event_id(
+            event_id=event.id,
+            calendar_id="calendar-1",
+        )
 
 
 def test_get_by_event_id_selects_mapping_for_requested_calendar(

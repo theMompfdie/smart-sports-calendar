@@ -17,6 +17,7 @@ from app.application.container import ApplicationContainer
 from app.config.settings import (
     ApiFootballSettings,
     FootballDataSettings,
+    NflverseSettings,
     OefbIcalSettings,
     OpenLigaDBSettings,
     Settings,
@@ -116,6 +117,45 @@ def oefb_ical_job(
         scope=SourceScope("football", competition_key, "2026_27"),
         interval_seconds=interval_seconds,
     )
+
+
+def nflverse_job(interval_seconds: int = 21600) -> SourceJobDefinition:
+    return SourceJobDefinition(
+        job_key="nflverse-nfl-2026",
+        source_key="nflverse",
+        role=SourceRole.AUTHORITATIVE,
+        scope=SourceScope("american_football", "nfl", "2026"),
+        interval_seconds=interval_seconds,
+    )
+
+
+def test_container_wires_nflverse_as_independent_source_job(tmp_path: Path) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        nflverse=NflverseSettings(enabled=True),
+        source_jobs=(nflverse_job(),),
+    )
+
+    container = ApplicationContainer(settings=settings)
+
+    assert container.nflverse_import_runtime_service is not None
+    source_job, calendar_job = container.scheduled_jobs
+    assert source_job.job_key == "nflverse-nfl-2026"
+    assert source_job.interval_seconds == 21600
+    assert calendar_job.job_key == "system:calendar-synchronization"
+
+
+def test_container_rejects_nflverse_poll_interval_below_policy(
+    tmp_path: Path,
+) -> None:
+    settings = replace(
+        create_settings(tmp_path / "sports.db"),
+        nflverse=NflverseSettings(enabled=True),
+        source_jobs=(nflverse_job(interval_seconds=3600),),
+    )
+
+    with pytest.raises(SourceConfigurationError, match="NFLVERSE_MINIMUM"):
+        ApplicationContainer(settings=settings)
 
 
 def test_container_requires_matching_football_data_job(tmp_path: Path) -> None:

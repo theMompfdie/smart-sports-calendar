@@ -1,0 +1,123 @@
+# v0.7.0-beta.1 – NFL Regular-Season Beta
+
+## Overview
+
+`v0.7.0-beta.1` adds one bounded American-football authority to the eight
+association-football authorities released through Phase 6. The new scope is
+exactly the NFL 2026 regular season from nflverse: 32 teams, 272 games, and
+weeks 1–18.
+
+This remains a beta pre-release. Publishing the tag and GitHub release does not
+promote production. Production promotion remains a separate explicit operator
+decision.
+
+## Added
+
+- a zero-credential, standard-library CSV client for the fixed nflverse
+  `schedules/games.csv` release asset;
+- strict NFL 2026 regular-season admission for exactly 272 unique `REG` games,
+  32 reviewed team mappings, and weeks 1–18;
+- stable nflverse `game_id` fixture correlation and secondary diagnostic IDs;
+- documented `America/New_York` kickoff interpretation with timezone-aware UTC
+  normalization and Europe/Vienna Outlook presentation;
+- provider-neutral nflverse source registration, configuration, scheduling,
+  SQLite import, run reporting, and Graph synchronization;
+- Outlook attribution to nflverse and CC BY 4.0 plus an explicit NFL
+  flex-scheduling notice;
+- a strict Phase 7 staging-evidence profile for the complete nine-authority
+  candidate; and
+- deterministic unit, repository, integration, mocked-Graph, failure,
+  recovery, restart, and idempotency coverage.
+
+## Behavior and safety
+
+- NFL observations are always `partial`, `complete=false`, and
+  `removal_eligible=false` even when all 272 games are present.
+- Missing, additional, malformed, duplicate, mixed-season, mixed-stage,
+  identity-changing, timezone-invalid, or unmapped observations fail closed.
+- Transport or provider failure preserves last-known-good canonical and Outlook
+  state and cannot create cancellation or deletion evidence.
+- A flexed date or kickoff updates the existing fixture and Outlook event by
+  stable `game_id` rather than creating a duplicate.
+- NFL events without a provider end time use a deterministic three-hour
+  fallback. Association football and other generic events retain the two-hour
+  fallback.
+- Exactly one authoritative NFL 2026 source job may be enabled, and its polling
+  interval cannot be shorter than six hours.
+
+## Source, attribution, and publication boundary
+
+nflverse publishes the selected schedules release under CC BY 4.0 and states
+that underlying NFL data remains subject to its respective owners' rights.
+This release therefore supports private SQLite and Outlook use only under the
+reviewed boundary.
+
+Generated NFL Outlook events visibly credit nflverse and link to the source and
+licence. This repository and its release artifacts do not include raw nflverse
+files, fixture inventories, participant schedules, databases, Outlook exports,
+calendar identifiers, NFL or team logos, or other provider media.
+
+The source adds no recurring cost and requires no API key. A source, licence,
+attribution, availability, or rights-boundary change requires disabling the job
+for review while preserving last-known-good state.
+
+## Isolated staging evidence
+
+The reconciled candidate passed isolated staging with:
+
+- exactly nine enabled authorities;
+- 2,088 active canonical events and synchronized calendar mappings;
+- zero pending calendar mapping revisions;
+- exactly 272 NFL fixtures, 32 participant mappings, 272 source fixture
+  mappings, and 272 synchronized Outlook mappings;
+- stage `regular-season=272` and weeks 1–18;
+- unchanged nflverse runs with 272 processed and 272 unchanged;
+- repeated write-free calendar synchronization cycles;
+- representative private Outlook checks for participants, Vienna time,
+  category, attribution, flex notice, metadata, and three-hour duration;
+- restart convergence without duplicate or lost mappings;
+- controlled provider failure and successful recovery; and
+- a byte-identical, SQLite-readable restore into an isolated recovery volume.
+
+Only sanitized aggregates and outcomes are retained publicly. The complete
+record is in
+[`docs/phase-7-staging-validation.md`](docs/phase-7-staging-validation.md).
+
+## Upgrade and deployment
+
+- Package version: `0.7.0b1`.
+- Phase 7 adds no database migration; schema
+  `008_add_calendar_sync_revisions` remains current.
+- Back up and verify the exact project-scoped database before upgrade.
+- Set `NFLVERSE_ENABLED=true` only with the single reviewed authoritative
+  `nflverse-nfl-2026` job and an interval of at least 21,600 seconds.
+- Drain calendar revisions and run the strict Phase 7 evidence gate before any
+  production-promotion decision.
+- Do not share writable volumes, databases, credentials, or Outlook calendars
+  between staging and production.
+
+See [`docs/deployment.md`](docs/deployment.md) and
+[`docs/v0.7.0-beta.1-release-checklist.md`](docs/v0.7.0-beta.1-release-checklist.md).
+
+## Excluded and deferred
+
+- NFL preseason and postseason;
+- scores, standings, statistics, betting data, rosters, injuries, venues,
+  weather, media, and logos;
+- automated NFL.com or ESPN retrieval;
+- paid fallback providers, automatic failover, or source aggregation;
+- Europa League, Conference League, UEFA EURO 2028 qualification, and every
+  other scope already deferred from Phase 6; and
+- automatic or implied production promotion.
+
+## Verification
+
+The release candidate is expected to pass:
+
+- Ruff lint and formatting;
+- 1,048 deterministic pytest tests;
+- Python compilation;
+- publication-safety validation;
+- Docker Compose rendering and image health validation;
+- three-instance configuration isolation; and
+- GitHub Actions for the release pull request.

@@ -9,6 +9,7 @@ from app.domain.competition_lifecycle import (
     FixtureParticipantResolution,
     TournamentStageKind,
 )
+from app.domain.operator_notice import OperatorNotice
 
 
 class SourceConfigurationError(ValueError):
@@ -125,6 +126,7 @@ class NormalizedFixture:
     stage_kind: TournamentStageKind | None = None
     tie_key: str | None = None
     leg: FixtureLeg | None = None
+    operator_notice: OperatorNotice | None = None
 
     def __post_init__(self) -> None:
         stage_kind = self._parse_optional_enum(
