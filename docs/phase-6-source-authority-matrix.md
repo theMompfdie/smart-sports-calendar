@@ -12,7 +12,10 @@ Conference League, and Nations League on 2026-08-29, and updated with the
 Champions League readiness observation and Nations League authority decision
 on 2026-08-30. The OpenLigaDB Champions League league-phase authority was
 qualified and staged on 2026-08-31, and the Europa League was deferred after
-fresh zero-cost availability checks on the same day. Provider coverage,
+fresh zero-cost availability checks on the same day. The Conference League
+was also deferred on 2026-08-31 because no zero-cost 2026/27 source was
+available and no recurring paid plan was approved. EURO 2028 qualification
+remains deferred to its December 2026 milestone. Provider coverage,
 terms, plans, competition formats, and season data can change. Every outcome
 requires a dated competition-specific qualification record before
 implementation.
@@ -31,9 +34,10 @@ season, but currently contains only qualifying/play-off fixtures. It remains
 the preferred zero-cost re-evaluation candidate. No paid provider is approved.
 
 The same main-boundary rule applies to the Conference League: league phase
-through final may be evaluated without requiring qualification. No Conference
-League provider or recurring-cost boundary is selected, and no zero-cost
-2026/27 automated candidate is currently observable.
+through final may be evaluated without requiring qualification. The operator
+deferred this competition from `v0.6.0-beta.1`; no provider or recurring-cost
+boundary is selected, and no zero-cost 2026/27 automated candidate is
+currently observable.
 
 For the Nations League, the active edition is 2026/27. The operator selected
 the zero-cost OpenLigaDB League A group-phase authority on 2026-08-30 after two
@@ -63,9 +67,9 @@ create credentials, or approve release inclusion.
 | --- | --- | --- | --- | --- | --- | --- |
 | UEFA Champions League | 2026/27 | Qualified | OpenLigaDB `ucl` / 4946, free and credential-free | Sole bounded league-phase authority when explicitly enabled | Exactly 144 league-phase fixtures and 36 participants; qualifying and all knockout stages excluded | [Champions League qualification](uefa-champions-league-source-qualification.md) |
 | UEFA Europa League | 2026/27 | Deferred | Footballdata.io free plan is the preferred re-evaluation candidate but its league phase is not ready; OpenLigaDB remains incomplete | Unassigned; runtime and release inclusion disabled | Excluded from `v0.6.0-beta.1`; league phase through final remains the future candidate boundary | [Europa League qualification](uefa-europa-league-source-qualification.md) |
-| UEFA Conference League | 2026/27 | Conditional | No zero-cost 2026/27 candidate currently exists; Sportmonks league 2286 and football-data.org `UCL` / 2154 are paid alternatives pending operator decision | Unassigned pending source, cost, and live qualification | League phase through final is the approved candidate boundary; qualification is separate and optional | [Conference League qualification](uefa-conference-league-source-qualification.md) |
+| UEFA Conference League | 2026/27 | Deferred | No zero-cost 2026/27 candidate currently exists; Sportmonks league 2286 and football-data.org `UCL` / 2154 remain paid future alternatives | Unassigned; runtime and release inclusion disabled | Excluded from `v0.6.0-beta.1`; league phase through final remains the future candidate boundary | [Conference League qualification](uefa-conference-league-source-qualification.md) |
 | UEFA Nations League | 2026/27 | Qualified | OpenLigaDB `nla` / 5978, free and credential-free; selected 2026-08-30 | Sole bounded League A group-phase authority when explicitly enabled | Exactly 48 League A group-phase fixtures and 16 participants; B/C/D and all later stages excluded | [Nations League qualification](uefa-nations-league-source-qualification.md) |
-| UEFA European Championship Qualification | Exact active cycle pending | Pending | Not evaluated for Phase 6 | Unassigned | Not approved | Future competition track |
+| UEFA European Championship Qualification | EURO 2028 cycle | Deferred | Re-evaluate after the 6 December 2026 draw | Unassigned; runtime and release inclusion disabled | Excluded from `v0.6.0-beta.1`; tracked by the December 2026 milestone | [Delivery track #176](https://github.com/theMompfdie/smart-sports-calendar/issues/176) |
 
 ## Champions League candidate summary
 
@@ -179,12 +183,13 @@ The Footballdata.io and OpenLigaDB observations on 2026-08-31 were
 structurally incomplete and are not qualification evidence. Qualification
 remains separate and non-blocking.
 
-## Conference League operator decision and required next gate
+## Conference League operator decision and re-evaluation gate
 
-The operator-approved UEFA club-competition boundary permits the 2026/27
+The operator-approved UEFA club-competition boundary permits a future 2026/27
 Conference League track to begin with the league phase. Qualification is a
-separate optional scope and cannot supply cross-scope removal evidence. No
-provider, paid plan, trial, registration, or authority is approved.
+separate optional scope and cannot supply cross-scope removal evidence. On
+2026-08-31 the operator deferred the competition from `v0.6.0-beta.1`: no
+provider, paid plan, trial, registration, authority, or runtime is approved.
 
 The Conference League track cannot create credentialed-validation or
 implementation work until:
@@ -192,8 +197,7 @@ implementation work until:
 1. the finalized UEFA league-phase calendar has propagated;
 2. the operator selects an acceptable source and recurring-cost boundary:
    wait for a credible OpenLigaDB entry at EUR 0, approve Sportmonks at the
-   then-current price, approve football-data.org at the then-current price, or
-   defer;
+   then-current price, or approve football-data.org at the then-current price;
 3. the selected main competition exposes the 2026/27 season and two sanitized
    observations prove 36 participants, 108 league-phase fixtures, stable
    identity, structure, pagination, update behavior, and reproducible

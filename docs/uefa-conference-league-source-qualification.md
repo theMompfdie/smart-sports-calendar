@@ -2,17 +2,17 @@
 
 ## Status
 
-**Conditional for `v0.6.0-beta.1`: no authoritative writer is assigned. The
-operator-approved UEFA club-competition boundary permits a 2026/27 release
+**Deferred from `v0.6.0-beta.1`: no authoritative writer is assigned. The
+operator-approved UEFA club-competition boundary permits a future 2026/27
 scope from the league phase through the final, with qualification kept as an
 optional separate scope. No zero-cost 2026/27 automated candidate is currently
-observable. Sportmonks and football-data.org require an explicit paid-source
-decision.**
+observable, and the operator did not approve a recurring paid source.**
 
-This record was reviewed on 2026-08-29 for issue #161. It applies the hybrid
-tournament contract completed in #151. It does not register an account, start
-a trial, approve payment, accept provider terms, assign an authority, enable a
-catalog entry, or authorize runtime collection.
+This record was reviewed on 2026-08-29 for issue #161 and finalized with the
+operator's deferral decision on 2026-08-31. It applies the hybrid tournament
+contract completed in #151. It does not register an account, start a trial,
+approve payment, accept provider terms, assign an authority, enable a catalog
+entry, or authorize runtime collection.
 
 Qualification remains fail-closed. Public catalog observations recorded here
 contain no credentials, private payloads, team names, or individual provider
@@ -198,11 +198,12 @@ documented complete-pagination contract. OpenFootball does not publish a
 current Conference League fixture dataset with provider-grade stable fixture
 IDs and lifecycle coverage. Neither can qualify the 108-fixture league phase.
 
-## Conditional decision
+## Deferred decision
 
 No authoritative writer is assigned for `uefa_conference_league` / `2026_27`.
-Implementation, credential use, paid registration, and source assignment are
-blocked until the operator chooses one of these paths:
+The operator deferred the competition from `v0.6.0-beta.1` on 2026-08-31.
+Implementation, credential use, paid registration, and source assignment
+remain blocked until a later release explicitly reopens one of these paths:
 
 1. **Zero-cost path — wait for an OpenLigaDB 2026/27 entry.** No candidate
    exists today. A later entry could reuse the existing adapter, but would
@@ -214,16 +215,17 @@ blocked until the operator chooses one of these paths:
 3. **football-data.org paid path — EUR 199/month.** This reuses the existing
    provider integration and cleanly separates `UCL` from `COLQ`, but its cost
    is substantially higher and 2026/27 has not reached the public catalog.
-4. **Defer Conference League.** Preserve the current unassigned state until a
-   permitted source satisfies the operator's cost and evidence boundary.
+4. **Keep Conference League deferred.** Preserve the current unassigned state
+   until a permitted source satisfies the operator's cost and evidence
+   boundary.
 
 API-Football is not an approvable option without separate UEFA rights
 clearance. An operator selection authorizes only the next qualification gate,
 not authority assignment or implementation.
 
-## Required next gate
+## Re-evaluation gate
 
-Before a credentialed-validation or implementation issue can be created:
+Before a later credentialed-validation or implementation issue can be created:
 
 1. UEFA's finalized league-phase calendar must be published and propagated;
 2. the operator selects the acceptable cost and provider path;
