@@ -459,9 +459,7 @@ def _validate_complete_swiss_league_phase(
                 "A league-phase matchday does not contain every participant."
             )
     if len(undirected_pairings) != expected_fixtures:
-        raise OpenLigaDBIntegrityError(
-            "League-phase opponents are not unique."
-        )
+        raise OpenLigaDBIntegrityError("League-phase opponents are not unique.")
 
 
 def _parse_team(payload: Mapping[str, Any]) -> OpenLigaDBTeam:

@@ -29,10 +29,7 @@ def test_reviewed_nations_league_mapping_uses_names_without_provider_ids() -> No
 def test_reviewed_champions_league_mapping_has_36_distinct_identities() -> None:
     assert len(CHAMPIONS_LEAGUE_TEAM_MAPPINGS) == 36
     assert len(get_reviewed_team_keys("uefa_champions_league")) == 36
-    assert (
-        resolve_team_key("uefa_champions_league", 1217, "AEK Athen")
-        == "aek_athens"
-    )
+    assert resolve_team_key("uefa_champions_league", 1217, "AEK Athen") == "aek_athens"
     assert resolve_team_key("uefa_champions_league", 1217, "AEK Athens") is None
 
 

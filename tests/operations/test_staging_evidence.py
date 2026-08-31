@@ -42,6 +42,7 @@ from app.operations.staging_evidence import (
     collect_staging_evidence,
     main,
     render_staging_evidence,
+    validate_champions_league_candidate,
     validate_nations_league_a_candidate,
     validate_phase_5_candidate,
 )
@@ -280,6 +281,82 @@ def nations_league_a_candidate_evidence() -> StagingEvidence:
                 filtered=True,
             ),
             *phase_5.recent_runs,
+        ),
+    )
+
+
+def champions_league_candidate_evidence() -> StagingEvidence:
+    nations_league = nations_league_a_candidate_evidence()
+    fixture_count = 144
+    total_fixtures = nations_league.sports_events + fixture_count
+    return replace(
+        nations_league,
+        sports_events=total_fixtures,
+        active_authorities=(
+            *nations_league.active_authorities,
+            SafeAuthoritySummary(
+                job_key="openligadb-uefa-champions-league",
+                source_key="openligadb",
+                sport_key="football",
+                competition_key="uefa_champions_league",
+                season_key="2026_27",
+                role="authoritative",
+                interval_seconds=21600,
+            ),
+        ),
+        fixture_scopes=(
+            *nations_league.fixture_scopes,
+            SafeFixtureScopeSummary(
+                source_key="openligadb",
+                competition_key="uefa_champions_league",
+                season_key="2026_27",
+                fixtures_total=fixture_count,
+                fixtures_active=fixture_count,
+                fixtures_deleted=0,
+                source_event_mappings=fixture_count,
+                source_event_ids_sha256="8" * 64,
+                calendar_mappings=fixture_count,
+                calendar_targets=1,
+                calendar_mapping_status_counts={"synced": fixture_count},
+                earliest_start_utc="2026-09-08T16:45:00+00:00",
+                latest_start_utc="2027-01-27T20:00:00+00:00",
+                latest_source_update_utc="2026-08-31T07:00:00+00:00",
+                status_counts={"scheduled": fixture_count},
+                source_participant_mappings=36,
+                stage_counts={"league_phase": fixture_count},
+                round_counts={f"matchday-{order}": 18 for order in range(1, 9)},
+            ),
+        ),
+        calendar_mappings_by_status={"synced": total_fixtures},
+        recent_runs=(
+            SafeRunSummary(
+                id=8,
+                run_type="provider_import",
+                started_at="2026-08-31T07:00:00+00:00",
+                finished_at="2026-08-31T07:01:00+00:00",
+                status="completed",
+                items_processed=fixture_count,
+                items_created=0,
+                items_updated=0,
+                items_unchanged=fixture_count,
+                items_cancelled=0,
+                items_deleted=0,
+                items_deferred=0,
+                items_failed=0,
+                source_key="openligadb",
+                job_key="openligadb-uefa-champions-league",
+                competition_key="uefa_champions_league",
+                season_key="2026_27",
+                authoritative=True,
+                complete=False,
+                scope_kind="partial",
+                removal_eligible=False,
+                error_category=None,
+                scope_stage="league_phase",
+                scope_stage_kind="league_phase",
+                filtered=True,
+            ),
+            *nations_league.recent_runs,
         ),
     )
 
@@ -771,6 +848,93 @@ def test_validate_nations_league_a_candidate_rejects_wrong_scope_aggregates(
         )
 
 
+def test_validate_champions_league_candidate_accepts_converged_evidence() -> None:
+    validate_champions_league_candidate(champions_league_candidate_evidence())
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    (
+        lambda run: replace(run, filtered=False),
+        lambda run: replace(run, complete=True),
+        lambda run: replace(run, removal_eligible=True),
+        lambda run: replace(run, scope_stage=None),
+        lambda run: replace(run, scope_stage_kind=None),
+    ),
+)
+def test_validate_champions_league_candidate_rejects_unsafe_run_scope(
+    mutate: Callable[[SafeRunSummary], SafeRunSummary],
+) -> None:
+    evidence = champions_league_candidate_evidence()
+    champions_run = evidence.recent_runs[0]
+
+    with pytest.raises(
+        StagingEvidenceValidationError,
+        match="latest provider run is invalid",
+    ):
+        validate_champions_league_candidate(
+            replace(
+                evidence,
+                recent_runs=(
+                    mutate(champions_run),
+                    *evidence.recent_runs[1:],
+                ),
+            )
+        )
+
+
+def test_validate_champions_league_candidate_requires_exact_authority_set() -> None:
+    evidence = champions_league_candidate_evidence()
+
+    with pytest.raises(
+        StagingEvidenceValidationError,
+        match="enabled authoritative jobs do not match the Phase 6 Champions League",
+    ):
+        validate_champions_league_candidate(
+            replace(evidence, active_authorities=evidence.active_authorities[:-1])
+        )
+
+
+@pytest.mark.parametrize(
+    ("mutate", "message"),
+    (
+        (
+            lambda scope: replace(scope, fixtures_total=143),
+            "fixture count is invalid",
+        ),
+        (
+            lambda scope: replace(scope, source_participant_mappings=35),
+            "participant mapping count is invalid",
+        ),
+        (
+            lambda scope: replace(scope, stage_counts={}),
+            "stage counts are invalid",
+        ),
+        (
+            lambda scope: replace(scope, round_counts={"matchday-1": 144}),
+            "round counts are invalid",
+        ),
+    ),
+)
+def test_validate_champions_league_candidate_rejects_wrong_scope_aggregates(
+    mutate: Callable[[SafeFixtureScopeSummary], SafeFixtureScopeSummary],
+    message: str,
+) -> None:
+    evidence = champions_league_candidate_evidence()
+    champions_scope = evidence.fixture_scopes[-1]
+
+    with pytest.raises(StagingEvidenceValidationError, match=message):
+        validate_champions_league_candidate(
+            replace(
+                evidence,
+                fixture_scopes=(
+                    *evidence.fixture_scopes[:-1],
+                    mutate(champions_scope),
+                ),
+            )
+        )
+
+
 def test_collect_staging_evidence_rejects_invalid_input(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         collect_staging_evidence(tmp_path / "missing.db")
@@ -807,6 +971,32 @@ def test_main_selects_nations_league_a_candidate_validation(
             "--database",
             str(database_path),
             "--validate-nations-league-a-candidate",
+        ]
+    )
+
+    assert result == 0
+    assert len(validated) == 1
+    assert json.loads(capsys.readouterr().out)["database_quick_check"] == "ok"
+
+
+def test_main_selects_champions_league_candidate_validation(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database_path = create_database(tmp_path)
+    validated: list[StagingEvidence] = []
+    monkeypatch.setattr(
+        staging_evidence,
+        "validate_champions_league_candidate",
+        validated.append,
+    )
+
+    result = main(
+        [
+            "--database",
+            str(database_path),
+            "--validate-champions-league-candidate",
         ]
     )
 

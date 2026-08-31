@@ -183,6 +183,7 @@ Phase 6 decision records:
 - [Champions League source qualification](docs/uefa-champions-league-source-qualification.md)
 - [OpenLigaDB Champions League selection ADR](docs/adr/0013-select-openligadb-for-champions-league-league-phase.md)
 - [OpenLigaDB Champions League import](docs/openligadb-champions-league-import.md)
+- [Champions League isolated staging validation](docs/champions-league-staging-validation.md)
 - [Europa League source qualification](docs/uefa-europa-league-source-qualification.md)
 - [Conference League source qualification](docs/uefa-conference-league-source-qualification.md)
 - [Nations League source qualification](docs/uefa-nations-league-source-qualification.md)
@@ -573,11 +574,11 @@ delivery order and operational boundaries.
   [#153](https://github.com/theMompfdie/smart-sports-calendar/issues/153)
 - zero-cost source qualification tracked by
   [#154](https://github.com/theMompfdie/smart-sports-calendar/issues/154):
-  football-data.org is the operator-selected conditional candidate for the
-  league phase and later stages; the 2026/27 qualifying rounds are explicitly
-  excluded; UEFA has published all 144 league-phase fixtures, while the
-  football-data.org free scope currently exposes the correct season and 36
-  teams but no fixtures, so authority remains unassigned
+  OpenLigaDB `ucl` / 4946 is qualified for exactly the 144-fixture, 36-club
+  league phase with permanent removal-disabled handling; qualifying and all
+  knockout stages remain excluded; football-data.org issue
+  [#155](https://github.com/theMompfdie/smart-sports-calendar/issues/155)
+  remains only an optional verification or future alternative-source track
 - UEFA Europa League 2026/27 delivery tracked by
   [#157](https://github.com/theMompfdie/smart-sports-calendar/issues/157),
   with active source qualification in

@@ -893,9 +893,7 @@ def test_main_selects_champions_league(
     )
 
     assert (
-        qualification.main(
-            ["--competition", CHAMPIONS_LEAGUE_LEAGUE_PHASE_PROFILE.key]
-        )
+        qualification.main(["--competition", CHAMPIONS_LEAGUE_LEAGUE_PHASE_PROFILE.key])
         == 0
     )
     assert json.loads(capsys.readouterr().out)["league_id"] == 4946

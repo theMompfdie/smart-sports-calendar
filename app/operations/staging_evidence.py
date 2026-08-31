@@ -180,6 +180,24 @@ PHASE_6_NATIONS_LEAGUE_A_AUTHORITIES = {
     ),
 }
 
+PHASE_6_CHAMPIONS_LEAGUE_AUTHORITIES = {
+    **PHASE_6_NATIONS_LEAGUE_A_AUTHORITIES,
+    "openligadb-uefa-champions-league": CandidateAuthorityRequirement(
+        source_key="openligadb",
+        competition_key="uefa_champions_league",
+        scope_kind="partial",
+        complete=False,
+        removal_eligible=False,
+        expected_fixture_count=144,
+        scope_stage="league_phase",
+        scope_stage_kind="league_phase",
+        filtered=True,
+        expected_participant_mapping_count=36,
+        expected_stage_counts=(("league_phase", 144),),
+        expected_round_counts=tuple((f"matchday-{order}", 18) for order in range(1, 9)),
+    ),
+}
+
 
 def collect_staging_evidence(
     database_path: Path,
@@ -561,6 +579,14 @@ def validate_nations_league_a_candidate(evidence: StagingEvidence) -> None:
     )
 
 
+def validate_champions_league_candidate(evidence: StagingEvidence) -> None:
+    _validate_candidate(
+        evidence,
+        requirements=PHASE_6_CHAMPIONS_LEAGUE_AUTHORITIES,
+        candidate_name="Phase 6 Champions League",
+    )
+
+
 def _validate_candidate(
     evidence: StagingEvidence,
     *,
@@ -779,6 +805,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             "be fully converged."
         ),
     )
+    validation_group.add_argument(
+        "--validate-champions-league-candidate",
+        action="store_true",
+        help=(
+            "Require the exact Nations League A candidate authorities plus the "
+            "permanently partial and filtered UEFA Champions League league-phase "
+            "authority to be fully converged."
+        ),
+    )
     arguments = parser.parse_args(argv)
 
     try:
@@ -790,6 +825,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             validate_phase_5_candidate(evidence)
         elif arguments.validate_nations_league_a_candidate:
             validate_nations_league_a_candidate(evidence)
+        elif arguments.validate_champions_league_candidate:
+            validate_champions_league_candidate(evidence)
     except (FileNotFoundError, RuntimeError, ValueError, sqlite3.Error) as error:
         parser.exit(status=1, message=f"staging evidence failed: {error}\n")
 

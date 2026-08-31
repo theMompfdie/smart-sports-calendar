@@ -115,8 +115,7 @@ class OpenLigaDBQualificationProfile:
                 self.expected_fixture_count is None
                 or self.expected_participant_count is None
                 or self.expected_participant_count % 2
-                or set(included_capacities)
-                != {self.expected_participant_count // 2}
+                or set(included_capacities) != {self.expected_participant_count // 2}
                 or sum(included_capacities) != self.expected_fixture_count
             ):
                 raise ValueError(

@@ -56,3 +56,6 @@ Isolated staging against the dedicated staging SQLite database and Outlook
 calendar remains a release gate. Live payloads, databases, exports, and logs
 containing complete fixture inventories must not be committed or attached to
 public CI or release artifacts.
+
+The operator procedure is documented in
+[`champions-league-staging-validation.md`](champions-league-staging-validation.md).
