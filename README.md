@@ -576,16 +576,18 @@ delivery order and operational boundaries.
   [#154](https://github.com/theMompfdie/smart-sports-calendar/issues/154):
   OpenLigaDB `ucl` / 4946 is qualified for exactly the 144-fixture, 36-club
   league phase with permanent removal-disabled handling; qualifying and all
-  knockout stages remain excluded; football-data.org issue
+  knockout stages remain excluded; isolated live staging passed, and the
+  superseded football-data.org issue
   [#155](https://github.com/theMompfdie/smart-sports-calendar/issues/155)
-  remains only an optional verification or future alternative-source track
+  was closed without using the credential for UCL
 - UEFA Europa League 2026/27 delivery tracked by
   [#157](https://github.com/theMompfdie/smart-sports-calendar/issues/157),
-  with active source qualification in
+  with completed source qualification in
   [#158](https://github.com/theMompfdie/smart-sports-calendar/issues/158): the
-  candidate release boundary begins with the league phase, qualification may
-  remain a separate optional scope, OpenLigaDB is currently incomplete, and
-  no paid provider or authority is approved
+  competition is deferred from `v0.6.0-beta.1` because OpenLigaDB still exposes
+  only 16 of 144 league-phase fixtures and a configured free football-data.org
+  credential cannot access `EL` / 2146; no paid provider or authority is
+  approved
 - UEFA Conference League 2026/27 delivery tracked by
   [#160](https://github.com/theMompfdie/smart-sports-calendar/issues/160),
   with active source qualification in

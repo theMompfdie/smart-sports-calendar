@@ -2,17 +2,16 @@
 
 ## Status
 
-**Conditional for `v0.6.0-beta.1`: no authoritative writer is assigned. The
-operator approved a possible 2026/27 release boundary from the league phase
-through the final, with qualifying kept as an optional separate scope. The
-current zero-cost OpenLigaDB candidate is structurally incomplete, while the
-technically viable football-data.org and Sportmonks paths require an explicit
-paid-source decision.**
+**Deferred from `v0.6.0-beta.1`: no authoritative writer is assigned. A
+2026-08-31 re-observation confirmed that the zero-cost OpenLigaDB candidate is
+still structurally incomplete and that a configured free football-data.org
+account cannot access `EL` / 2146. No paid source is approved for this
+release.**
 
-This record was reviewed on 2026-08-29 for issue #158. It applies the hybrid
-tournament contract completed in #151. It does not register an account, start
-a trial, approve payment, accept provider terms, assign an authority, enable a
-catalog entry, or authorize runtime collection.
+This record was reviewed on 2026-08-29 and re-observed on 2026-08-31 for issue
+#158. It applies the hybrid tournament contract completed in #151. It does not
+start a trial, approve payment, assign an authority, enable a catalog entry,
+or authorize runtime collection.
 
 Qualification remains fail-closed. Public catalog observations recorded here
 contain no credentials, private payloads, team names, or individual provider
@@ -113,6 +112,19 @@ A sanitized read-only observation at `2026-08-29T10:37:36Z` returned:
   and `Finale`), omitting knockout phase play-offs and round of 16; and
 - zero finished fixtures.
 
+A second readiness observation at `2026-08-31T12:03:53Z` still returned only:
+
+- 16 fixtures with 16 unique fixture IDs;
+- 15 unique participants rather than the required 36;
+- league-phase kickoffs spanning only 16 September through 22 October 2026;
+- the same four configured groups, still omitting the knockout phase play-offs
+  and round of 16; and
+- no fixtures in the configured quarter-final, semi-final, or final groups.
+
+The participant count changed from 14 to 15 while the fixture inventory
+remained at 16. This confirms active but incomplete community maintenance, not
+a stable or complete league-phase snapshot.
+
 This observation occurred on the morning after UEFA's 28 August league-phase
 draw, before the finalized dated fixture list had propagated across the
 reviewed provider catalogs. It is therefore classified as `not ready`, not as
@@ -162,6 +174,13 @@ The existing one-application, credential secrecy, visible attribution,
 availability disclaimer, cancellation cleanup, and separate logo-rights
 conditions apply.
 
+On 2026-08-31 the operator authorized one secret-safe, read-only availability
+check with an existing free credential. The documented `EL` / 2146 competition
+endpoint returned HTTP 403. The validator stopped immediately, made no fixture
+or participant requests, emitted no private payload or account data, and did
+not persist the credential. The free account therefore cannot supply the main
+Europa League competition under the current plan boundary.
+
 ### Sportmonks Football API v3
 
 Sportmonks documents Europa League as league ID `5`. Its published model covers
@@ -200,11 +219,15 @@ documented complete-pagination contract. OpenFootball does not publish a
 current Europa League fixture dataset with provider-grade stable fixture IDs
 and lifecycle coverage. Neither can qualify the 144-fixture league phase.
 
-## Conditional decision
+## Deferred decision
 
 No authoritative writer is assigned for `uefa_europa_league` / `2026_27`.
-Implementation, credential use, paid registration, and source assignment are
-blocked until the operator chooses one of these paths:
+The operator deferred Europa League from `v0.6.0-beta.1` on 2026-08-31 because
+neither reviewed zero-cost path can supply the required 36-participant,
+144-fixture league phase and no recurring paid source is approved for this
+release.
+
+The evaluated paths remain:
 
 1. **Zero-cost path — wait and re-observe OpenLigaDB.** This avoids a new
    subscription and reuses the existing adapter, but current data is severely
@@ -217,14 +240,15 @@ blocked until the operator chooses one of these paths:
 3. **Sportmonks paid path — from EUR 29/month.** This has the strongest
    documented hybrid model and lower starting price, but requires a credit
    card-backed trial, a new adapter, and full live/contractual qualification.
-4. **Defer Europa League.** Preserve the current unassigned state until a
-   permitted source satisfies the operator's cost and evidence boundary.
+4. **Defer Europa League — selected for `v0.6.0-beta.1`.** Preserve the current
+   unassigned state until a permitted source satisfies the operator's cost and
+   evidence boundary.
 
 API-Football is not an approvable option without separate UEFA rights
 clearance. An operator selection authorizes only the next qualification gate,
 not authority assignment or implementation.
 
-## Required next gate
+## Required re-evaluation gate
 
 Before a credentialed-validation or implementation issue can be created:
 
