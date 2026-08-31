@@ -65,6 +65,13 @@ SEASON_CATALOG = (
         start_date="2026-09-24",
         end_date="2026-11-17",
     ),
+    SeasonCatalogEntry(
+        competition_key="uefa_champions_league",
+        season_key="2026_27",
+        name="2026/27 league phase",
+        start_date="2026-09-08",
+        end_date="2027-01-27",
+    ),
 )
 
 

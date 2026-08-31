@@ -181,6 +181,8 @@ Phase 6 decision records:
 - [hybrid UEFA lifecycle ADR](docs/adr/0011-model-hybrid-uefa-lifecycle.md)
 - [source and authority matrix](docs/phase-6-source-authority-matrix.md)
 - [Champions League source qualification](docs/uefa-champions-league-source-qualification.md)
+- [OpenLigaDB Champions League selection ADR](docs/adr/0013-select-openligadb-for-champions-league-league-phase.md)
+- [OpenLigaDB Champions League import](docs/openligadb-champions-league-import.md)
 - [Europa League source qualification](docs/uefa-europa-league-source-qualification.md)
 - [Conference League source qualification](docs/uefa-conference-league-source-qualification.md)
 - [Nations League source qualification](docs/uefa-nations-league-source-qualification.md)

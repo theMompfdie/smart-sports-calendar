@@ -1,6 +1,7 @@
 from app.providers.openligadb.adapter import OpenLigaDBCompetitionAdapter
 from app.providers.openligadb.client import OpenLigaDBResponse
 from app.providers.openligadb.profiles import (
+    CHAMPIONS_LEAGUE_PROFILE,
     DFB_POKAL_PROFILE,
     NATIONS_LEAGUE_A_PROFILE,
     SECOND_BUNDESLIGA_PROFILE,
@@ -8,6 +9,7 @@ from app.providers.openligadb.profiles import (
 
 from tests.providers.openligadb.support import (
     FETCHED_AT,
+    champions_league_payloads,
     nations_league_a_payloads,
     payloads,
     second_bundesliga_payloads,
@@ -69,4 +71,19 @@ def test_adapter_fetches_only_the_reviewed_nations_league_a_scope() -> None:
         "/getavailableleagues/2026",
         "/getavailablegroups/nla/2026",
         "/getmatchdata/nla/2026",
+    ]
+
+
+def test_adapter_fetches_only_the_reviewed_champions_league_scope() -> None:
+    client = StubClient(champions_league_payloads(include_later_stage_fixture=True))
+    adapter = OpenLigaDBCompetitionAdapter(client, CHAMPIONS_LEAGUE_PROFILE)
+
+    snapshot = adapter.fetch_snapshot()
+
+    assert snapshot.league_id == 4946
+    assert len(snapshot.matches) == 144
+    assert client.requests == [
+        "/getavailableleagues/2026",
+        "/getavailablegroups/ucl/2026",
+        "/getmatchdata/ucl/2026",
     ]

@@ -42,8 +42,8 @@ def test_catalog_creates_and_assigns_reviewed_competition_teams(
 ) -> None:
     repositories, result = initialize(tmp_path)
     database_path = repositories[0]
-    assert len(result.participants) == 224
-    assert len(result.season_participants) == 224
+    assert len(result.participants) == 260
+    assert len(result.season_participants) == 260
     assert {item.participant_key for item in result.participants} >= {
         "arsenal",
         "coventry_city",
@@ -65,6 +65,9 @@ def test_catalog_creates_and_assigns_reviewed_competition_teams(
         "germany",
         "england_national_team",
         "wales_national_team",
+        "aek_athens",
+        "paris_saint_germain",
+        "sabah",
     }
     assert all(item.participant_type == "team" for item in result.participants)
     with sqlite3.connect(database_path) as connection:
@@ -85,6 +88,7 @@ def test_catalog_creates_and_assigns_reviewed_competition_teams(
         ("oefb_cup", 64),
         ("premier_league", 20),
         ("second_bundesliga", 18),
+        ("uefa_champions_league", 36),
         ("uefa_nations_league", 16),
     ]
     countries_by_key = {
@@ -100,6 +104,8 @@ def test_catalog_creates_and_assigns_reviewed_competition_teams(
     assert countries_by_key["fk_austria_wien"] == "AT"
     assert countries_by_key["france"] == "FR"
     assert countries_by_key["england_national_team"] == "GB-ENG"
+    assert countries_by_key["aek_athens"] == "GR"
+    assert countries_by_key["sabah"] == "AZ"
 
 
 def test_catalog_assigns_relegated_teams_to_championship(tmp_path: Path) -> None:
@@ -128,8 +134,8 @@ def test_catalog_can_run_repeatedly(tmp_path: Path) -> None:
         membership_count = connection.execute(
             "SELECT COUNT(*) FROM season_participants"
         ).fetchone()
-    assert participant_count == (188,)
-    assert membership_count == (224,)
+    assert participant_count == (214,)
+    assert membership_count == (260,)
     assert [item.id for item in second.participants] == [
         item.id for item in first.participants
     ]
