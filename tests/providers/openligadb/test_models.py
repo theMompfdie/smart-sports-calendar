@@ -9,6 +9,7 @@ from app.providers.openligadb.exceptions import (
 )
 from app.providers.openligadb.models import parse_snapshot
 from app.providers.openligadb.profiles import (
+    CHAMPIONS_LEAGUE_PROFILE,
     DFB_POKAL_PROFILE,
     NATIONS_LEAGUE_A_PROFILE,
     SECOND_BUNDESLIGA_PROFILE,
@@ -16,6 +17,7 @@ from app.providers.openligadb.profiles import (
 
 from tests.providers.openligadb.support import (
     FETCHED_AT,
+    champions_league_payloads,
     nations_league_a_payloads,
     payloads,
     second_bundesliga_payloads,
@@ -170,6 +172,54 @@ def test_nations_league_a_incomplete_or_cross_group_snapshot_fails_closed() -> N
             request_attempts=3,
         )
 
+
+def test_champions_league_snapshot_is_exact_and_excludes_knockout_groups() -> None:
+    leagues, groups, matches = champions_league_payloads(
+        include_later_stage_fixture=True
+    )
+
+    result = parse_snapshot(
+        leagues,
+        groups,
+        matches,
+        profile=CHAMPIONS_LEAGUE_PROFILE,
+        fetched_at_utc=FETCHED_AT,
+        request_attempts=3,
+    )
+
+    assert len(result.matches) == 144
+    assert len(result.teams) == 36
+    assert {match.group_order_id for match in result.matches} == set(range(1, 9))
+    assert {match.round_name for match in result.matches} == {
+        f"matchday-{order}" for order in range(1, 9)
+    }
+
+
+def test_champions_league_incomplete_or_repeated_opponent_fails_closed() -> None:
+    leagues, groups, matches = champions_league_payloads()
+    with pytest.raises(OpenLigaDBIntegrityError, match="exactly 144"):
+        parse_snapshot(
+            leagues,
+            groups,
+            matches[:-1],
+            profile=CHAMPIONS_LEAGUE_PROFILE,
+            fetched_at_utc=FETCHED_AT,
+            request_attempts=3,
+        )
+
+    leagues, groups, matches = champions_league_payloads()
+    matches[-1]["team1"] = deepcopy(matches[0]["team2"])
+    matches[-1]["team2"] = deepcopy(matches[0]["team1"])
+    with pytest.raises(OpenLigaDBIntegrityError, match="opponent pairing"):
+        parse_snapshot(
+            leagues,
+            groups,
+            matches,
+            profile=CHAMPIONS_LEAGUE_PROFILE,
+            fetched_at_utc=FETCHED_AT,
+            request_attempts=3,
+        )
+
     leagues, groups, matches = nations_league_a_payloads()
     matches[12]["team1"] = deepcopy(matches[0]["team1"])
     with pytest.raises(OpenLigaDBIntegrityError):
@@ -187,7 +237,7 @@ def test_openligadb_profile_rejects_unsafe_lifecycle_combinations() -> None:
     with pytest.raises(ValueError, match="stage kind"):
         replace(NATIONS_LEAGUE_A_PROFILE, stage_kind=None)
 
-    with pytest.raises(ValueError, match="two round-robin modes"):
+    with pytest.raises(ValueError, match="multiple completeness modes"):
         replace(
             NATIONS_LEAGUE_A_PROFILE,
             require_complete_double_round_robin=True,

@@ -24,6 +24,7 @@ class OpenLigaDBCompetitionProfile:
     expected_participant_count: int | None = None
     require_complete_double_round_robin: bool = False
     require_complete_group_double_round_robin: bool = False
+    require_complete_swiss_league_phase: bool = False
     allow_additional_groups: bool = False
     allow_missing_timezone_id: bool = False
 
@@ -39,14 +40,21 @@ class OpenLigaDBCompetitionProfile:
             and self.expected_participant_count <= 0
         ):
             raise ValueError("OpenLigaDB expected participant count must be positive")
-        if (
-            self.require_complete_double_round_robin
-            and self.require_complete_group_double_round_robin
-        ):
-            raise ValueError("OpenLigaDB profiles cannot require two round-robin modes")
+        completeness_modes = sum(
+            (
+                self.require_complete_double_round_robin,
+                self.require_complete_group_double_round_robin,
+                self.require_complete_swiss_league_phase,
+            )
+        )
+        if completeness_modes > 1:
+            raise ValueError(
+                "OpenLigaDB profiles cannot require multiple completeness modes"
+            )
         if (
             self.require_complete_double_round_robin
             or self.require_complete_group_double_round_robin
+            or self.require_complete_swiss_league_phase
         ) and (
             self.expected_fixture_count is None
             or self.expected_participant_count is None
@@ -120,12 +128,34 @@ NATIONS_LEAGUE_A_PROFILE = OpenLigaDBCompetitionProfile(
     allow_additional_groups=True,
 )
 
+CHAMPIONS_LEAGUE_PROFILE = OpenLigaDBCompetitionProfile(
+    canonical_competition_key="uefa_champions_league",
+    canonical_season_key="2026_27",
+    competition_name="UEFA Champions League",
+    league_id=4946,
+    league_shortcut="ucl",
+    league_season=2026,
+    sport_id=1,
+    season_start_date=date(2026, 9, 8),
+    season_end_date=date(2027, 1, 27),
+    round_capacities=(18,) * 8,
+    competition_format=CompetitionFormat.HYBRID_TOURNAMENT,
+    normalized_stage="league_phase",
+    round_prefix="matchday",
+    stage_kind=TournamentStageKind.LEAGUE_PHASE,
+    expected_fixture_count=144,
+    expected_participant_count=36,
+    require_complete_swiss_league_phase=True,
+    allow_additional_groups=True,
+)
+
 OPENLIGADB_COMPETITION_PROFILES = {
     (profile.canonical_competition_key, profile.canonical_season_key): profile
     for profile in (
         DFB_POKAL_PROFILE,
         SECOND_BUNDESLIGA_PROFILE,
         NATIONS_LEAGUE_A_PROFILE,
+        CHAMPIONS_LEAGUE_PROFILE,
     )
 }
 

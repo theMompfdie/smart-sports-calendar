@@ -106,6 +106,45 @@ SECOND_BUNDESLIGA_TEAM_MAPPINGS: dict[int, OpenLigaDBTeamMapping] = {
     199: OpenLigaDBTeamMapping("fc_heidenheim", "1. FC Heidenheim 1846"),
 }
 
+CHAMPIONS_LEAGUE_TEAM_MAPPINGS: dict[int, OpenLigaDBTeamMapping] = {
+    7: OpenLigaDBTeamMapping("borussia_dortmund", "Borussia Dortmund"),
+    16: OpenLigaDBTeamMapping("vfb_stuttgart", "VfB Stuttgart"),
+    40: OpenLigaDBTeamMapping("fc_bayern_muenchen", "FC Bayern München"),
+    356: OpenLigaDBTeamMapping("barcelona", "FC Barcelona"),
+    366: OpenLigaDBTeamMapping("fenerbahce", "Fenerbahçe SK"),
+    370: OpenLigaDBTeamMapping("liverpool", "FC Liverpool"),
+    375: OpenLigaDBTeamMapping("porto", "FC Porto"),
+    376: OpenLigaDBTeamMapping("psv_eindhoven", "PSV Eindhoven"),
+    378: OpenLigaDBTeamMapping("roma", "AS Rom"),
+    382: OpenLigaDBTeamMapping("villarreal", "Villarreal CF"),
+    438: OpenLigaDBTeamMapping("aston_villa", "Aston Villa"),
+    733: OpenLigaDBTeamMapping("inter_milan", "Inter Mailand"),
+    1133: OpenLigaDBTeamMapping("real_madrid", "Real Madrid"),
+    1186: OpenLigaDBTeamMapping("shakhtar_donetsk", "Shakhtar Donetsk"),
+    1204: OpenLigaDBTeamMapping("lille", "Lille OSC"),
+    1205: OpenLigaDBTeamMapping("sporting_cp", "Sporting CP"),
+    1210: OpenLigaDBTeamMapping("club_brugge", "FC Brügge"),
+    1217: OpenLigaDBTeamMapping("aek_athens", "AEK Athen"),
+    1484: OpenLigaDBTeamMapping("viking", "Viking"),
+    1635: OpenLigaDBTeamMapping("rb_leipzig", "RB Leipzig"),
+    1770: OpenLigaDBTeamMapping("feyenoord", "Feyenoord Rotterdam"),
+    1804: OpenLigaDBTeamMapping("real_betis", "Real Betis"),
+    2281: OpenLigaDBTeamMapping("paris_saint_germain", "Paris St. Germain"),
+    2331: OpenLigaDBTeamMapping("napoli", "SSC Napoli"),
+    2554: OpenLigaDBTeamMapping("galatasaray", "Galatasaray Istanbul"),
+    2556: OpenLigaDBTeamMapping("manchester_united", "Manchester United FC"),
+    2617: OpenLigaDBTeamMapping("arsenal", "FC Arsenal"),
+    4241: OpenLigaDBTeamMapping("atletico_madrid", "Atletico Madrid"),
+    4244: OpenLigaDBTeamMapping("manchester_city", "Manchester City"),
+    4578: OpenLigaDBTeamMapping("slavia_prague", "Slavia Prag"),
+    5139: OpenLigaDBTeamMapping("lask", "LASK"),
+    5699: OpenLigaDBTeamMapping("slovan_bratislava", "Slovan Bratislava"),
+    5707: OpenLigaDBTeamMapping("bodo_glimt", "FK Bodö/Glimt"),
+    5962: OpenLigaDBTeamMapping("lens", "RC Lens"),
+    8787: OpenLigaDBTeamMapping("como", "Como 1907"),
+    8798: OpenLigaDBTeamMapping("sabah", "Sabah"),
+}
+
 # Country names are independently reviewed against UEFA's published League A
 # groups. Provider IDs are deliberately learned into the private source-mapping
 # repository on first import instead of being copied into the source tree.
@@ -129,6 +168,7 @@ NATIONS_LEAGUE_A_TEAM_MAPPINGS_BY_NAME: dict[str, str] = {
 }
 
 TEAM_MAPPINGS_BY_COMPETITION_KEY = {
+    "uefa_champions_league": CHAMPIONS_LEAGUE_TEAM_MAPPINGS,
     "dfb_pokal": DFB_POKAL_TEAM_MAPPINGS,
     "second_bundesliga": SECOND_BUNDESLIGA_TEAM_MAPPINGS,
 }

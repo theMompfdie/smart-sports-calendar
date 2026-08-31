@@ -1,0 +1,167 @@
+# v0.6.0-beta.1 - UEFA Competition Beta
+
+## Summary
+
+`v0.6.0-beta.1` completes Phase 6 and adds a provider-neutral hybrid UEFA
+tournament lifecycle plus two bounded zero-cost OpenLigaDB authorities. SMART
+Sports Calendar can now synchronize the 2026/27 UEFA Champions League league
+phase and the 2026/27 UEFA Nations League A group phase without weakening the
+existing source-ownership, stable-identity, fail-closed, or idempotency rules.
+
+This is a beta pre-release. Publishing it does not deploy or promote the
+production stack automatically.
+
+## Shipped competition authorities
+
+| Competition | Authority | Released scope | Lifecycle boundary |
+| --- | --- | --- | --- |
+| Premier League | football-data.org API v4 | 380 fixtures | complete season |
+| Bundesliga | football-data.org API v4 | 306 fixtures | complete season |
+| EFL Championship | football-data.org API v4 | 552 regular-season fixtures | complete `REGULAR_SEASON` stage; play-offs excluded |
+| DFB-Pokal | OpenLigaDB API v1 | currently published fixtures | permanently partial; absence is non-destructive |
+| 2. Bundesliga | OpenLigaDB API v1 | 306 fixtures | removal-disabled partial operation |
+| ÖFB-Cup | official private ÖFB iCalendar feed | currently published fixtures | permanently partial; absence is non-destructive |
+| UEFA Nations League | OpenLigaDB API v1 | 48 League A group-phase fixtures | exact four-group profile; every later stage and other league excluded; removal disabled |
+| UEFA Champions League | OpenLigaDB API v1 | 144 league-phase fixtures | exact eight-matchday profile; qualification and every knockout stage excluded; removal disabled |
+
+Each competition and season has exactly one configured authoritative writer.
+There is no automatic provider failover or field-level provider aggregation.
+
+## Highlights
+
+- Added provider-neutral edition, stage, round, tie, leg, placeholder, and
+  incremental-discovery semantics for hybrid UEFA tournaments.
+- Added explicit partial and filtered observation contracts that cannot create
+  removal evidence.
+- Added an exact OpenLigaDB Nations League A profile for four groups, 48
+  fixtures, and 16 participants.
+- Added an exact OpenLigaDB Champions League league-phase profile for eight
+  matchdays, 144 fixtures, and 36 participants.
+- Added reviewed provider participant mappings and visible OpenLigaDB/ODbL
+  attribution for both authorities.
+- Added secret-safe qualification and staging evidence validators.
+- Added deterministic provider-to-SQLite-to-mocked-Graph coverage for both new
+  competition scopes.
+
+## Behavior changes
+
+- The OpenLigaDB runtime can host independently scheduled competition profiles
+  with exact competition, season, group, round, and participant boundaries.
+- Champions League groups representing play-offs and knockout stages are
+  rejected from the released league-phase scope.
+- Nations League Leagues B, C, and D and every post-group stage are rejected
+  from the released League A group-phase scope.
+- Both new authorities always report `partial`, `complete=false`, and
+  `removal_eligible=false`; omission cannot cancel or delete an event.
+- Stage, round, tie, leg, and placeholder metadata are normalized without
+  replacing stable provider fixture identity.
+- A failed UEFA provider job preserves last-known-good state and remains
+  isolated from other provider jobs and Outlook synchronization.
+
+## Database and configuration
+
+- Package version: `0.6.0b1`.
+- No new database migration is introduced. Schema
+  `008_add_calendar_sync_revisions` remains current.
+- Existing databases, canonical events, provider mappings, Outlook mappings,
+  and transaction IDs are preserved through idempotent catalog initialization.
+- The two new OpenLigaDB jobs are opt-in through `SOURCE_JOBS_JSON` and require
+  no API credential.
+- Europa League, Conference League, EURO qualification, later Champions League
+  stages, and later Nations League stages must not be configured as released
+  authorities under this version.
+
+See [`docs/deployment.md`](docs/deployment.md),
+[`docs/champions-league-staging-validation.md`](docs/champions-league-staging-validation.md),
+and
+[`docs/nations-league-a-staging-validation.md`](docs/nations-league-a-staging-validation.md).
+
+## Validation evidence
+
+- 967 deterministic automated tests pass without live provider or Microsoft
+  Graph credentials.
+- Ruff linting and formatting checks pass.
+- Deterministic SQLite-to-mocked-Graph tests prove create, update, reschedule,
+  restart, failure/recovery, attribution, omission safety, and unchanged-cycle
+  idempotency for both new UEFA scopes.
+- Isolated live staging imported and synchronized exactly 48 Nations League A
+  fixtures and exactly 144 Champions League league-phase fixtures.
+- Nations League staging proved controlled OpenLigaDB failure, last-known-good
+  preservation, scheduler isolation, recovery, and isolated backup restore.
+- Champions League staging converged all 144 competition mappings with zero
+  pending revisions and subsequent calendar cycles produced no Graph writes.
+- The reused staging database also retained 272 previously tested Phase 7 NFL
+  records. Candidate-specific UEFA scopes passed; the extra records explain
+  the intentionally non-global candidate count and are not part of this
+  release.
+- A temporary upstream football-data.org Championship response-contract
+  violation failed closed without state loss. A later 552-fixture import
+  completed successfully before release qualification.
+
+Normal CI continues to mock all external network boundaries. Live evidence is
+operator-run, aggregate-only, and secret-safe.
+
+## Explicit deferrals
+
+The following UEFA scopes are not implemented or released in
+`v0.6.0-beta.1`:
+
+- UEFA Europa League: Footballdata.io Free is retained as the preferred future
+  zero-cost candidate, but the 2026-08-31 observation contained only completed
+  qualification/play-off fixtures and no 144-match league phase.
+- UEFA Conference League: no zero-cost 2026/27 automated candidate was
+  available and no recurring paid provider was approved.
+- UEFA EURO 2028 qualification: re-evaluation is scheduled after the 6
+  December 2026 draw under a separate milestone.
+- Champions League qualification and every knockout stage.
+- Nations League Leagues B, C, and D and every post-group stage.
+
+These deferrals create no placeholder catalog entries, authority assignments,
+runtime jobs, or release claims. Phase 7, Phase 8, and Phase 9 remain separate
+milestones and do not enter this release.
+
+## Known limitations
+
+- This remains a beta pre-release rather than a general-availability release.
+- Live scores, standings, statistics, lineups, odds, brackets, aggregate-score
+  calculation, and historical enrichment remain out of scope.
+- Synchronization locking is process-local. Never run two instances against
+  the same writable SQLite database or Outlook calendar.
+- OpenLigaDB does not expose a provider completeness marker or a sufficiently
+  rich cancellation taxonomy; both released UEFA scopes therefore remain
+  removal-disabled.
+- OpenLigaDB and ODbL attribution must remain visible in generated events.
+- The ÖFB feed remains restricted to the operator's private calendar use.
+- Automatic provider failover and field-level aggregation are not implemented.
+
+## Upgrade
+
+1. Stop the exact deployment and create a verified backup of
+   `/data/sports.db`.
+2. Review `.env.example` and configure only the explicitly approved Nations
+   League A and Champions League league-phase source jobs.
+3. Check out the signed `v0.6.0-beta.1` tag.
+4. Run `docker compose config --quiet`.
+5. Start exactly one application instance with the existing project-scoped
+   volume and dedicated Outlook calendar.
+6. Confirm schema `008_add_calendar_sync_revisions` and startup validation.
+7. Require exactly 48 Nations League A and 144 Champions League league-phase
+   fixtures, then allow bounded synchronization cycles to converge.
+8. Require zero pending calendar revisions and unchanged reruns with no
+   unnecessary Graph writes.
+
+## Rollback
+
+Prefer a forward fix. An in-place schema downgrade is unsupported. If rollback
+is required, stop the application, preserve the upgraded database for
+investigation, restore the verified pre-upgrade database backup, check out the
+previous release tag, and start exactly one instance. Restoring the backup
+discards state recorded after that backup.
+
+## Tracking
+
+- Phase 6 master and release publication: #150
+- Champions League delivery: #153
+- Nations League delivery: #163
+- Europa League deferral: #157
+- Conference League deferral: #160

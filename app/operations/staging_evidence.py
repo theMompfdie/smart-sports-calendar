@@ -184,8 +184,26 @@ PHASE_6_NATIONS_LEAGUE_A_AUTHORITIES = {
     ),
 }
 
-PHASE_7_NFL_AUTHORITIES = {
+PHASE_6_CHAMPIONS_LEAGUE_AUTHORITIES = {
     **PHASE_6_NATIONS_LEAGUE_A_AUTHORITIES,
+    "openligadb-uefa-champions-league": CandidateAuthorityRequirement(
+        source_key="openligadb",
+        competition_key="uefa_champions_league",
+        scope_kind="partial",
+        complete=False,
+        removal_eligible=False,
+        expected_fixture_count=144,
+        scope_stage="league_phase",
+        scope_stage_kind="league_phase",
+        filtered=True,
+        expected_participant_mapping_count=36,
+        expected_stage_counts=(("league_phase", 144),),
+        expected_round_counts=tuple((f"matchday-{order}", 18) for order in range(1, 9)),
+    ),
+}
+
+PHASE_7_NFL_AUTHORITIES = {
+    **PHASE_6_CHAMPIONS_LEAGUE_AUTHORITIES,
     "nflverse-nfl-2026": CandidateAuthorityRequirement(
         source_key="nflverse",
         competition_key="nfl",
@@ -584,6 +602,14 @@ def validate_nations_league_a_candidate(evidence: StagingEvidence) -> None:
     )
 
 
+def validate_champions_league_candidate(evidence: StagingEvidence) -> None:
+    _validate_candidate(
+        evidence,
+        requirements=PHASE_6_CHAMPIONS_LEAGUE_AUTHORITIES,
+        candidate_name="Phase 6 Champions League",
+    )
+
+
 def validate_phase_7_nfl_candidate(evidence: StagingEvidence) -> None:
     _validate_candidate(
         evidence,
@@ -850,6 +876,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         ),
     )
     validation_group.add_argument(
+        "--validate-champions-league-candidate",
+        action="store_true",
+        help=(
+            "Require the exact Nations League A candidate authorities plus the "
+            "permanently partial and filtered UEFA Champions League league-phase "
+            "authority to be fully converged."
+        ),
+    )
+    validation_group.add_argument(
         "--validate-phase-7-nfl-candidate",
         action="store_true",
         help=(
@@ -869,6 +904,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             validate_phase_5_candidate(evidence)
         elif arguments.validate_nations_league_a_candidate:
             validate_nations_league_a_candidate(evidence)
+        elif arguments.validate_champions_league_candidate:
+            validate_champions_league_candidate(evidence)
         elif arguments.validate_phase_7_nfl_candidate:
             validate_phase_7_nfl_candidate(evidence)
     except (FileNotFoundError, RuntimeError, ValueError, sqlite3.Error) as error:

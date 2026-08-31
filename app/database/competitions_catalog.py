@@ -92,6 +92,16 @@ COMPETITION_CATALOG = (
         calendar_category="SMART | UEFA",
     ),
     CompetitionCatalogEntry(
+        sport_key="football",
+        competition_key="uefa_champions_league",
+        name="UEFA Champions League",
+        short_name="UCL",
+        country_code="INT",
+        competition_format=CompetitionFormat.HYBRID_TOURNAMENT,
+        region="Europe",
+        calendar_category="SMART | UEFA",
+    ),
+    CompetitionCatalogEntry(
         sport_key="american_football",
         competition_key="nfl",
         name="National Football League",

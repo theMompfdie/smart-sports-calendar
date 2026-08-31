@@ -85,6 +85,7 @@ def parse_snapshot(
     participant_appearances = Counter[int]()
     round_participants: dict[int, set[int]] = {order: set() for order in groups}
     directed_pairings: set[tuple[int, int]] = set()
+    undirected_pairings: set[frozenset[int]] = set()
     for value in matches_payload:
         match_payload = _mapping_value(value)
         group_order = _positive_int(_mapping(match_payload, "group"), "groupOrderID")
@@ -112,6 +113,15 @@ def parse_snapshot(
                 "Provider returned a duplicate directed pairing."
             )
         directed_pairings.add(pairing)
+        undirected_pairing = frozenset(pairing)
+        if (
+            profile.require_complete_swiss_league_phase
+            and undirected_pairing in undirected_pairings
+        ):
+            raise OpenLigaDBIntegrityError(
+                "Provider returned a duplicate opponent pairing."
+            )
+        undirected_pairings.add(undirected_pairing)
         participant_appearances.update(pairing)
         round_participants[match.group_order_id].update(pairing)
         for key in ("team1", "team2"):
@@ -148,6 +158,16 @@ def parse_snapshot(
             round_counts=round_counts,
             round_participants=round_participants,
             directed_pairings=directed_pairings,
+        )
+    if profile.require_complete_swiss_league_phase:
+        _validate_complete_swiss_league_phase(
+            profile,
+            match_ids=match_ids,
+            participant_ids=set(teams_by_id),
+            participant_appearances=participant_appearances,
+            round_counts=round_counts,
+            round_participants=round_participants,
+            undirected_pairings=undirected_pairings,
         )
     return OpenLigaDBSnapshot(
         league_id=profile.league_id,
@@ -396,6 +416,50 @@ def _validate_complete_group_double_round_robin(
         raise OpenLigaDBIntegrityError(
             "Configured groups do not contain the exact participant set."
         )
+
+
+def _validate_complete_swiss_league_phase(
+    profile: OpenLigaDBCompetitionProfile,
+    *,
+    match_ids: set[int],
+    participant_ids: set[int],
+    participant_appearances: Counter[int],
+    round_counts: Counter[int],
+    round_participants: Mapping[int, set[int]],
+    undirected_pairings: set[frozenset[int]],
+) -> None:
+    expected_fixtures = profile.expected_fixture_count
+    expected_participants = profile.expected_participant_count
+    if expected_fixtures is None or expected_participants is None:
+        raise OpenLigaDBIntegrityError(
+            "Complete league-phase profile has no configured cardinality."
+        )
+    if len(match_ids) != expected_fixtures:
+        raise OpenLigaDBIntegrityError(
+            f"Provider must return exactly {expected_fixtures} fixtures."
+        )
+    if len(participant_ids) != expected_participants:
+        raise OpenLigaDBIntegrityError(
+            f"Provider must return exactly {expected_participants} participants."
+        )
+    expected_appearances = len(profile.round_capacities)
+    if set(participant_appearances) != participant_ids or any(
+        count != expected_appearances for count in participant_appearances.values()
+    ):
+        raise OpenLigaDBIntegrityError(
+            "Participant appearances do not form a complete league phase."
+        )
+    for order, capacity in enumerate(profile.round_capacities, start=1):
+        if round_counts[order] != capacity:
+            raise OpenLigaDBIntegrityError(
+                "Provider returned an incomplete league-phase matchday."
+            )
+        if round_participants[order] != participant_ids:
+            raise OpenLigaDBIntegrityError(
+                "A league-phase matchday does not contain every participant."
+            )
+    if len(undirected_pairings) != expected_fixtures:
+        raise OpenLigaDBIntegrityError("League-phase opponents are not unique.")
 
 
 def _parse_team(payload: Mapping[str, Any]) -> OpenLigaDBTeam:
