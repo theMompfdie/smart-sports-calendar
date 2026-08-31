@@ -584,10 +584,11 @@ delivery order and operational boundaries.
   [#157](https://github.com/theMompfdie/smart-sports-calendar/issues/157),
   with completed source qualification in
   [#158](https://github.com/theMompfdie/smart-sports-calendar/issues/158): the
-  competition is deferred from `v0.6.0-beta.1` because OpenLigaDB still exposes
-  only 16 of 144 league-phase fixtures and a configured free football-data.org
-  credential cannot access `EL` / 2146; no paid provider or authority is
-  approved
+  competition is deferred from `v0.6.0-beta.1`; Footballdata.io free access,
+  UEL league 46, and current season 90443 are confirmed, but only qualifying
+  and play-off fixtures are currently available. Footballdata.io remains the
+  preferred zero-cost re-evaluation candidate for the later league-phase
+  integration; no authority is assigned
 - UEFA Conference League 2026/27 delivery tracked by
   [#160](https://github.com/theMompfdie/smart-sports-calendar/issues/160),
   with active source qualification in

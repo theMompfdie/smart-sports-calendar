@@ -25,8 +25,10 @@ tracks must record their own operator boundary rather than infer one.
 For the Europa League, the operator approved a possible 2026/27 boundary from
 the league phase through the final, but deferred the competition from
 `v0.6.0-beta.1` on 2026-08-31. OpenLigaDB remained severely incomplete and a
-free football-data.org credential received HTTP 403 for `EL` / 2146. No paid
-provider is approved.
+free football-data.org credential received HTTP 403 for `EL` / 2146. A
+separate Footballdata.io free account includes UEL and exposes the current
+season, but currently contains only qualifying/play-off fixtures. It remains
+the preferred zero-cost re-evaluation candidate. No paid provider is approved.
 
 The same main-boundary rule applies to the Conference League: league phase
 through final may be evaluated without requiring qualification. No Conference
@@ -60,7 +62,7 @@ create credentials, or approve release inclusion.
 | Competition | Intended edition/cycle | Outcome | Preferred candidate | Authority assignment | Release boundary | Qualification record |
 | --- | --- | --- | --- | --- | --- | --- |
 | UEFA Champions League | 2026/27 | Qualified | OpenLigaDB `ucl` / 4946, free and credential-free | Sole bounded league-phase authority when explicitly enabled | Exactly 144 league-phase fixtures and 36 participants; qualifying and all knockout stages excluded | [Champions League qualification](uefa-champions-league-source-qualification.md) |
-| UEFA Europa League | 2026/27 | Deferred | No qualified zero-cost source; OpenLigaDB `uel2026` / 6000 remains incomplete and free football-data.org access is denied | Unassigned; runtime and release inclusion disabled | Excluded from `v0.6.0-beta.1`; league phase through final remains the future candidate boundary | [Europa League qualification](uefa-europa-league-source-qualification.md) |
+| UEFA Europa League | 2026/27 | Deferred | Footballdata.io free plan is the preferred re-evaluation candidate but its league phase is not ready; OpenLigaDB remains incomplete | Unassigned; runtime and release inclusion disabled | Excluded from `v0.6.0-beta.1`; league phase through final remains the future candidate boundary | [Europa League qualification](uefa-europa-league-source-qualification.md) |
 | UEFA Conference League | 2026/27 | Conditional | No zero-cost 2026/27 candidate currently exists; Sportmonks league 2286 and football-data.org `UCL` / 2154 are paid alternatives pending operator decision | Unassigned pending source, cost, and live qualification | League phase through final is the approved candidate boundary; qualification is separate and optional | [Conference League qualification](uefa-conference-league-source-qualification.md) |
 | UEFA Nations League | 2026/27 | Qualified | OpenLigaDB `nla` / 5978, free and credential-free; selected 2026-08-30 | Sole bounded League A group-phase authority when explicitly enabled | Exactly 48 League A group-phase fixtures and 16 participants; B/C/D and all later stages excluded | [Nations League qualification](uefa-nations-league-source-qualification.md) |
 | UEFA European Championship Qualification | Exact active cycle pending | Pending | Not evaluated for Phase 6 | Unassigned | Not approved | Future competition track |
@@ -81,8 +83,9 @@ create credentials, or approve release inclusion.
 | Candidate | Cost fit | Technical fit | Rights/terms fit | Current decision |
 | --- | --- | --- | --- | --- |
 | Official UEFA public pages and regulations | Free | No documented automation contract or stable machine fixture identity | Authoritative manual evidence; automated collection prohibited | Manual verification only |
+| Footballdata.io league 46 / season 90443 | Free account, UEL included, observed limit 2,000 requests/month | Current season and stable-looking numeric IDs are exposed, but only 80 completed qualifying/play-off fixtures and zero league-phase-window fixtures were available on 2026-08-31; new adapter required | Free attribution required; reasonable caching allowed; long-term storage, third-party rights, cancellation, and availability need explicit acceptance | Preferred zero-cost re-evaluation candidate; not ready for `v0.6.0-beta.1` |
 | OpenLigaDB `uel2026` / 6000 | Free and credential-free | Existing adapter and stable-looking IDs, but the 2026-08-31 re-observation still exposed only 16 fixtures, 15 participants, and incomplete round structure | ODbL attribution applies; community-maintained rather than official | Not ready; reconsider only after a complete stable observation and keep removal disabled if later selected |
-| football-data.org `EL` / 2146 | Standard plan, currently EUR 49/month | Existing integration; main competition cleanly separated from `ELQ` / 2183; a configured free credential received HTTP 403 on 2026-08-31 | One-application use, secret key, attribution, and cancellation exit obligation | Not available at zero cost; no paid plan approved |
+| football-data.org `EL` / 2146 | Standard plan, currently EUR 49/month | Existing integration; main competition cleanly separated from `ELQ` / 2183; the authenticated free catalog omitted `EL` and direct access returned HTTP 403 on 2026-08-31 | One-application use, secret key, attribution, and cancellation exit obligation | Not available at zero cost; no paid plan approved |
 | Sportmonks league 5 | Starter from EUR 29/month; card-backed trial | Strongest documented full hybrid lifecycle; new adapter required | Subscription/domain terms, no raw resale, completeness disclaimer, separate media rights | Paid conditional candidate pending operator approval and live evidence |
 | API-Football | Free registration, 100 requests/day | Broad technical coverage and existing transport | Provider grants no competition-data licence; UEFA permission not recorded | Rejected as authority under current evidence |
 
@@ -153,15 +156,18 @@ league phase. Separately exposed qualification may be evaluated later and does
 not block the main track. On 2026-08-31 OpenLigaDB still exposed only 16 of 144
 required league-phase fixtures and 15 of 36 participants, while a configured
 free football-data.org credential received HTTP 403 for `EL` / 2146. The
-operator therefore deferred Europa League from `v0.6.0-beta.1`; no provider,
-paid plan, or authority is approved.
+separate Footballdata.io free plan includes UEL and exposes season 90443 /
+20262027, but currently contains 80 completed qualifying/play-off fixtures and
+zero fixtures in the league-phase date window. The operator therefore deferred
+Europa League from `v0.6.0-beta.1`; Footballdata.io remains the preferred
+zero-cost re-evaluation candidate, but no provider or authority is approved.
 
 The Europa League track cannot resume credentialed-validation or implementation
 work until:
 
-1. the operator selects the acceptable provider and exact recurring-cost
-   boundary: wait for OpenLigaDB at EUR 0, approve football-data.org at the
-   then-current price, approve Sportmonks at the then-current price, or defer;
+1. Footballdata.io publishes the complete league-phase boundary, or the
+   operator selects another acceptable provider and exact recurring-cost
+   boundary;
 2. the selected main competition exposes the 2026/27 league-phase schedule;
 3. two sanitized observations prove 36 participants, 144 league-phase
    fixtures, stable identity, structure, pagination, update behavior, and
@@ -169,9 +175,9 @@ work until:
 4. selected-provider terms, attribution, persistence, cancellation, and secret
    handling are accepted explicitly.
 
-The OpenLigaDB observations on 2026-08-29 and 2026-08-31 were structurally
-incomplete and are not qualification evidence. Qualification remains separate
-and non-blocking.
+The Footballdata.io and OpenLigaDB observations on 2026-08-31 were
+structurally incomplete and are not qualification evidence. Qualification
+remains separate and non-blocking.
 
 ## Conference League operator decision and required next gate
 
