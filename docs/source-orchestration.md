@@ -46,8 +46,10 @@ authoritative `football/premier_league/2026_27` and
 `football/championship/2026_27` `REGULAR_SEASON` complete-stage profile; it
 must be paired with
 `FOOTBALL_DATA_ENABLED=true`. Each profile has a separate job key and interval.
-`openligadb` supports the authoritative `football/dfb_pokal/2026_27` and
-`football/second_bundesliga/2026_27` scopes and must be paired with
+`openligadb` supports the authoritative `football/dfb_pokal/2026_27`,
+`football/second_bundesliga/2026_27`, bounded
+`football/uefa_nations_league/2026_27`, and bounded
+`football/uefa_champions_league/2026_27` scopes and must be paired with
 `OPENLIGADB_ENABLED=true`. It requires no credential. Each competition uses a
 separate job key, runtime lock, import run, and failure boundary while sharing
 the bounded public provider client.
@@ -201,6 +203,10 @@ of four teams and a complete directed double round robin within each group.
 Provider groups outside 1 through 4 are ignored before normalization. Leagues
 B, C, and D plus every later stage remain unassigned and cannot contribute
 canonical or removal evidence.
+Issue #155 applies the same permanent-partial contract to the Champions League
+league phase. OpenLigaDB `ucl` / 4946 admits only groups 1 through 8, exactly
+144 fixtures, and 36 reviewed clubs. Groups 9 through 16 plus qualification
+are filtered and cannot contribute canonical or removal evidence.
 Any unresolved slot produces `DEFER`, creates no placeholder participant or
 calendar event, and cannot replace the last known good participants of an
 already mapped event. First/second-leg metadata is diagnostic; stable source

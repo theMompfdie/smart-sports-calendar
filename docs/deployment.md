@@ -302,6 +302,36 @@ The Phase 5 catalog and source assignments initialize idempotently. Migration
 queueing them for one safe payload-revision reconciliation. Do not downgrade an
 upgraded database in place.
 
+### Upgrade from v0.5.0-beta.1 to v0.6.0-beta.1
+
+1. Stop the exact application stack and create a transactionally consistent
+   backup of its project-scoped `/data/sports.db` volume.
+2. Verify the backup is non-empty, retain its integrity record privately, and
+   keep it outside the Docker volume.
+3. Review `.env.example` and `SOURCE_JOBS_JSON`. Add only the explicitly
+   approved OpenLigaDB jobs for the UEFA Nations League A group phase and UEFA
+   Champions League league phase.
+4. Do not add Europa League, Conference League, EURO qualification, later
+   Champions League stages, or later Nations League stages. They are not
+   released authorities in this version.
+5. Check out the verified signed `v0.6.0-beta.1` tag.
+6. Run `docker compose config --quiet` and resolve every missing or invalid
+   setting before starting the container.
+7. Run `docker compose up --detach --build` for exactly one instance attached
+   to the existing project-scoped volume and dedicated Outlook calendar.
+8. Verify startup health, schema `008_add_calendar_sync_revisions`, and the
+   exact configured authority set. Phase 6 adds no database migration.
+9. Require the Nations League scope to contain exactly 48 League A group-phase
+   fixtures and 16 participants. Require the Champions League scope to contain
+   exactly 144 league-phase fixtures and 36 participants.
+10. Allow bounded synchronization cycles to converge, then require zero pending
+    calendar revisions and unchanged reruns with no unnecessary Graph writes.
+
+Both new OpenLigaDB authorities are permanently removal-disabled. Missing or
+partial observations must preserve last-known-good canonical and Outlook state.
+Publication of the GitHub pre-release does not promote production; production
+promotion remains a separate explicit operator decision.
+
 ### Rollback
 
 Prefer a forward fix when the upgraded database is healthy. Running older code

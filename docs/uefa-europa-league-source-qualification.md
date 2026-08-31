@@ -2,17 +2,19 @@
 
 ## Status
 
-**Conditional for `v0.6.0-beta.1`: no authoritative writer is assigned. The
-operator approved a possible 2026/27 release boundary from the league phase
-through the final, with qualifying kept as an optional separate scope. The
-current zero-cost OpenLigaDB candidate is structurally incomplete, while the
-technically viable football-data.org and Sportmonks paths require an explicit
-paid-source decision.**
+**Deferred from `v0.6.0-beta.1`: no authoritative writer is assigned. A
+2026-08-31 re-observation confirmed that the zero-cost OpenLigaDB candidate is
+still structurally incomplete and that a configured free football-data.org
+account cannot access `EL` / 2146. A separate Footballdata.io free account
+includes the Europa League and exposes the current 2026/27 season, but its
+league-phase fixtures have not propagated yet. Footballdata.io remains the
+preferred zero-cost re-evaluation candidate; no paid source is approved for
+this release.**
 
-This record was reviewed on 2026-08-29 for issue #158. It applies the hybrid
-tournament contract completed in #151. It does not register an account, start
-a trial, approve payment, accept provider terms, assign an authority, enable a
-catalog entry, or authorize runtime collection.
+This record was reviewed on 2026-08-29 and re-observed on 2026-08-31 for issue
+ #158. It applies the hybrid tournament contract completed in #151. It does not
+start a trial, approve payment, assign an authority, enable a catalog entry,
+or authorize runtime collection.
 
 Qualification remains fail-closed. Public catalog observations recorded here
 contain no credentials, private payloads, team names, or individual provider
@@ -113,6 +115,19 @@ A sanitized read-only observation at `2026-08-29T10:37:36Z` returned:
   and `Finale`), omitting knockout phase play-offs and round of 16; and
 - zero finished fixtures.
 
+A second readiness observation at `2026-08-31T12:03:53Z` still returned only:
+
+- 16 fixtures with 16 unique fixture IDs;
+- 15 unique participants rather than the required 36;
+- league-phase kickoffs spanning only 16 September through 22 October 2026;
+- the same four configured groups, still omitting the knockout phase play-offs
+  and round of 16; and
+- no fixtures in the configured quarter-final, semi-final, or final groups.
+
+The participant count changed from 14 to 15 while the fixture inventory
+remained at 16. This confirms active but incomplete community maintenance, not
+a stable or complete league-phase snapshot.
+
 This observation occurred on the morning after UEFA's 28 August league-phase
 draw, before the finalized dated fixture list had propagated across the
 reviewed provider catalogs. It is therefore classified as `not ready`, not as
@@ -162,6 +177,47 @@ The existing one-application, credential secrecy, visible attribution,
 availability disclaimer, cancellation cleanup, and separate logo-rights
 conditions apply.
 
+On 2026-08-31 the operator authorized secret-safe, read-only availability
+checks with an existing free credential. The authenticated competition catalog
+returned HTTP 200 with 13 accessible competitions, but did not contain `EL` /
+2146. The documented direct competition endpoint returned HTTP 403. No fixture
+or participant endpoint was called, and no credential, header, private payload,
+or account data was emitted or persisted. The free account therefore cannot
+supply the main Europa League competition under the current plan boundary.
+
+### Footballdata.io API v1
+
+Footballdata.io is a separate provider from football-data.org. The operator's
+free account dashboard explicitly includes UEFA Europa League among its five
+selected leagues. Secret-safe read-only checks on 2026-08-31 confirmed:
+
+- an active free API key with an observed monthly allowance of 2,000 requests;
+- UEFA Europa League league ID `46` in the free-plan search results;
+- current season ID `90443`, year `20262027`, plus 17 historical seasons;
+- 69 season teams and 80 unique completed fixtures across four provider
+  rounds;
+- 52 unique fixture participants, with kickoffs from 9 July through 27 August
+  2026; and
+- zero fixtures when the current season was filtered from 1 September 2026
+  through 31 January 2027.
+
+The current response therefore covers qualifying and play-offs but none of the
+official 144-fixture, 36-participant league phase. UEFA published the finalized
+league-phase fixtures on 29 August and matchday 1 is on 16/17 September, about
+eight days after the Champions League begins. This result is classified as
+`not ready` propagation evidence, not a permanent provider rejection.
+
+The API exposes numeric league, season, round, fixture, and team identities,
+UTC-convertible match timestamps, status, update, date filtering, and
+pagination. Its documented examples and live nested response shapes differ in
+some details, so any adapter must validate the observed v1 contract rather
+than assume the examples are exact. The free tier requires attribution;
+coverage varies by league and season. The terms permit reasonable caching but
+may require written permission for long-term storage or bulk replication.
+Those persistence, attribution, cancellation, availability, and third-party
+data-rights boundaries require explicit acceptance before authority
+assignment.
+
 ### Sportmonks Football API v3
 
 Sportmonks documents Europa League as league ID `5`. Its published model covers
@@ -200,31 +256,42 @@ documented complete-pagination contract. OpenFootball does not publish a
 current Europa League fixture dataset with provider-grade stable fixture IDs
 and lifecycle coverage. Neither can qualify the 144-fixture league phase.
 
-## Conditional decision
+## Deferred decision
 
 No authoritative writer is assigned for `uefa_europa_league` / `2026_27`.
-Implementation, credential use, paid registration, and source assignment are
-blocked until the operator chooses one of these paths:
+The operator deferred Europa League from `v0.6.0-beta.1` on 2026-08-31 because
+none of the reviewed zero-cost paths currently supplies the required
+36-participant, 144-fixture league phase and no recurring paid source is
+approved for this release. Footballdata.io remains the preferred later path
+because free-plan access, current season identity, and qualifying data are
+already observable.
 
-1. **Zero-cost path — wait and re-observe OpenLigaDB.** This avoids a new
-   subscription and reuses the existing adapter, but current data is severely
-   incomplete and any later implementation is expected to remain
+The evaluated paths remain:
+
+1. **Preferred zero-cost path — re-observe Footballdata.io.** Free access and
+   the current season are confirmed, but the league phase has not propagated.
+   A later complete observation still requires full technical and contractual
+   qualification plus a new provider adapter.
+2. **Alternative zero-cost path — wait and re-observe OpenLigaDB.** This avoids
+   a new subscription and reuses the existing adapter, but current data is
+   severely incomplete and any later implementation is expected to remain
    removal-disabled and community-source dependent.
-2. **football-data.org paid path — EUR 49/month.** This reuses the existing
+3. **football-data.org paid path — EUR 49/month.** This reuses the existing
    provider integration and cleanly separates `EL` from paid `ELQ`, but costs
    more and still needs 2026/27 catalog publication plus two credentialed
    observations.
-3. **Sportmonks paid path — from EUR 29/month.** This has the strongest
+4. **Sportmonks paid path — from EUR 29/month.** This has the strongest
    documented hybrid model and lower starting price, but requires a credit
    card-backed trial, a new adapter, and full live/contractual qualification.
-4. **Defer Europa League.** Preserve the current unassigned state until a
-   permitted source satisfies the operator's cost and evidence boundary.
+5. **Defer Europa League — selected for `v0.6.0-beta.1`.** Preserve the current
+   unassigned state until a permitted source satisfies the operator's cost and
+   evidence boundary.
 
 API-Football is not an approvable option without separate UEFA rights
 clearance. An operator selection authorizes only the next qualification gate,
 not authority assignment or implementation.
 
-## Required next gate
+## Required re-evaluation gate
 
 Before a credentialed-validation or implementation issue can be created:
 
@@ -247,18 +314,20 @@ expand the main scope.
 
 Re-evaluate this decision when:
 
-1. OpenLigaDB `uel2026` / 6000 publishes the complete 36-team, 144-fixture
+1. Footballdata.io season `90443` publishes the complete 36-team, 144-fixture
+   league phase with stable fixture identity, schedule, and update behavior;
+2. OpenLigaDB `uel2026` / 6000 publishes the complete 36-team, 144-fixture
    league phase with stable identities and credible group structure;
-2. football-data.org `EL` / 2146 advances to 2026/27 or changes plan tier;
-3. Sportmonks changes its plan, trial, or Europa League coverage terms;
-4. UEFA publishes or permits a supported API or calendar feed;
-5. UEFA grants written permission for the intended API-Football use;
-6. another permitted source proves stable, complete main-scope coverage; or
-7. the operator selects or changes the allowed recurring-cost boundary.
+3. football-data.org `EL` / 2146 advances to 2026/27 or changes plan tier;
+4. Sportmonks changes its plan, trial, or Europa League coverage terms;
+5. UEFA publishes or permits a supported API or calendar feed;
+6. UEFA grants written permission for the intended API-Football use;
+7. another permitted source proves stable, complete main-scope coverage; or
+8. the operator selects or changes the allowed recurring-cost boundary.
 
 ## Sources
 
-Reviewed 2026-08-29:
+Reviewed 2026-08-29 and re-observed 2026-08-31:
 
 - [UEFA 2026/27 Europa League overview](https://www.uefa.com/uefaeuropaleague/news/02a6-20d57d095740-e1e0b3de85df-1000/)
 - [UEFA 2026/27 Europa League regulations](https://documents.uefa.com/r/Regulations-of-the-UEFA-Europa-League-2026/27/)
@@ -277,6 +346,11 @@ Reviewed 2026-08-29:
 - [football-data.org competition resource](https://docs.football-data.org/general/v4/competition.html)
 - [football-data.org match resource](https://docs.football-data.org/general/v4/match.html)
 - [football-data.org API policies](https://docs.football-data.org/general/v4/policies.html)
+- [Footballdata.io API documentation](https://footballdata.io/documentation/)
+- [Footballdata.io league endpoints](https://footballdata.io/documentation/leagues/)
+- [Footballdata.io season endpoints](https://footballdata.io/documentation/seasons/)
+- [Footballdata.io rate limits](https://footballdata.io/documentation/rate-limits/)
+- [Footballdata.io terms](https://footballdata.io/terms/)
 - [Sportmonks Europa League API](https://www.sportmonks.com/football-api/europa-league-api/)
 - [Sportmonks plans and pricing](https://www.sportmonks.com/football-api/plans-pricing/)
 - [Sportmonks terms](https://www.sportmonks.com/terms-of-service/)
