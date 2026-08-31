@@ -116,6 +116,7 @@ class OpenLigaDBImportOrchestrator:
 
     def _base_metadata(self, *, complete: bool) -> dict[str, object]:
         job = self._job_definition
+        filtered = self._competition_service.profile.allow_additional_groups
         return {
             "operation": "competition_fixture_import",
             "source_key": OPENLIGADB_SOURCE_KEY,
@@ -125,12 +126,11 @@ class OpenLigaDBImportOrchestrator:
             "season_key": job.scope.season_key,
             "authoritative": True,
             "complete": complete,
-            "filtered": False,
+            "filtered": filtered,
             "authoritative_scope": "partial",
         }
 
-    @staticmethod
-    def _scope(batch: NormalizedFixtureBatch) -> FixtureImportScope:
+    def _scope(self, batch: NormalizedFixtureBatch) -> FixtureImportScope:
         observed_at = batch.fetched_at_utc.astimezone(UTC)
         fingerprint = sha256(
             "\n".join(fixture.external_id for fixture in batch.fixtures).encode()
@@ -144,6 +144,7 @@ class OpenLigaDBImportOrchestrator:
                 fingerprint,
             )
         )
+        profile = self._competition_service.profile
         return FixtureImportScope(
             competition_id=batch.competition_id,
             season_id=batch.season_id,
@@ -152,9 +153,13 @@ class OpenLigaDBImportOrchestrator:
             lifecycle=CompetitionLifecycleScope(
                 competition_format=batch.competition_format,
                 scope_kind=FixtureObservationScopeKind.PARTIAL,
+                stage=(
+                    profile.normalized_stage if profile.stage_kind is not None else None
+                ),
+                stage_kind=profile.stage_kind,
             ),
             authoritative=True,
-            filtered=False,
+            filtered=profile.allow_additional_groups,
         )
 
     def _metadata(
@@ -169,6 +174,13 @@ class OpenLigaDBImportOrchestrator:
                 "observed_at_utc": scope.observed_at_utc.isoformat(),
                 "competition_format": scope.lifecycle.competition_format.value,
                 "scope_kind": scope.lifecycle.scope_kind.value,
+                "scope_stage_kind": (
+                    None
+                    if scope.lifecycle.stage_kind is None
+                    else scope.lifecycle.stage_kind.value
+                ),
+                "scope_stage": scope.lifecycle.stage,
+                "scope_round": scope.lifecycle.round_name,
                 "removal_eligible": scope.removal_eligible,
                 "page_count": batch.page_count,
                 "request_attempts": batch.request_attempts,

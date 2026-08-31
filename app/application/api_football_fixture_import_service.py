@@ -11,6 +11,7 @@ from app.database.fixture_import_repository import (
     FixtureParticipantRecord,
 )
 from app.domain.competition_lifecycle import (
+    CompetitionFormat,
     CompetitionLifecycleScope,
     FixtureObservationScopeKind,
 )
@@ -148,6 +149,17 @@ class ApiFootballFixtureImportService:
                     "Fixture falls outside the declared import scope: "
                     f"external_id={fixture.external_id}."
                 )
+            if (
+                scope.lifecycle.competition_format
+                is CompetitionFormat.HYBRID_TOURNAMENT
+                and fixture.stage is not None
+                and fixture.stage_kind is None
+            ):
+                raise ProviderIntegrityError(
+                    "A hybrid-tournament fixture stage requires a normalized "
+                    "stage kind: "
+                    f"external_id={fixture.external_id}."
+                )
             if fixture.kickoff_confirmed and fixture.kickoff_utc is None:
                 raise ProviderIntegrityError(
                     "Confirmed fixture kickoff must include a UTC datetime: "
@@ -192,9 +204,9 @@ class ApiFootballFixtureImportService:
                 "A complete stage or round observation must contain fixtures."
             )
         for fixture in fixtures:
-            if (
-                lifecycle.scope_kind is FixtureObservationScopeKind.COMPLETE_STAGE
-                and fixture.stage != lifecycle.stage
+            if lifecycle.scope_kind is FixtureObservationScopeKind.COMPLETE_STAGE and (
+                fixture.stage != lifecycle.stage
+                or fixture.stage_kind != lifecycle.stage_kind
             ):
                 raise ProviderIntegrityError(
                     "Fixture falls outside the declared complete-stage scope: "
@@ -203,6 +215,7 @@ class ApiFootballFixtureImportService:
             if lifecycle.scope_kind is FixtureObservationScopeKind.COMPLETE_ROUND and (
                 fixture.round_name != lifecycle.round_name
                 or (lifecycle.stage is not None and fixture.stage != lifecycle.stage)
+                or fixture.stage_kind != lifecycle.stage_kind
             ):
                 raise ProviderIntegrityError(
                     "Fixture falls outside the declared complete-round scope: "
@@ -222,6 +235,7 @@ class ApiFootballFixtureImportService:
                     participant_id=participant.participant_id,
                     role=participant.role,
                     position_number=participant.position_number,
+                    resolution=participant.resolution,
                 )
                 for participant in fixture.participants
             ),
@@ -236,5 +250,8 @@ class ApiFootballFixtureImportService:
             city=fixture.city,
             source_updated_at=fixture.source_updated_at,
             metadata=fixture.metadata,
+            stage_kind=fixture.stage_kind,
+            tie_key=fixture.tie_key,
+            leg=fixture.leg,
             event_key_prefix=self._source_key,
         )

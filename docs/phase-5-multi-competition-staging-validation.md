@@ -7,6 +7,12 @@ issue #132, the Championship gate in issue #135, and the ÖFB-Cup gate in issue
 season, DFB-Pokal, 2. Bundesliga, and ÖFB-Cup together in one isolated staging
 deployment. It does not authorize production promotion, a tag, or a release.
 
+This document and `--validate-phase-5-candidate` intentionally remain bound to
+the six released Phase 5 authorities. The separate seven-authority Nations
+League extension is documented in
+[`nations-league-a-staging-validation.md`](nations-league-a-staging-validation.md)
+and validated with `--validate-nations-league-a-candidate`.
+
 ## Candidate boundary
 
 The only enabled authoritative jobs are:

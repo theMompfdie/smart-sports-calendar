@@ -4,6 +4,7 @@ from app.domain.competition_lifecycle import (
     CompetitionLifecycleError,
     CompetitionLifecycleScope,
     FixtureObservationScopeKind,
+    TournamentStageKind,
 )
 
 
@@ -22,6 +23,27 @@ from app.domain.competition_lifecycle import (
             CompetitionLifecycleScope(
                 CompetitionFormat.LEAGUE,
                 FixtureObservationScopeKind.COMPLETE_SEASON,
+            ),
+            True,
+            True,
+        ),
+        (
+            CompetitionLifecycleScope(
+                CompetitionFormat.HYBRID_TOURNAMENT,
+                FixtureObservationScopeKind.COMPLETE_STAGE,
+                stage="league_phase",
+                stage_kind=TournamentStageKind.LEAGUE_PHASE,
+            ),
+            True,
+            True,
+        ),
+        (
+            CompetitionLifecycleScope(
+                CompetitionFormat.HYBRID_TOURNAMENT,
+                FixtureObservationScopeKind.COMPLETE_ROUND,
+                stage="knockout",
+                round_name="round_of_16",
+                stage_kind=TournamentStageKind.KNOCKOUT,
             ),
             True,
             True,
@@ -125,4 +147,52 @@ def test_scope_rejects_unknown_values_and_non_normalized_identifiers() -> None:
             CompetitionFormat.KNOCKOUT_CUP,
             FixtureObservationScopeKind.COMPLETE_ROUND,
             round_name=" round_of_16 ",
+        )
+
+
+@pytest.mark.parametrize(
+    ("stage", "round_name", "stage_kind", "message"),
+    [
+        ("league_phase", None, None, "requires a stage kind"),
+        (None, "round_of_16", TournamentStageKind.KNOCKOUT, "requires a stage"),
+        ("knockout", "round_of_16", None, "stage and stage kind"),
+    ],
+)
+def test_hybrid_complete_scope_requires_exact_stage_semantics(
+    stage: str | None,
+    round_name: str | None,
+    stage_kind: TournamentStageKind | None,
+    message: str,
+) -> None:
+    scope_kind = (
+        FixtureObservationScopeKind.COMPLETE_STAGE
+        if round_name is None
+        else FixtureObservationScopeKind.COMPLETE_ROUND
+    )
+
+    with pytest.raises(CompetitionLifecycleError, match=message):
+        CompetitionLifecycleScope(
+            CompetitionFormat.HYBRID_TOURNAMENT,
+            scope_kind,
+            stage=stage,
+            round_name=round_name,
+            stage_kind=stage_kind,
+        )
+
+
+def test_stage_kind_rejects_non_hybrid_and_unknown_values() -> None:
+    with pytest.raises(CompetitionLifecycleError, match="hybrid-tournament"):
+        CompetitionLifecycleScope(
+            CompetitionFormat.KNOCKOUT_CUP,
+            FixtureObservationScopeKind.PARTIAL,
+            stage="knockout",
+            stage_kind=TournamentStageKind.KNOCKOUT,
+        )
+
+    with pytest.raises(CompetitionLifecycleError, match="Unknown tournament stage"):
+        CompetitionLifecycleScope(  # type: ignore[arg-type]
+            CompetitionFormat.HYBRID_TOURNAMENT,
+            FixtureObservationScopeKind.PARTIAL,
+            stage="provider_stage",
+            stage_kind="provider-specific",
         )

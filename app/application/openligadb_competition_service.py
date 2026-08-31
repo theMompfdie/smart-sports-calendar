@@ -127,11 +127,7 @@ class OpenLigaDBCompetitionService:
         )
         if competition is None:
             raise OpenLigaDBResolutionError("Canonical competition is missing.")
-        expected_format = (
-            CompetitionFormat.LEAGUE
-            if self.profile.normalized_stage == "regular_season"
-            else CompetitionFormat.KNOCKOUT_CUP
-        )
+        expected_format = self.profile.competition_format
         if competition.competition_type is not expected_format:
             raise OpenLigaDBResolutionError("Canonical competition format is invalid.")
         seasons = self._seasons_repository.get_current_for_competition(competition.id)
@@ -269,6 +265,7 @@ class OpenLigaDBCompetitionService:
                 "provider_group_id": str(match.group_id),
                 "provider_group_order_id": str(match.group_order_id),
             },
+            stage_kind=self.profile.stage_kind,
         )
 
     def _upsert_mapping(

@@ -4,27 +4,29 @@
 
 ## Current Status
 
-**Current release:** `v0.5.0-beta.1`
+**Current release:** `v0.6.0-beta.1`
 
 **Development stage:** Beta
 
-**Completed phases:** Phase 1, Phase 2, Phase 3, Phase 4, and Phase 5
+**Completed phases:** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, and Phase 6
 
-**Latest delivery track:** Phase 5 multi-competition football expansion for
-`v0.5.0-beta.1`
-([tracker #104](https://github.com/theMompfdie/smart-sports-calendar/issues/104))
+**Latest delivery track:** Phase 6 UEFA competition expansion for
+`v0.6.0-beta.1`
+([tracker #150](https://github.com/theMompfdie/smart-sports-calendar/issues/150))
 
-**Automated tests:** 898 passing tests
+**Automated tests:** 967 passing tests
 
 The application foundation, persistent domain model, repository layer,
 Microsoft Graph integration, Outlook synchronization engine, and scheduled
 provider runtimes for the qualified Premier League, Bundesliga, EFL
-Championship regular season, DFB-Pokal, 2. Bundesliga, and ÖFB-Cup paths are
-implemented and have passed isolated live staging.
+Championship regular season, DFB-Pokal, 2. Bundesliga, ÖFB-Cup, UEFA Nations
+League A group phase, and UEFA Champions League league phase are implemented
+and have passed isolated live staging.
 
-The beta includes provider-neutral source selection, six approved 2026/27
-competition authorities, isolated multi-instance deployment, and secret-safe
-live staging validation through Outlook. It remains a pre-release:
+The beta includes provider-neutral source selection, eight approved 2026/27
+competition authorities, a hybrid UEFA lifecycle model, isolated
+multi-instance deployment, and secret-safe live staging validation through
+Outlook. It remains a pre-release:
 production promotion is a separate explicit operator decision and is never
 performed automatically. The official ECAL calendar remains unapproved for
 automated ingestion.
@@ -124,7 +126,13 @@ are permanently partial: they
 may create or update known fixtures but never infer cancellation or removal.
 The same public provider is qualified and implemented as the preferred no-cost
 2026/27 2. Bundesliga authority. Its initial runtime is removal-disabled and
-passed isolated staging. The official ÖFB competition iCalendar feed provides
+passed isolated staging. OpenLigaDB also provides the implemented, bounded
+2026/27 UEFA Nations League A group-phase authority: exactly 48 fixtures and
+16 participants, permanently removal-disabled, with every other league and
+later stage excluded. Its 2026/27 UEFA Champions League authority is bounded
+to exactly 144 league-phase fixtures and 36 participants; qualifying and every
+knockout stage remain excluded and removal-disabled. The official ÖFB
+competition iCalendar feed provides
 the private 2026/27 ÖFB-Cup authority through a strict permanent-partial
 contract; it can create or update stable fixtures but absence is never
 destructive.
@@ -172,6 +180,22 @@ Phase 5 decision records:
 - [ÖFB-Cup authority selection ADR](docs/adr/0010-select-oefb-calendar-for-oefb-cup.md)
 - [Phase 5 multi-competition staging validation](docs/phase-5-multi-competition-staging-validation.md)
 - [v0.5.0-beta.1 release checklist](docs/v0.5.0-beta.1-release-checklist.md)
+
+Phase 6 decision records:
+
+- [hybrid UEFA lifecycle ADR](docs/adr/0011-model-hybrid-uefa-lifecycle.md)
+- [source and authority matrix](docs/phase-6-source-authority-matrix.md)
+- [Champions League source qualification](docs/uefa-champions-league-source-qualification.md)
+- [OpenLigaDB Champions League selection ADR](docs/adr/0013-select-openligadb-for-champions-league-league-phase.md)
+- [OpenLigaDB Champions League import](docs/openligadb-champions-league-import.md)
+- [Champions League isolated staging validation](docs/champions-league-staging-validation.md)
+- [Europa League source qualification](docs/uefa-europa-league-source-qualification.md)
+- [Conference League source qualification](docs/uefa-conference-league-source-qualification.md)
+- [Nations League source qualification](docs/uefa-nations-league-source-qualification.md)
+- [OpenLigaDB Nations League A selection ADR](docs/adr/0012-select-openligadb-for-nations-league-a.md)
+- [OpenLigaDB Nations League A import](docs/openligadb-nations-league-a-import.md)
+- [Nations League A isolated staging validation](docs/nations-league-a-staging-validation.md)
+- [v0.6.0-beta.1 release checklist](docs/v0.6.0-beta.1-release-checklist.md)
 
 ### Database and Persistence
 
@@ -547,22 +571,59 @@ delivery order and operational boundaries.
 
 ### Phase 6 – UEFA Competitions
 
-**Status:** _Planned_
+**Status:** _Completed in `v0.6.0-beta.1` through master issue
+[#150](https://github.com/theMompfdie/smart-sports-calendar/issues/150)_
 
-- Champions League
-- Europa League
-- Conference League
-- Nations League
-- European Championship Qualification
+- provider-neutral hybrid lifecycle and identity contract completed by
+  [#151](https://github.com/theMompfdie/smart-sports-calendar/issues/151)
+- UEFA Champions League 2026/27 delivery tracked by
+  [#153](https://github.com/theMompfdie/smart-sports-calendar/issues/153)
+- zero-cost source qualification tracked by
+  [#154](https://github.com/theMompfdie/smart-sports-calendar/issues/154):
+  OpenLigaDB `ucl` / 4946 is qualified for exactly the 144-fixture, 36-club
+  league phase with permanent removal-disabled handling; qualifying and all
+  knockout stages remain excluded; isolated live staging passed, and the
+  superseded football-data.org issue
+  [#155](https://github.com/theMompfdie/smart-sports-calendar/issues/155)
+  was closed without using the credential for UCL
+- UEFA Europa League 2026/27 delivery tracked by
+  [#157](https://github.com/theMompfdie/smart-sports-calendar/issues/157),
+  with completed source qualification in
+  [#158](https://github.com/theMompfdie/smart-sports-calendar/issues/158): the
+  competition is deferred from `v0.6.0-beta.1`; Footballdata.io free access,
+  UEL league 46, and current season 90443 are confirmed, but only qualifying
+  and play-off fixtures are currently available. Footballdata.io remains the
+  preferred zero-cost re-evaluation candidate for the later league-phase
+  integration; no authority is assigned
+- UEFA Conference League 2026/27 delivery tracked by
+  [#160](https://github.com/theMompfdie/smart-sports-calendar/issues/160),
+  with completed source qualification in
+  [#161](https://github.com/theMompfdie/smart-sports-calendar/issues/161): the
+  competition is deferred from `v0.6.0-beta.1` because no zero-cost 2026/27
+  automated candidate exists and no paid provider was approved; no authority
+  or runtime is assigned
+- UEFA Nations League 2026/27 delivery tracked by
+  [#163](https://github.com/theMompfdie/smart-sports-calendar/issues/163),
+  with completed source and scope qualification in
+  [#164](https://github.com/theMompfdie/smart-sports-calendar/issues/164) and
+  implementation in
+  [#170](https://github.com/theMompfdie/smart-sports-calendar/issues/170):
+  OpenLigaDB is the selected EUR 0 authority for exactly the 48-fixture,
+  16-participant League A group phase; Leagues B, C, and D and all later stages
+  remain excluded; isolated live staging, controlled failure/recovery, and
+  backup/restore validation were completed in
+  [#172](https://github.com/theMompfdie/smart-sports-calendar/issues/172)
+- UEFA EURO 2028 qualification is deferred to the separate December 2026
+  milestone after the 6 December draw; it is not part of this release
 
-The Champions League, Europa League, and Conference League were evaluated for
-Phase 5 and deferred because their hybrid qualifying, league, and knockout
-lifecycle requires a dedicated capability model. They are not part of the
-`v0.5.0-beta.1` implementation scope.
+The released Phase 6 subset is deliberately bounded to the Champions League
+league phase and Nations League A group phase. Europa League, Conference
+League, UEFA EURO 2028 qualification, later Champions League stages, and later
+Nations League stages remain outside `v0.6.0-beta.1`.
 
 ### Phase 7 – NFL Provider
 
-**Status:** _Planned_
+**Status:** _Planned for `v0.7.0-beta.1`; not included in the current release_
 
 - NFL teams
 - regular season and playoffs
@@ -578,6 +639,26 @@ Detailed authoritative-source beta release notes are available in
 
 Detailed Phase 5 beta release notes are available in
 [`RELEASE_NOTES_v0.5.0-beta.1.md`](RELEASE_NOTES_v0.5.0-beta.1.md).
+
+Detailed Phase 6 beta release notes are available in
+[`RELEASE_NOTES_v0.6.0-beta.1.md`](RELEASE_NOTES_v0.6.0-beta.1.md).
+
+### `v0.6.0-beta.1`
+
+- provider-neutral hybrid UEFA stage, round, tie, leg, and partial-observation
+  lifecycle model
+- zero-cost OpenLigaDB UEFA Champions League authority for exactly 144
+  league-phase fixtures and 36 participants
+- zero-cost OpenLigaDB UEFA Nations League authority for exactly 48 League A
+  group-phase fixtures and 16 participants
+- permanent removal-disabled handling for both new UEFA authorities
+- deterministic SQLite-to-mocked-Graph coverage for imports, reschedules,
+  restart, failure/recovery, attribution, and unchanged-cycle idempotency
+- isolated live staging, Outlook convergence, controlled provider failure,
+  recovery, and backup/restore evidence
+- explicit deferral of Europa League, Conference League, EURO 2028
+  qualification, and every unqualified later tournament scope
+- 967 passing automated tests
 
 ### `v0.5.0-beta.1`
 
@@ -663,10 +744,12 @@ This remains a beta pre-release.
 The synchronization engine and scheduled provider-to-canonical-to-Outlook
 runtimes are covered by deterministic provider-payload-to-SQLite-to-mocked-
 Graph tests. Live provider and tenant validation remains an explicit,
-credential-safe manual activity and is never part of normal CI. See
-[`docs/phase-5-multi-competition-staging-validation.md`](docs/phase-5-multi-competition-staging-validation.md)
-and
-[`docs/v0.5.0-beta.1-release-checklist.md`](docs/v0.5.0-beta.1-release-checklist.md).
+credential-safe manual activity and is never part of normal CI. See the
+[Champions League staging record](docs/champions-league-staging-validation.md),
+the
+[Nations League staging record](docs/nations-league-a-staging-validation.md),
+and the
+[`docs/v0.6.0-beta.1-release-checklist.md`](docs/v0.6.0-beta.1-release-checklist.md).
 
 ## Project Goals
 

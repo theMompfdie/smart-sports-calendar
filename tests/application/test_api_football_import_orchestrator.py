@@ -178,6 +178,7 @@ def test_orchestrator_persists_scope_diagnostics_and_decision_counters() -> None
     assert metadata["season_key"] == "current"
     assert metadata["competition_format"] == "league"
     assert metadata["scope_kind"] == "complete_season"
+    assert metadata["scope_stage_kind"] is None
     assert metadata["scope_stage"] is None
     assert metadata["scope_round"] is None
     assert metadata["removal_eligible"] is True

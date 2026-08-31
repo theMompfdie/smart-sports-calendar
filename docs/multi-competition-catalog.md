@@ -15,13 +15,17 @@ The catalog contains:
 | EFL Championship | `championship` | 2026/27 | `league` | Regular season implemented by issue #135; play-offs excluded |
 | DFB-Pokal | `dfb_pokal` | 2026/27 | `knockout_cup` | Added by issue #119 |
 | 2. Bundesliga | `second_bundesliga` | 2026/27 | `league` | Added by issue #132; removal disabled |
+| UEFA Nations League | `uefa_nations_league` | 2026/27 | `hybrid_tournament` | League A group phase added by issue #170; removal disabled |
+| UEFA Champions League | `uefa_champions_league` | 2026/27 | `hybrid_tournament` | League phase added by issue #155; removal disabled |
 
 Bundesliga season dates are the qualified 2026-08-28 through 2027-05-22
 boundaries recorded by issue #110 and ADR 0006.
 
 Subsequent Phase 5 slices completed the Bundesliga participant/runtime path and
-added the DFB-Pokal and 2. Bundesliga catalogs. DFB-Pokal has 64 reviewed
-2026/27 participants; 2. Bundesliga has 18. Shared clubs retain one canonical
+added the DFB-Pokal and 2. Bundesliga catalogs. Phase 6 adds the 16 reviewed
+League A national teams and the 36 reviewed Champions League league-phase
+clubs. DFB-Pokal has 64 reviewed 2026/27
+participants; 2. Bundesliga has 18. Shared clubs retain one canonical
 participant identity across competition memberships.
 
 ## Identity boundaries
@@ -42,6 +46,12 @@ contains exactly the 24 reviewed 2026/27 regular-season participants, including
 country-specific identities for Cardiff City, Swansea City, and Wrexham.
 DFB-Pokal and 2. Bundesliga use separate reviewed OpenLigaDB `teamId` plus
 provider-name mappings; they do not reuse the football-data.org name resolver.
+The Nations League profile admits only 16 exact reviewed provider names on
+first import and learns their numeric IDs in the private source-mapping
+repository. Those IDs are intentionally absent from the public catalog and
+synthetic tests.
+The Champions League profile requires all 36 reviewed OpenLigaDB provider
+ID/name pairs and rejects any mismatch before canonical writes.
 
 ## Initialization behavior
 

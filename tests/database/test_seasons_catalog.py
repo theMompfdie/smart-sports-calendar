@@ -58,7 +58,7 @@ def test_initialize_seasons_catalog_creates_reviewed_seasons(
         sports_repository=sports_repository,
     )
 
-    assert len(seasons) == 6
+    assert len(seasons) == 8
     football = sports_repository.get_by_key("football")
 
     assert football is not None
@@ -94,6 +94,16 @@ def test_initialize_seasons_catalog_creates_reviewed_seasons(
         competition_key="oefb_cup",
     )
     assert oefb_cup is not None
+    nations_league = competitions_repository.get_by_key(
+        sport_id=football.id,
+        competition_key="uefa_nations_league",
+    )
+    assert nations_league is not None
+    champions_league = competitions_repository.get_by_key(
+        sport_id=football.id,
+        competition_key="uefa_champions_league",
+    )
+    assert champions_league is not None
     by_competition = {season.competition_id: season for season in seasons}
 
     premier_league_season = by_competition[premier_league.id]
@@ -143,6 +153,20 @@ def test_initialize_seasons_catalog_creates_reviewed_seasons(
     assert oefb_cup_season.end_date == "2027-06-30"
     assert oefb_cup_season.is_current is True
     assert oefb_cup_season.metadata is None
+
+    nations_league_season = by_competition[nations_league.id]
+    assert nations_league_season.season_key == "2026_27"
+    assert nations_league_season.name == "2026/27 League A group phase"
+    assert nations_league_season.start_date == "2026-09-24"
+    assert nations_league_season.end_date == "2026-11-17"
+    assert nations_league_season.is_current is True
+
+    champions_league_season = by_competition[champions_league.id]
+    assert champions_league_season.season_key == "2026_27"
+    assert champions_league_season.name == "2026/27 league phase"
+    assert champions_league_season.start_date == "2026-09-08"
+    assert champions_league_season.end_date == "2027-01-27"
+    assert champions_league_season.is_current is True
 
 
 def test_initialize_seasons_catalog_can_run_repeatedly(

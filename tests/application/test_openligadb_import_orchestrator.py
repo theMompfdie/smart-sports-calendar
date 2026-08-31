@@ -25,7 +25,7 @@ from app.database.seasons_repository import SeasonsRepository
 from app.database.sports_catalog import initialize_sports_catalog
 from app.database.sports_repository import SportsRepository
 from app.database.sync_runs_repository import SyncRunsRepository
-from app.domain.competition_lifecycle import CompetitionFormat
+from app.domain.competition_lifecycle import CompetitionFormat, TournamentStageKind
 from app.providers.contracts import (
     NormalizedFixture,
     NormalizedFixtureBatch,
@@ -35,16 +35,22 @@ from app.providers.contracts import (
     SourceRole,
     SourceScope,
 )
-from app.providers.openligadb.profiles import DFB_POKAL_PROFILE
+from app.providers.openligadb.profiles import (
+    DFB_POKAL_PROFILE,
+    NATIONS_LEAGUE_A_PROFILE,
+)
 
 OBSERVED_AT = datetime(2026, 8, 18, 20, 0, tzinfo=UTC)
 
 
 class SnapshotService:
-    profile = DFB_POKAL_PROFILE
-
-    def __init__(self, batches: list[NormalizedFixtureBatch]) -> None:
+    def __init__(
+        self,
+        batches: list[NormalizedFixtureBatch],
+        profile=DFB_POKAL_PROFILE,
+    ) -> None:
         self._batches = batches
+        self.profile = profile
 
     def fetch_normalized_snapshot(self) -> NormalizedFixtureBatch:
         return self._batches.pop(0)
@@ -114,6 +120,58 @@ def create_batch(database_path: Path) -> NormalizedFixtureBatch:
     )
 
 
+def create_nations_league_batch(database_path: Path) -> NormalizedFixtureBatch:
+    sports = SportsRepository(database_path)
+    competitions = CompetitionsRepository(database_path)
+    seasons = SeasonsRepository(database_path)
+    participants = ParticipantsRepository(database_path)
+    football = sports.get_by_key("football")
+    assert football is not None
+    competition = competitions.get_by_key(football.id, "uefa_nations_league")
+    assert competition is not None
+    season = seasons.get_by_key(competition.id, "2026_27")
+    assert season is not None
+    home = participants.get_by_key(football.id, "france")
+    away = participants.get_by_key(football.id, "italy")
+    assert home is not None and away is not None
+    fixture = NormalizedFixture(
+        external_id="120001",
+        sport_id=football.id,
+        competition_id=competition.id,
+        season_id=season.id,
+        event_type="match",
+        title=f"{home.name} vs {away.name}",
+        participants=(
+            NormalizedFixtureParticipant(home.id, "home", 1),
+            NormalizedFixtureParticipant(away.id, "away", 2),
+        ),
+        kickoff_utc=datetime(2026, 9, 24, 18, 45, tzinfo=UTC),
+        kickoff_confirmed=True,
+        timezone="UTC",
+        status="scheduled",
+        stage="league_a_group_phase",
+        round_name="group-a-1",
+        sequence_number=1,
+        venue_name=None,
+        city=None,
+        source_updated_at=datetime(2026, 8, 16, 13, 26, tzinfo=UTC),
+        metadata={"provider_group_id": "52001"},
+        stage_kind=TournamentStageKind.LEAGUE_PHASE,
+    )
+    return NormalizedFixtureBatch(
+        fixtures=(fixture,),
+        competition_id=competition.id,
+        competition_format=CompetitionFormat.HYBRID_TOURNAMENT,
+        season_id=season.id,
+        season_start_date=datetime(2026, 9, 24).date(),
+        season_end_date=datetime(2026, 11, 17).date(),
+        fetched_at_utc=OBSERVED_AT,
+        page_count=1,
+        request_attempts=3,
+        rate_limits=RateLimitSnapshot(None, None, None, None, None),
+    )
+
+
 def test_missing_fixture_in_later_partial_observation_is_preserved(
     tmp_path: Path,
 ) -> None:
@@ -176,5 +234,59 @@ def test_missing_fixture_in_later_partial_observation_is_preserved(
     metadata = json.loads(metadata_json[0])
     assert metadata["authoritative_scope"] == "partial"
     assert metadata["scope_kind"] == "partial"
+    assert metadata["scope_stage_kind"] is None
+    assert metadata["scope_stage"] is None
+    assert metadata["scope_round"] is None
     assert metadata["complete"] is False
+    assert metadata["removal_eligible"] is False
+
+
+def test_nations_league_scope_records_filtered_hybrid_stage(tmp_path: Path) -> None:
+    database_path = tmp_path / "nations-league.db"
+    Database(database_path).initialize()
+    sports = SportsRepository(database_path)
+    competitions = CompetitionsRepository(database_path)
+    seasons = SeasonsRepository(database_path)
+    participants = ParticipantsRepository(database_path)
+    memberships = SeasonParticipantsRepository(database_path)
+    initialize_sports_catalog(sports)
+    initialize_competitions_catalog(competitions, sports)
+    initialize_seasons_catalog(seasons, competitions, sports)
+    initialize_participants_catalog(
+        participants, memberships, sports, competitions, seasons
+    )
+    sources = DataSourcesRepository(database_path)
+    register_openligadb_source(OpenLigaDBSettings(enabled=True), sources)
+    batch = create_nations_league_batch(database_path)
+    orchestrator = OpenLigaDBImportOrchestrator(
+        competition_service=SnapshotService([batch], profile=NATIONS_LEAGUE_A_PROFILE),
+        import_service=ApiFootballFixtureImportService(
+            sources,
+            FixtureImportRepository(database_path),
+            source_key="openligadb",
+        ),
+        sync_runs_repository=SyncRunsRepository(database_path),
+        data_sources_repository=sources,
+        job_definition=SourceJobDefinition(
+            job_key="openligadb-uefa-nations-league",
+            source_key="openligadb",
+            role=SourceRole.AUTHORITATIVE,
+            scope=SourceScope("football", "uefa_nations_league", "2026_27"),
+            interval_seconds=21600,
+        ),
+    )
+
+    result = orchestrator.import_current_competition()
+
+    assert result.items_created == 1
+    with sqlite3.connect(database_path) as connection:
+        row = connection.execute(
+            "SELECT metadata_json FROM sync_runs ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+    assert row is not None
+    metadata = json.loads(row[0])
+    assert metadata["filtered"] is True
+    assert metadata["scope_kind"] == "partial"
+    assert metadata["scope_stage"] == "league_a_group_phase"
+    assert metadata["scope_stage_kind"] == "league_phase"
     assert metadata["removal_eligible"] is False

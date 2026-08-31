@@ -7,11 +7,16 @@ from typing import Any
 import pytest
 from app.operations import openligadb_qualification as qualification
 from app.operations.openligadb_qualification import (
+    CHAMPIONS_LEAGUE_LEAGUE_PHASE_PROFILE,
+    NATIONS_LEAGUE_A_GROUP_PHASE_PROFILE,
     SECOND_BUNDESLIGA_PROFILE,
     OpenLigaDBQualificationError,
+    OpenLigaDBQualificationProfile,
     OpenLigaDBQualificationResponse,
     StdlibOpenLigaDBQualificationTransport,
+    qualify_champions_league_league_phase,
     qualify_dfb_pokal,
+    qualify_nations_league_a_group_phase,
     qualify_second_bundesliga,
     render_qualification_evidence,
 )
@@ -170,6 +175,176 @@ def valid_second_bundesliga_responses() -> list[OpenLigaDBQualificationResponse]
     ]
 
 
+def nations_league_a_league() -> dict[str, Any]:
+    return {
+        "leagueId": 5978,
+        "leagueName": "Nations League A 2026",
+        "leagueShortcut": "nla",
+        "leagueSeason": "2026",
+        "sport": {"sportId": 1, "sportName": "Fußball"},
+    }
+
+
+def nations_league_a_groups() -> list[dict[str, Any]]:
+    names = [
+        "Gruppe A",
+        "Gruppe B",
+        "Gruppe C",
+        "Gruppe D",
+        "Viertelfinale Hinspiele",
+        "Viertelfinale Rückspiele",
+        "Halbfinale",
+        "Endspiel/Platz 3",
+    ]
+    return [
+        {
+            "groupName": name,
+            "groupOrderID": order,
+            "groupID": 70000 + order,
+        }
+        for order, name in enumerate(names, start=1)
+    ]
+
+
+def nations_league_a_fixtures() -> list[dict[str, Any]]:
+    fixtures: list[dict[str, Any]] = []
+    for group_order in range(1, 5):
+        participant_ids = range(
+            3000 + (group_order - 1) * 4,
+            3000 + group_order * 4,
+        )
+        for home_id in participant_ids:
+            for away_id in participant_ids:
+                if home_id == away_id:
+                    continue
+                item = fixture(len(fixtures))
+                item.update(
+                    matchID=100000 + len(fixtures),
+                    leagueId=5978,
+                    leagueName="Nations League A 2026",
+                    leagueShortcut="nla",
+                    group=nations_league_a_groups()[group_order - 1],
+                    matchDateTimeUTC="2026-09-24T18:45:00Z",
+                    lastUpdateDateTime="2026-08-29T12:00:00",
+                )
+                item["team1"].update(teamId=home_id, teamName=f"Team {home_id}")
+                item["team2"].update(teamId=away_id, teamName=f"Team {away_id}")
+                fixtures.append(item)
+    return fixtures
+
+
+def valid_nations_league_a_responses() -> list[OpenLigaDBQualificationResponse]:
+    return [
+        response([nations_league_a_league()]),
+        response(nations_league_a_groups()),
+        response(nations_league_a_fixtures()),
+    ]
+
+
+def champions_league_league() -> dict[str, Any]:
+    return {
+        "leagueId": 4946,
+        "leagueName": "UEFA Champions League 2026/2027",
+        "leagueShortcut": "ucl",
+        "leagueSeason": "2026",
+        "sport": {"sportId": 1, "sportName": "Fußball"},
+    }
+
+
+def champions_league_groups() -> list[dict[str, Any]]:
+    names = (
+        *(f"{order}. Spieltag" for order in range(1, 9)),
+        "Playoffs",
+        "Achtelfinale Hinspiele",
+        "Achtelfinale Rückspiele",
+        "Viertelfinale Hinspiele",
+        "Viertelfinale Rückspiele",
+        "Halbfinale Hinspiele",
+        "Halbfinale Rückspiele",
+        "Finale",
+    )
+    return [
+        {
+            "groupName": name,
+            "groupOrderID": order,
+            "groupID": 80000 + order,
+        }
+        for order, name in enumerate(names, start=1)
+    ]
+
+
+def champions_league_fixtures() -> list[dict[str, Any]]:
+    rotation = list(range(4000, 4036))
+    matchdays: list[list[tuple[int, int]]] = []
+    for _ in range(8):
+        matchdays.append(
+            [(rotation[index], rotation[-1 - index]) for index in range(18)]
+        )
+        rotation = [rotation[0], rotation[-1], *rotation[1:-1]]
+
+    fixtures: list[dict[str, Any]] = []
+    for matchday, pairings in enumerate(matchdays, start=1):
+        for home_id, away_id in pairings:
+            item = fixture(len(fixtures))
+            item.update(
+                matchID=110000 + len(fixtures),
+                leagueId=4946,
+                leagueName="UEFA Champions League 2026/2027",
+                leagueShortcut="ucl",
+                group=champions_league_groups()[matchday - 1],
+                matchDateTimeUTC=f"2026-{9 + matchday // 4:02d}-08T18:45:00Z",
+                lastUpdateDateTime="2026-08-29T16:48:52",
+            )
+            item["team1"].update(teamId=home_id, teamName=f"Team {home_id}")
+            item["team2"].update(teamId=away_id, teamName=f"Team {away_id}")
+            fixtures.append(item)
+    return fixtures
+
+
+def valid_champions_league_responses() -> list[OpenLigaDBQualificationResponse]:
+    return [
+        response([champions_league_league()]),
+        response(champions_league_groups()),
+        response(champions_league_fixtures()),
+    ]
+
+
+def test_grouped_profile_rejects_duplicate_included_group() -> None:
+    with pytest.raises(ValueError, match="included groups"):
+        replace(
+            NATIONS_LEAGUE_A_GROUP_PHASE_PROFILE,
+            included_group_orders=(1, 1, 2, 3),
+        )
+
+
+def test_grouped_profile_rejects_inconsistent_group_capacity() -> None:
+    with pytest.raises(ValueError, match="grouped-round-robin"):
+        OpenLigaDBQualificationProfile(
+            key="invalid-grouped-profile",
+            competition_name="Invalid grouped profile",
+            league_id=9999,
+            league_shortcut="invalid",
+            league_season=2026,
+            sport_id=1,
+            authoritative_scope="partial",
+            season_start_date=datetime(2026, 9, 1).date(),
+            season_end_date=datetime(2026, 11, 30).date(),
+            group_capacities=(11, 12, 12, 12),
+            expected_fixture_count=47,
+            expected_participant_count=16,
+            included_group_orders=(1, 2, 3, 4),
+            require_complete_group_round_robin=True,
+        )
+
+
+def test_swiss_profile_rejects_inconsistent_matchday_capacity() -> None:
+    with pytest.raises(ValueError, match="Swiss league-phase"):
+        replace(
+            CHAMPIONS_LEAGUE_LEAGUE_PHASE_PROFILE,
+            group_capacities=(17,) + (18,) * 7,
+        )
+
+
 def run_qualification(
     responses: list[OpenLigaDBQualificationResponse],
 ) -> tuple[qualification.OpenLigaDBQualificationEvidence, StubTransport]:
@@ -232,6 +407,164 @@ def test_second_bundesliga_qualification_proves_complete_season() -> None:
         "/getavailablegroups/bl2/2026",
         "/getmatchdata/bl2/2026",
     ]
+
+
+def test_nations_league_a_qualification_proves_exact_group_phase() -> None:
+    transport = StubTransport(valid_nations_league_a_responses())
+
+    evidence = qualify_nations_league_a_group_phase(
+        transport=transport,
+        clock=lambda: datetime(2026, 8, 30, 9, 15, tzinfo=UTC),
+    )
+    rendered = render_qualification_evidence(evidence)
+
+    assert evidence.qualification_profile == "nations-league-a-group-phase"
+    assert evidence.authoritative_scope == "partial"
+    assert evidence.league_id == 5978
+    assert evidence.league_shortcut == "nla"
+    assert evidence.source_fixture_count == 48
+    assert evidence.fixture_count == 48
+    assert evidence.unique_fixture_ids == 48
+    assert evidence.participant_count == 16
+    assert [round_.fixture_count for round_ in evidence.rounds] == [
+        12,
+        12,
+        12,
+        12,
+        0,
+        0,
+        0,
+        0,
+    ]
+    assert "100000" not in rendered
+    assert "Team 3000" not in rendered
+    assert transport.calls == [
+        "/getavailableleagues/2026",
+        "/getavailablegroups/nla/2026",
+        "/getmatchdata/nla/2026",
+    ]
+
+
+def test_nations_league_a_qualification_excludes_later_stage_fixtures() -> None:
+    responses = valid_nations_league_a_responses()
+    fixtures = nations_league_a_fixtures()
+    later_fixture = deepcopy(fixtures[0])
+    later_fixture.update(
+        matchID=200000,
+        group=nations_league_a_groups()[4],
+        matchDateTimeUTC="2027-03-18T19:45:00Z",
+    )
+    fixtures.append(later_fixture)
+    responses[2] = response(fixtures)
+
+    evidence = qualify_nations_league_a_group_phase(
+        transport=StubTransport(responses),
+        clock=lambda: datetime(2026, 8, 30, 9, 15, tzinfo=UTC),
+    )
+
+    assert evidence.source_fixture_count == 49
+    assert evidence.fixture_count == 48
+    assert evidence.rounds[4].fixture_count == 0
+
+
+def test_nations_league_a_qualification_rejects_incomplete_group_phase() -> None:
+    fixtures = nations_league_a_fixtures()
+    fixtures.pop()
+    responses = valid_nations_league_a_responses()
+    responses[2] = response(fixtures)
+
+    with pytest.raises(OpenLigaDBQualificationError, match="exactly 48"):
+        qualify_nations_league_a_group_phase(
+            transport=StubTransport(responses),
+            clock=lambda: datetime(2026, 8, 30, 9, 15, tzinfo=UTC),
+        )
+
+
+def test_nations_league_a_qualification_rejects_cross_group_participant() -> None:
+    fixtures = nations_league_a_fixtures()
+    fixtures[12]["team1"] = deepcopy(fixtures[0]["team1"])
+    responses = valid_nations_league_a_responses()
+    responses[2] = response(fixtures)
+
+    with pytest.raises(
+        OpenLigaDBQualificationError,
+        match="grouped participant|group boundary",
+    ):
+        qualify_nations_league_a_group_phase(
+            transport=StubTransport(responses),
+            clock=lambda: datetime(2026, 8, 30, 9, 15, tzinfo=UTC),
+        )
+
+
+def test_champions_league_qualification_proves_exact_league_phase() -> None:
+    transport = StubTransport(valid_champions_league_responses())
+
+    evidence = qualify_champions_league_league_phase(
+        transport=transport,
+        clock=lambda: datetime(2026, 8, 31, 7, 0, tzinfo=UTC),
+    )
+    rendered = render_qualification_evidence(evidence)
+
+    assert evidence.qualification_profile == "champions-league-league-phase"
+    assert evidence.authoritative_scope == "partial"
+    assert evidence.league_id == 4946
+    assert evidence.league_shortcut == "ucl"
+    assert evidence.fixture_count == 144
+    assert evidence.unique_fixture_ids == 144
+    assert evidence.participant_count == 36
+    assert len(evidence.rounds) == 16
+    assert [round_.fixture_count for round_ in evidence.rounds] == [
+        18,
+        18,
+        18,
+        18,
+        18,
+        18,
+        18,
+        18,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+    ]
+    assert "110000" not in rendered
+    assert "Team 4000" not in rendered
+    assert transport.calls == [
+        "/getavailableleagues/2026",
+        "/getavailablegroups/ucl/2026",
+        "/getmatchdata/ucl/2026",
+    ]
+
+
+def test_champions_league_qualification_rejects_incomplete_matchday() -> None:
+    fixtures = champions_league_fixtures()
+    fixtures.pop()
+    responses = valid_champions_league_responses()
+    responses[2] = response(fixtures)
+
+    with pytest.raises(OpenLigaDBQualificationError, match="exactly 144"):
+        qualify_champions_league_league_phase(
+            transport=StubTransport(responses),
+            clock=lambda: datetime(2026, 8, 31, 7, 0, tzinfo=UTC),
+        )
+
+
+def test_champions_league_qualification_rejects_repeated_opponents() -> None:
+    fixtures = champions_league_fixtures()
+    fixtures[-1]["team1"] = deepcopy(fixtures[0]["team2"])
+    fixtures[-1]["team2"] = deepcopy(fixtures[0]["team1"])
+    responses = valid_champions_league_responses()
+    responses[2] = response(fixtures)
+
+    with pytest.raises(OpenLigaDBQualificationError, match="opponent pairing"):
+        qualify_champions_league_league_phase(
+            transport=StubTransport(responses),
+            clock=lambda: datetime(2026, 8, 31, 7, 0, tzinfo=UTC),
+        )
 
 
 def test_second_bundesliga_qualification_rejects_incomplete_season() -> None:
@@ -522,6 +855,48 @@ def test_main_selects_second_bundesliga(
 
     assert qualification.main(["--competition", SECOND_BUNDESLIGA_PROFILE.key]) == 0
     assert json.loads(capsys.readouterr().out)["league_id"] == 4938
+
+
+def test_main_selects_nations_league_a(
+    monkeypatch: pytest.MonkeyPatch, capsys: Any
+) -> None:
+    transport = StubTransport(valid_nations_league_a_responses())
+    evidence = qualify_nations_league_a_group_phase(
+        transport=transport,
+        clock=lambda: datetime(2026, 8, 30, 9, 15, tzinfo=UTC),
+    )
+    monkeypatch.setattr(
+        qualification,
+        "qualify_nations_league_a_group_phase",
+        lambda: evidence,
+    )
+
+    assert (
+        qualification.main(["--competition", NATIONS_LEAGUE_A_GROUP_PHASE_PROFILE.key])
+        == 0
+    )
+    assert json.loads(capsys.readouterr().out)["league_id"] == 5978
+
+
+def test_main_selects_champions_league(
+    monkeypatch: pytest.MonkeyPatch, capsys: Any
+) -> None:
+    transport = StubTransport(valid_champions_league_responses())
+    evidence = qualify_champions_league_league_phase(
+        transport=transport,
+        clock=lambda: datetime(2026, 8, 31, 7, 0, tzinfo=UTC),
+    )
+    monkeypatch.setattr(
+        qualification,
+        "qualify_champions_league_league_phase",
+        lambda: evidence,
+    )
+
+    assert (
+        qualification.main(["--competition", CHAMPIONS_LEAGUE_LEAGUE_PHASE_PROFILE.key])
+        == 0
+    )
+    assert json.loads(capsys.readouterr().out)["league_id"] == 4946
 
 
 def test_main_exits_cleanly_on_qualification_error(

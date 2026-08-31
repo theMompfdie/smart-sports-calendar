@@ -22,7 +22,10 @@ from app.database.sports_events_repository import SportsEventsRepository
 from app.domain.competition_lifecycle import (
     CompetitionFormat,
     CompetitionLifecycleScope,
+    FixtureLeg,
     FixtureObservationScopeKind,
+    FixtureParticipantResolution,
+    TournamentStageKind,
 )
 from app.providers.api_football.exceptions import ProviderIntegrityError
 
@@ -236,6 +239,259 @@ def test_canonical_updates_reconcile_participants_without_changing_identity(
             2,
         ),
     ]
+
+
+def test_unresolved_participant_defers_until_same_fixture_identity_resolves(
+    tmp_path: Path,
+) -> None:
+    context = create_context(tmp_path)
+    fixture = context.service.normalize_current_premier_league()[0]
+    unresolved = replace(
+        fixture,
+        title="Winner of tie A vs Arsenal",
+        participants=(
+            NormalizedFixtureParticipant(
+                None,
+                "home",
+                1,
+                FixtureParticipantResolution.UNRESOLVED,
+            ),
+            fixture.participants[1],
+        ),
+    )
+    importer = create_importer(context.database_path)
+    import_scope = scope(context.competition_id, context.season_id)
+
+    deferred = importer.import_fixtures((unresolved,), import_scope).items[0]
+
+    assert deferred.decision is FixtureImportDecision.DEFER
+    assert deferred.event_id is None
+    assert (
+        SourceMappingsRepository(context.database_path).get_by_external_id(
+            context.source_id,
+            "event",
+            fixture.external_id,
+        )
+        is None
+    )
+    with sqlite3.connect(context.database_path) as connection:
+        assert (
+            connection.execute("SELECT COUNT(*) FROM sports_events").fetchone()[0] == 0
+        )
+        assert connection.execute("SELECT COUNT(*) FROM participants").fetchone()[0] > 0
+
+    created = importer.import_fixtures(
+        (fixture,),
+        replace(import_scope, observation_id="participants-resolved"),
+    ).items[0]
+
+    assert created.decision is FixtureImportDecision.CREATE
+    assert created.event_id is not None
+
+    deferred_again = importer.import_fixtures(
+        (unresolved,),
+        replace(import_scope, observation_id="placeholder-regression"),
+    ).items[0]
+    assert deferred_again.decision is FixtureImportDecision.DEFER
+    assert deferred_again.event_id == created.event_id
+    event = SportsEventsRepository(context.database_path).get_by_id(created.event_id)
+    assert event is not None
+    assert event.title == fixture.title
+    assert (
+        len(EventParticipantsRepository(context.database_path).get_for_event(event.id))
+        == 2
+    )
+
+
+def test_hybrid_fixture_persists_typed_lifecycle_metadata_without_new_identity(
+    tmp_path: Path,
+) -> None:
+    context = create_context(tmp_path)
+    with sqlite3.connect(context.database_path) as connection:
+        connection.execute(
+            "UPDATE competitions SET competition_type = ? WHERE id = ?",
+            (CompetitionFormat.HYBRID_TOURNAMENT.value, context.competition_id),
+        )
+    fixture = replace(
+        context.service.normalize_current_premier_league()[0],
+        stage="qualifying",
+        round_name="qualifying_round_3",
+        stage_kind=TournamentStageKind.QUALIFYING,
+        tie_key="qualifying_round_3_tie_17",
+        leg=FixtureLeg.FIRST,
+    )
+    import_scope = FixtureImportScope(
+        competition_id=context.competition_id,
+        season_id=context.season_id,
+        observation_id="hybrid-qualifying",
+        observed_at_utc=OBSERVED_AT,
+        lifecycle=CompetitionLifecycleScope(
+            CompetitionFormat.HYBRID_TOURNAMENT,
+            FixtureObservationScopeKind.PARTIAL,
+            stage="qualifying",
+            round_name="qualifying_round_3",
+            stage_kind=TournamentStageKind.QUALIFYING,
+        ),
+        authoritative=True,
+    )
+
+    result = (
+        create_importer(context.database_path)
+        .import_fixtures(
+            (fixture,),
+            import_scope,
+        )
+        .items[0]
+    )
+
+    assert result.decision is FixtureImportDecision.CREATE
+    assert result.event_id is not None
+    event = SportsEventsRepository(context.database_path).get_by_id(result.event_id)
+    assert event is not None
+    assert event.stage == "qualifying"
+    assert event.round_name == "qualifying_round_3"
+    assert event.metadata is not None
+    assert event.metadata["tournament_lifecycle"] == {
+        "stage_kind": "qualifying",
+        "tie_key": "qualifying_round_3_tie_17",
+        "leg": "first",
+    }
+
+
+def test_provider_metadata_cannot_override_reserved_tournament_lifecycle(
+    tmp_path: Path,
+) -> None:
+    context = create_context(tmp_path)
+    fixture = replace(
+        context.service.normalize_current_premier_league()[0],
+        metadata={"tournament_lifecycle": {"leg": "provider-controlled"}},
+    )
+
+    with pytest.raises(ProviderIntegrityError, match="reserved tournament"):
+        create_importer(context.database_path).import_fixtures(
+            (fixture,),
+            scope(context.competition_id, context.season_id),
+        )
+
+    with sqlite3.connect(context.database_path) as connection:
+        assert (
+            connection.execute("SELECT COUNT(*) FROM sports_events").fetchone()[0] == 0
+        )
+
+
+def test_complete_hybrid_round_rejects_mixed_stage_kind_before_writes(
+    tmp_path: Path,
+) -> None:
+    context = create_context(tmp_path)
+    fixture = replace(
+        context.service.normalize_current_premier_league()[0],
+        stage="knockout",
+        round_name="round_of_16",
+        stage_kind=TournamentStageKind.KNOCKOUT_PLAYOFF,
+    )
+    complete_round = FixtureImportScope(
+        competition_id=context.competition_id,
+        season_id=context.season_id,
+        observation_id="hybrid-round-mismatch",
+        observed_at_utc=OBSERVED_AT,
+        lifecycle=CompetitionLifecycleScope(
+            CompetitionFormat.HYBRID_TOURNAMENT,
+            FixtureObservationScopeKind.COMPLETE_ROUND,
+            stage="knockout",
+            round_name="round_of_16",
+            stage_kind=TournamentStageKind.KNOCKOUT,
+        ),
+        authoritative=True,
+    )
+
+    with pytest.raises(ProviderIntegrityError, match="complete-round"):
+        create_importer(context.database_path).import_fixtures(
+            (fixture,),
+            complete_round,
+        )
+
+    with sqlite3.connect(context.database_path) as connection:
+        assert (
+            connection.execute("SELECT COUNT(*) FROM sports_events").fetchone()[0] == 0
+        )
+
+
+def test_complete_hybrid_round_reconciliation_stays_inside_exact_boundary(
+    tmp_path: Path,
+) -> None:
+    context = create_context(tmp_path)
+    with sqlite3.connect(context.database_path) as connection:
+        connection.execute(
+            "UPDATE competitions SET competition_type = ? WHERE id = ?",
+            (CompetitionFormat.HYBRID_TOURNAMENT.value, context.competition_id),
+        )
+    fixtures = context.service.normalize_current_premier_league()
+    round_of_16 = tuple(
+        replace(
+            fixture,
+            stage="knockout",
+            round_name="round_of_16",
+            stage_kind=TournamentStageKind.KNOCKOUT,
+        )
+        for fixture in fixtures[:2]
+    )
+    knockout_playoff = replace(
+        fixtures[2],
+        stage="knockout_playoff",
+        round_name="round_of_16",
+        stage_kind=TournamentStageKind.KNOCKOUT_PLAYOFF,
+    )
+    importer = create_importer(context.database_path)
+    initial = FixtureImportScope(
+        competition_id=context.competition_id,
+        season_id=context.season_id,
+        observation_id="hybrid-initial",
+        observed_at_utc=OBSERVED_AT,
+        lifecycle=CompetitionLifecycleScope(
+            CompetitionFormat.HYBRID_TOURNAMENT,
+            FixtureObservationScopeKind.PARTIAL,
+        ),
+        authoritative=True,
+    )
+    importer.import_fixtures((*round_of_16, knockout_playoff), initial)
+    complete_round = replace(
+        initial,
+        observation_id="hybrid-round-1",
+        observed_at_utc=OBSERVED_AT.replace(hour=13),
+        lifecycle=CompetitionLifecycleScope(
+            CompetitionFormat.HYBRID_TOURNAMENT,
+            FixtureObservationScopeKind.COMPLETE_ROUND,
+            stage="knockout",
+            round_name="round_of_16",
+            stage_kind=TournamentStageKind.KNOCKOUT,
+        ),
+    )
+
+    first = importer.import_fixtures(round_of_16[1:], complete_round)
+    second = importer.import_fixtures(
+        round_of_16[1:],
+        replace(
+            complete_round,
+            observation_id="hybrid-round-2",
+            observed_at_utc=OBSERVED_AT.replace(hour=14),
+        ),
+    )
+
+    assert first.count(FixtureImportDecision.DELETE) == 0
+    assert second.count(FixtureImportDecision.DELETE) == 1
+    outside_mapping = SourceMappingsRepository(
+        context.database_path
+    ).get_by_external_id(
+        context.source_id,
+        "event",
+        knockout_playoff.external_id,
+    )
+    assert outside_mapping is not None
+    outside_event = SportsEventsRepository(context.database_path).get_by_id(
+        outside_mapping.internal_id
+    )
+    assert outside_event is not None
+    assert outside_event.deleted_at is None
 
 
 def test_cancellation_timestamp_is_stable_and_correction_reactivates(

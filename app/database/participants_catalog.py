@@ -303,6 +303,64 @@ OEFB_CUP_2026_27_TEAMS = (
     ("wolfsberger_ac", "RZ Pellets WAC", "Wolfsberger AC"),
 )
 
+NATIONS_LEAGUE_A_2026_27_TEAMS = (
+    ("france", "France", "France", "FR"),
+    ("italy", "Italy", "Italy", "IT"),
+    ("belgium", "Belgium", "Belgium", "BE"),
+    ("turkiye", "Türkiye", "Türkiye", "TR"),
+    ("germany", "Germany", "Germany", "DE"),
+    ("netherlands", "Netherlands", "Netherlands", "NL"),
+    ("serbia", "Serbia", "Serbia", "RS"),
+    ("greece", "Greece", "Greece", "GR"),
+    ("spain", "Spain", "Spain", "ES"),
+    ("croatia", "Croatia", "Croatia", "HR"),
+    ("england_national_team", "England", "England", "GB-ENG"),
+    ("czechia", "Czechia", "Czechia", "CZ"),
+    ("portugal", "Portugal", "Portugal", "PT"),
+    ("denmark", "Denmark", "Denmark", "DK"),
+    ("norway", "Norway", "Norway", "NO"),
+    ("wales_national_team", "Wales", "Wales", "GB-WLS"),
+)
+
+CHAMPIONS_LEAGUE_2026_27_TEAMS = (
+    ("borussia_dortmund", "Borussia Dortmund", "Dortmund", "DE"),
+    ("vfb_stuttgart", "VfB Stuttgart", "Stuttgart", "DE"),
+    ("fc_bayern_muenchen", "FC Bayern München", "Bayern", "DE"),
+    ("barcelona", "FC Barcelona", "Barcelona", "ES"),
+    ("fenerbahce", "Fenerbahçe", "Fenerbahçe", "TR"),
+    ("liverpool", "Liverpool", "Liverpool", "GB-ENG"),
+    ("porto", "FC Porto", "Porto", "PT"),
+    ("psv_eindhoven", "PSV Eindhoven", "PSV", "NL"),
+    ("roma", "AS Roma", "Roma", "IT"),
+    ("villarreal", "Villarreal CF", "Villarreal", "ES"),
+    ("aston_villa", "Aston Villa", "Aston Villa", "GB-ENG"),
+    ("inter_milan", "Inter", "Inter", "IT"),
+    ("real_madrid", "Real Madrid", "Real Madrid", "ES"),
+    ("shakhtar_donetsk", "Shakhtar Donetsk", "Shakhtar", "UA"),
+    ("lille", "LOSC Lille", "Lille", "FR"),
+    ("sporting_cp", "Sporting CP", "Sporting", "PT"),
+    ("club_brugge", "Club Brugge", "Club Brugge", "BE"),
+    ("aek_athens", "AEK Athens", "AEK", "GR"),
+    ("viking", "Viking FK", "Viking", "NO"),
+    ("rb_leipzig", "RB Leipzig", "RB Leipzig", "DE"),
+    ("feyenoord", "Feyenoord", "Feyenoord", "NL"),
+    ("real_betis", "Real Betis", "Real Betis", "ES"),
+    ("paris_saint_germain", "Paris Saint-Germain", "Paris", "FR"),
+    ("napoli", "SSC Napoli", "Napoli", "IT"),
+    ("galatasaray", "Galatasaray", "Galatasaray", "TR"),
+    ("manchester_united", "Manchester United", "Man Utd", "GB-ENG"),
+    ("arsenal", "Arsenal", "Arsenal", "GB-ENG"),
+    ("atletico_madrid", "Atlético de Madrid", "Atleti", "ES"),
+    ("manchester_city", "Manchester City", "Man City", "GB-ENG"),
+    ("slavia_prague", "Slavia Praha", "Slavia Praha", "CZ"),
+    ("lask", "LASK", "LASK", "AT"),
+    ("slovan_bratislava", "Slovan Bratislava", "Slovan", "SK"),
+    ("bodo_glimt", "Bodø/Glimt", "Bodø/Glimt", "NO"),
+    ("lens", "RC Lens", "Lens", "FR"),
+    ("como", "Como 1907", "Como", "IT"),
+    ("sabah", "Sabah FC", "Sabah", "AZ"),
+)
+
 SEASON_PARTICIPANTS_CATALOG = (
     SeasonParticipantsCatalogEntry(
         competition_key="premier_league",
@@ -383,6 +441,38 @@ SEASON_PARTICIPANTS_CATALOG = (
                 short_name=short_name,
             )
             for participant_key, name, short_name in OEFB_CUP_2026_27_TEAMS
+        ),
+    ),
+    SeasonParticipantsCatalogEntry(
+        competition_key="uefa_nations_league",
+        season_key="2026_27",
+        country_code="INT",
+        participants=tuple(
+            ParticipantCatalogEntry(
+                participant_key=participant_key,
+                name=name,
+                short_name=short_name,
+                country_code=country_code,
+            )
+            for participant_key, name, short_name, country_code in (
+                NATIONS_LEAGUE_A_2026_27_TEAMS
+            )
+        ),
+    ),
+    SeasonParticipantsCatalogEntry(
+        competition_key="uefa_champions_league",
+        season_key="2026_27",
+        country_code="INT",
+        participants=tuple(
+            ParticipantCatalogEntry(
+                participant_key=participant_key,
+                name=name,
+                short_name=short_name,
+                country_code=country_code,
+            )
+            for participant_key, name, short_name, country_code in (
+                CHAMPIONS_LEAGUE_2026_27_TEAMS
+            )
         ),
     ),
 )

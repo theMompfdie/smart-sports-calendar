@@ -4,8 +4,8 @@ import json
 import os
 import re
 import sqlite3
-from collections.abc import Sequence
-from dataclasses import asdict, dataclass
+from collections.abc import Mapping, Sequence
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 
@@ -34,6 +34,8 @@ class SafeRunSummary:
     removal_eligible: bool | None
     error_category: str | None
     scope_stage: str | None = None
+    scope_stage_kind: str | None = None
+    filtered: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -65,6 +67,9 @@ class SafeFixtureScopeSummary:
     latest_source_update_utc: str | None
     status_counts: dict[str, int]
     calendar_mappings_revision_pending: int = 0
+    source_participant_mappings: int = 0
+    stage_counts: dict[str, int] = field(default_factory=dict)
+    round_counts: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -84,54 +89,112 @@ class StagingEvidenceValidationError(RuntimeError):
     pass
 
 
+@dataclass(frozen=True)
+class CandidateAuthorityRequirement:
+    source_key: str
+    competition_key: str
+    scope_kind: str
+    complete: bool
+    removal_eligible: bool
+    expected_fixture_count: int | None
+    scope_stage: str | None = None
+    scope_stage_kind: str | None = None
+    filtered: bool | None = None
+    expected_participant_mapping_count: int | None = None
+    expected_stage_counts: tuple[tuple[str, int], ...] | None = None
+    expected_round_counts: tuple[tuple[str, int], ...] | None = None
+
+
 PHASE_5_AUTHORITIES = {
-    "football-data-premier-league": (
-        "football_data",
-        "premier_league",
-        "complete_season",
-        True,
-        True,
-        380,
+    "football-data-premier-league": CandidateAuthorityRequirement(
+        source_key="football_data",
+        competition_key="premier_league",
+        scope_kind="complete_season",
+        complete=True,
+        removal_eligible=True,
+        expected_fixture_count=380,
     ),
-    "football-data-bundesliga": (
-        "football_data",
-        "bundesliga",
-        "complete_season",
-        True,
-        True,
-        306,
+    "football-data-bundesliga": CandidateAuthorityRequirement(
+        source_key="football_data",
+        competition_key="bundesliga",
+        scope_kind="complete_season",
+        complete=True,
+        removal_eligible=True,
+        expected_fixture_count=306,
     ),
-    "football-data-championship": (
-        "football_data",
-        "championship",
-        "complete_stage",
-        True,
-        True,
-        552,
+    "football-data-championship": CandidateAuthorityRequirement(
+        source_key="football_data",
+        competition_key="championship",
+        scope_kind="complete_stage",
+        complete=True,
+        removal_eligible=True,
+        expected_fixture_count=552,
+        scope_stage="REGULAR_SEASON",
     ),
-    "openligadb-dfb-pokal": (
-        "openligadb",
-        "dfb_pokal",
-        "partial",
-        False,
-        False,
-        None,
+    "openligadb-dfb-pokal": CandidateAuthorityRequirement(
+        source_key="openligadb",
+        competition_key="dfb_pokal",
+        scope_kind="partial",
+        complete=False,
+        removal_eligible=False,
+        expected_fixture_count=None,
     ),
-    "openligadb-second-bundesliga": (
-        "openligadb",
-        "second_bundesliga",
-        "partial",
-        False,
-        False,
-        306,
+    "openligadb-second-bundesliga": CandidateAuthorityRequirement(
+        source_key="openligadb",
+        competition_key="second_bundesliga",
+        scope_kind="partial",
+        complete=False,
+        removal_eligible=False,
+        expected_fixture_count=306,
     ),
-    "oefb-ical-oefb-cup": (
-        "oefb_ical",
-        "oefb_cup",
-        "partial",
-        False,
-        False,
-        48,
+    "oefb-ical-oefb-cup": CandidateAuthorityRequirement(
+        source_key="oefb_ical",
+        competition_key="oefb_cup",
+        scope_kind="partial",
+        complete=False,
+        removal_eligible=False,
+        expected_fixture_count=48,
+    ),
+}
+
+PHASE_6_NATIONS_LEAGUE_A_AUTHORITIES = {
+    **PHASE_5_AUTHORITIES,
+    "openligadb-uefa-nations-league": CandidateAuthorityRequirement(
+        source_key="openligadb",
+        competition_key="uefa_nations_league",
+        scope_kind="partial",
+        complete=False,
+        removal_eligible=False,
+        expected_fixture_count=48,
+        scope_stage="league_a_group_phase",
+        scope_stage_kind="league_phase",
+        filtered=True,
+        expected_participant_mapping_count=16,
+        expected_stage_counts=(("league_a_group_phase", 48),),
+        expected_round_counts=(
+            ("group-a-1", 12),
+            ("group-a-2", 12),
+            ("group-a-3", 12),
+            ("group-a-4", 12),
+        ),
+    ),
+}
+
+PHASE_6_CHAMPIONS_LEAGUE_AUTHORITIES = {
+    **PHASE_6_NATIONS_LEAGUE_A_AUTHORITIES,
+    "openligadb-uefa-champions-league": CandidateAuthorityRequirement(
+        source_key="openligadb",
+        competition_key="uefa_champions_league",
+        scope_kind="partial",
+        complete=False,
+        removal_eligible=False,
+        expected_fixture_count=144,
+        scope_stage="league_phase",
+        scope_stage_kind="league_phase",
+        filtered=True,
+        expected_participant_mapping_count=36,
+        expected_stage_counts=(("league_phase", 144),),
+        expected_round_counts=tuple((f"matchday-{order}", 18) for order in range(1, 9)),
     ),
 }
 
@@ -299,6 +362,17 @@ def _fixture_scope_summary(
             authority["season_id"],
         ),
     ).fetchone()
+    participant_mapping_count = connection.execute(
+        """
+        SELECT COUNT(*)
+        FROM source_mappings AS mapping
+        JOIN season_participants AS membership
+          ON membership.participant_id = mapping.internal_id
+        WHERE mapping.source_id = ? AND mapping.object_type = 'participant'
+          AND membership.season_id = ?
+        """,
+        (authority["source_id"], authority["season_id"]),
+    ).fetchone()
     status_rows = connection.execute(
         """
         SELECT status, COUNT(*) AS item_count
@@ -306,6 +380,28 @@ def _fixture_scope_summary(
         WHERE competition_id = ? AND season_id = ? AND event_type = 'match'
         GROUP BY status
         ORDER BY status
+        """,
+        (authority["competition_id"], authority["season_id"]),
+    ).fetchall()
+    stage_rows = connection.execute(
+        """
+        SELECT stage, COUNT(*) AS item_count
+        FROM sports_events
+        WHERE competition_id = ? AND season_id = ? AND event_type = 'match'
+          AND stage IS NOT NULL
+        GROUP BY stage
+        ORDER BY stage
+        """,
+        (authority["competition_id"], authority["season_id"]),
+    ).fetchall()
+    round_rows = connection.execute(
+        """
+        SELECT round_name, COUNT(*) AS item_count
+        FROM sports_events
+        WHERE competition_id = ? AND season_id = ? AND event_type = 'match'
+          AND round_name IS NOT NULL
+        GROUP BY round_name
+        ORDER BY round_name
         """,
         (authority["competition_id"], authority["season_id"]),
     ).fetchall()
@@ -395,6 +491,11 @@ def _fixture_scope_summary(
         status_counts={
             str(row["status"]): int(row["item_count"]) for row in status_rows
         },
+        source_participant_mappings=(
+            int(participant_mapping_count[0]) if participant_mapping_count else 0
+        ),
+        stage_counts=_safe_count_map(stage_rows, "stage"),
+        round_counts=_safe_count_map(round_rows, "round_name"),
     )
 
 
@@ -424,6 +525,8 @@ def _safe_run_summary(row: sqlite3.Row) -> SafeRunSummary:
         removal_eligible=_safe_bool(metadata.get("removal_eligible")),
         error_category=_safe_identifier(metadata.get("error_category")),
         scope_stage=_safe_identifier(metadata.get("scope_stage")),
+        scope_stage_kind=_safe_identifier(metadata.get("scope_stage_kind")),
+        filtered=_safe_bool(metadata.get("filtered")),
     )
 
 
@@ -451,7 +554,45 @@ def _safe_bool(value: object) -> bool | None:
     return value if isinstance(value, bool) else None
 
 
+def _safe_count_map(rows: Sequence[sqlite3.Row], key: str) -> dict[str, int]:
+    result: dict[str, int] = {}
+    for row in rows:
+        identifier = _safe_identifier(row[key])
+        if identifier is not None:
+            result[identifier] = int(row["item_count"])
+    return result
+
+
 def validate_phase_5_candidate(evidence: StagingEvidence) -> None:
+    _validate_candidate(
+        evidence,
+        requirements=PHASE_5_AUTHORITIES,
+        candidate_name="Phase 5",
+    )
+
+
+def validate_nations_league_a_candidate(evidence: StagingEvidence) -> None:
+    _validate_candidate(
+        evidence,
+        requirements=PHASE_6_NATIONS_LEAGUE_A_AUTHORITIES,
+        candidate_name="Phase 6 Nations League A",
+    )
+
+
+def validate_champions_league_candidate(evidence: StagingEvidence) -> None:
+    _validate_candidate(
+        evidence,
+        requirements=PHASE_6_CHAMPIONS_LEAGUE_AUTHORITIES,
+        candidate_name="Phase 6 Champions League",
+    )
+
+
+def _validate_candidate(
+    evidence: StagingEvidence,
+    *,
+    requirements: Mapping[str, CandidateAuthorityRequirement],
+    candidate_name: str,
+) -> None:
     errors: list[str] = []
     if evidence.database_quick_check != "ok":
         errors.append("SQLite quick check did not pass")
@@ -463,21 +604,25 @@ def validate_phase_5_candidate(evidence: StagingEvidence) -> None:
     authorities = {
         authority.job_key: authority for authority in evidence.active_authorities
     }
-    expected_jobs = set(PHASE_5_AUTHORITIES)
+    expected_jobs = set(requirements)
     if set(authorities) != expected_jobs:
-        errors.append("enabled authoritative jobs do not match the Phase 5 candidate")
+        errors.append(
+            f"enabled authoritative jobs do not match the {candidate_name} candidate"
+        )
 
     fixture_scopes = {scope.competition_key: scope for scope in evidence.fixture_scopes}
     expected_competitions = {
-        definition[1] for definition in PHASE_5_AUTHORITIES.values()
+        requirement.competition_key for requirement in requirements.values()
     }
     if set(fixture_scopes) != expected_competitions:
-        errors.append("fixture scopes do not match the Phase 5 candidate")
+        errors.append(f"fixture scopes do not match the {candidate_name} candidate")
     scoped_fixture_total = sum(
         scope.fixtures_total for scope in evidence.fixture_scopes
     )
     if evidence.sports_events != scoped_fixture_total:
-        errors.append("database contains events outside the Phase 5 candidate scopes")
+        errors.append(
+            f"database contains events outside the {candidate_name} candidate scopes"
+        )
     if evidence.calendar_mappings_by_status != {"synced": scoped_fixture_total}:
         errors.append("calendar mappings are not globally converged")
     if evidence.calendar_mappings_revision_pending != 0:
@@ -489,20 +634,14 @@ def validate_phase_5_candidate(evidence: StagingEvidence) -> None:
         if (
             run.run_type == "provider_import"
             and job_key is not None
-            and job_key in PHASE_5_AUTHORITIES
+            and job_key in requirements
             and job_key not in provider_runs
         ):
             provider_runs[job_key] = run
 
-    for job_key, definition in PHASE_5_AUTHORITIES.items():
-        (
-            source_key,
-            competition_key,
-            scope_kind,
-            complete,
-            removal_eligible,
-            expected_fixture_count,
-        ) = definition
+    for job_key, requirement in requirements.items():
+        source_key = requirement.source_key
+        competition_key = requirement.competition_key
         authority = authorities.get(job_key)
         if authority is not None and (
             authority.source_key != source_key
@@ -523,8 +662,8 @@ def validate_phase_5_candidate(evidence: StagingEvidence) -> None:
             if fixture_scope.fixtures_total <= 0:
                 errors.append(f"fixture scope is empty for {competition_key}")
             if (
-                expected_fixture_count is not None
-                and fixture_scope.fixtures_total != expected_fixture_count
+                requirement.expected_fixture_count is not None
+                and fixture_scope.fixtures_total != requirement.expected_fixture_count
             ):
                 errors.append(f"fixture count is invalid for {competition_key}")
             if fixture_scope.fixtures_active != fixture_scope.fixtures_total:
@@ -561,6 +700,26 @@ def validate_phase_5_candidate(evidence: StagingEvidence) -> None:
                 errors.append(
                     f"fixture status counts are invalid for {competition_key}"
                 )
+            if (
+                requirement.expected_participant_mapping_count is not None
+                and fixture_scope.source_participant_mappings
+                != requirement.expected_participant_mapping_count
+            ):
+                errors.append(
+                    f"participant mapping count is invalid for {competition_key}"
+                )
+            if (
+                requirement.expected_stage_counts is not None
+                and fixture_scope.stage_counts
+                != dict(requirement.expected_stage_counts)
+            ):
+                errors.append(f"stage counts are invalid for {competition_key}")
+            if (
+                requirement.expected_round_counts is not None
+                and fixture_scope.round_counts
+                != dict(requirement.expected_round_counts)
+            ):
+                errors.append(f"round counts are invalid for {competition_key}")
 
         provider_run = provider_runs.get(job_key)
         if provider_run is None:
@@ -571,11 +730,15 @@ def validate_phase_5_candidate(evidence: StagingEvidence) -> None:
             or provider_run.competition_key != competition_key
             or provider_run.season_key != "2026_27"
             or provider_run.authoritative is not True
-            or provider_run.complete is not complete
-            or provider_run.scope_kind != scope_kind
-            or provider_run.removal_eligible is not removal_eligible
-            or provider_run.scope_stage
-            != ("REGULAR_SEASON" if competition_key == "championship" else None)
+            or provider_run.complete is not requirement.complete
+            or provider_run.scope_kind != requirement.scope_kind
+            or provider_run.removal_eligible is not requirement.removal_eligible
+            or provider_run.scope_stage != requirement.scope_stage
+            or provider_run.scope_stage_kind != requirement.scope_stage_kind
+            or (
+                requirement.filtered is not None
+                and provider_run.filtered is not requirement.filtered
+            )
             or provider_run.items_failed != 0
         ):
             errors.append(f"latest provider run is invalid for {competition_key}")
@@ -623,13 +786,32 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=10,
         help="Maximum number of recent run summaries (default: 10).",
     )
-    parser.add_argument(
+    validation_group = parser.add_mutually_exclusive_group()
+    validation_group.add_argument(
         "--validate-phase-5-candidate",
         action="store_true",
         help=(
             "Require the exact Premier League, Bundesliga, Championship regular "
             "season, and permanently partial OpenLigaDB Phase 5 staging candidate "
             "to be fully converged."
+        ),
+    )
+    validation_group.add_argument(
+        "--validate-nations-league-a-candidate",
+        action="store_true",
+        help=(
+            "Require the exact released Phase 5 authorities plus the permanently "
+            "partial and filtered UEFA Nations League A group-phase authority to "
+            "be fully converged."
+        ),
+    )
+    validation_group.add_argument(
+        "--validate-champions-league-candidate",
+        action="store_true",
+        help=(
+            "Require the exact Nations League A candidate authorities plus the "
+            "permanently partial and filtered UEFA Champions League league-phase "
+            "authority to be fully converged."
         ),
     )
     arguments = parser.parse_args(argv)
@@ -641,6 +823,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         if arguments.validate_phase_5_candidate:
             validate_phase_5_candidate(evidence)
+        elif arguments.validate_nations_league_a_candidate:
+            validate_nations_league_a_candidate(evidence)
+        elif arguments.validate_champions_league_candidate:
+            validate_champions_league_candidate(evidence)
     except (FileNotFoundError, RuntimeError, ValueError, sqlite3.Error) as error:
         parser.exit(status=1, message=f"staging evidence failed: {error}\n")
 

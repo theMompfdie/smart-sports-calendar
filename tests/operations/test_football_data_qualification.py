@@ -7,6 +7,7 @@ import pytest
 from app.operations import football_data_qualification as qualification
 from app.operations.football_data_qualification import (
     BUNDESLIGA_PROFILE,
+    CHAMPIONS_LEAGUE_LEAGUE_PHASE_PROFILE,
     CHAMPIONSHIP_PROFILE,
     PREMIER_LEAGUE_PROFILE,
     FootballDataQualificationEvidence,
@@ -56,7 +57,11 @@ def with_payload(item: QualificationResponse, value: object) -> QualificationRes
     return replace(item, body=json.dumps(value).encode())
 
 
-def schedule(team_ids: list[int]) -> list[tuple[int, int, int]]:
+def schedule(
+    team_ids: list[int],
+    *,
+    expected_matchdays: int,
+) -> list[tuple[int, int, int]]:
     rotation = list(team_ids)
     first_leg: list[tuple[int, int, int]] = []
     for round_index in range(len(team_ids) - 1):
@@ -67,10 +72,12 @@ def schedule(team_ids: list[int]) -> list[tuple[int, int, int]]:
                 home, away = away, home
             first_leg.append((home, away, round_index + 1))
         rotation = [rotation[0], rotation[-1], *rotation[1:-1]]
+    if expected_matchdays <= len(team_ids) - 1:
+        return [fixture for fixture in first_leg if fixture[2] <= expected_matchdays]
     second_leg = [
         (away, home, matchday + len(team_ids) - 1) for home, away, matchday in first_leg
     ]
-    return [*first_leg, *second_leg]
+    return [*first_leg, *second_leg][: expected_matchdays * len(team_ids) // 2]
 
 
 def valid_responses(
@@ -80,8 +87,12 @@ def valid_responses(
     provider_honors_page_limit: bool = True,
 ) -> list[QualificationResponse]:
     team_ids = list(range(1, profile.expected_team_count + 1))
-    start_date = "2026-08-21" if profile is PREMIER_LEAGUE_PROFILE else "2026-08-28"
-    end_date = "2027-05-30" if profile is PREMIER_LEAGUE_PROFILE else "2027-05-22"
+    if profile is PREMIER_LEAGUE_PROFILE:
+        start_date, end_date = "2026-08-21", "2027-05-30"
+    elif profile is CHAMPIONS_LEAGUE_LEAGUE_PHASE_PROFILE:
+        start_date, end_date = "2026-09-08", "2027-01-27"
+    else:
+        start_date, end_date = "2026-08-28", "2027-05-22"
     competition = {
         "id": profile.competition_id,
         "code": profile.competition_code,
@@ -98,7 +109,9 @@ def valid_responses(
     }
     matches = []
     kickoff = datetime(2026, 8, 21, 14, 0, tzinfo=UTC)
-    for index, (home_id, away_id, matchday) in enumerate(schedule(team_ids)):
+    for index, (home_id, away_id, matchday) in enumerate(
+        schedule(team_ids, expected_matchdays=profile.expected_matchdays)
+    ):
         matches.append(
             {
                 "id": 10000 + index,
@@ -111,7 +124,7 @@ def valid_responses(
                 .replace("+00:00", "Z"),
                 "lastUpdated": "2026-08-16T10:00:00Z",
                 "status": "TIMED",
-                "stage": "REGULAR_SEASON",
+                "stage": profile.match_stage_filter or "REGULAR_SEASON",
                 "matchday": matchday,
             }
         )
@@ -269,6 +282,52 @@ def test_championship_profile_supports_documented_match_pagination() -> None:
             "?season=2026&limit=500&stage=REGULAR_SEASON&offset=500"
         ),
     ]
+
+
+def test_champions_league_profile_qualifies_exact_league_phase_scope() -> None:
+    transport = StubTransport(valid_responses(CHAMPIONS_LEAGUE_LEAGUE_PHASE_PROFILE))
+
+    evidence = qualify_football_data(
+        "provider-secret",
+        profile=CHAMPIONS_LEAGUE_LEAGUE_PHASE_PROFILE,
+        transport=transport,
+        clock=lambda: datetime(2026, 8, 30, 9, 0, tzinfo=UTC),
+    )
+    rendered = render_qualification_evidence(evidence)
+
+    assert evidence.qualification_profile == "champions-league-league-phase"
+    assert evidence.competition_code == "CL"
+    assert evidence.competition_id == 2001
+    assert evidence.team_count == 36
+    assert evidence.match_count == 144
+    assert evidence.unique_match_ids == 144
+    assert evidence.stage_counts == {"LEAGUE_STAGE": 144}
+    assert evidence.status_counts == {"TIMED": 144}
+    assert evidence.match_page_count == 1
+    assert evidence.request_count == 3
+    assert "provider-secret" not in rendered
+    assert "team-secret" not in rendered
+    assert '"10000"' not in rendered
+    assert [call[0] for call in transport.calls] == [
+        "/v4/competitions/CL",
+        "/v4/competitions/CL/teams?season=2026",
+        ("/v4/competitions/CL/matches?season=2026&limit=500&stage=LEAGUE_STAGE"),
+    ]
+
+
+def test_champions_league_profile_rejects_incomplete_league_phase() -> None:
+    responses = valid_responses(CHAMPIONS_LEAGUE_LEAGUE_PHASE_PROFILE)
+    matches_payload = payload(responses[2])
+    matches_payload["matches"].pop()
+    matches_payload["resultSet"]["count"] = 143
+    responses[2] = with_payload(responses[2], matches_payload)
+
+    with pytest.raises(QualificationError, match="144-match"):
+        run_qualification(
+            responses,
+            profile=CHAMPIONS_LEAGUE_LEAGUE_PHASE_PROFILE,
+            observed_at=datetime(2026, 8, 30, 9, 0, tzinfo=UTC),
+        )
 
 
 @pytest.mark.parametrize("stage_echo", [None, ["REGULAR_SEASON"]])

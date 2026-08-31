@@ -5,12 +5,14 @@
 Issue #74 introduces the provider-neutral authority and scheduling boundary for
 `v0.4.5-beta.1`. Issue #76 uses this boundary for the implemented
 football-data.org Premier League transport and canonical import. Phase 5 issue
-#114 extends the same boundary with a strict Bundesliga profile and
+ #114 extends the same boundary with a strict Bundesliga profile and
 competition-scoped runtime dispatch. Issue #119 adds the isolated OpenLigaDB
 DFB-Pokal writer with an invariant permanent-partial observation scope. Issue
-#132 reuses that provider boundary for an independent removal-disabled 2.
+ #132 reuses that provider boundary for an independent removal-disabled 2.
 Bundesliga job. Issue #135 adds the qualified EFL Championship regular-season
-stage without admitting the separate play-off stage.
+stage without admitting the separate play-off stage. Phase 6 issue #170 adds a
+third OpenLigaDB profile for only the UEFA Nations League A 2026/27 group
+phase.
 
 ## Source jobs
 
@@ -44,8 +46,10 @@ authoritative `football/premier_league/2026_27` and
 `football/championship/2026_27` `REGULAR_SEASON` complete-stage profile; it
 must be paired with
 `FOOTBALL_DATA_ENABLED=true`. Each profile has a separate job key and interval.
-`openligadb` supports the authoritative `football/dfb_pokal/2026_27` and
-`football/second_bundesliga/2026_27` scopes and must be paired with
+`openligadb` supports the authoritative `football/dfb_pokal/2026_27`,
+`football/second_bundesliga/2026_27`, bounded
+`football/uefa_nations_league/2026_27`, and bounded
+`football/uefa_champions_league/2026_27` scopes and must be paired with
 `OPENLIGADB_ENABLED=true`. It requires no credential. Each competition uses a
 separate job key, runtime lock, import run, and failure boundary while sharing
 the bounded public provider client.
@@ -103,9 +107,11 @@ partial pages, offset drift, duplicates, and mixed stages fail before canonical
 writes or removal evidence.
 
 OpenLigaDB jobs share one bounded client but have independent runtime locks and
-retry/run-reporting boundaries. Both the DFB-Pokal and initial 2. Bundesliga
-runtime declare `partial`, `complete=false`, and `removal_eligible=false`.
-Missing records can therefore never advance cancellation or deletion evidence.
+retry/run-reporting boundaries. The DFB-Pokal, initial 2. Bundesliga, and UEFA
+Nations League A group-phase runtimes declare `partial`, `complete=false`, and
+`removal_eligible=false`. The Nations League observation is also `filtered`
+because only provider groups 1 through 4 are admitted. Missing or excluded
+records can therefore never advance cancellation or deletion evidence.
 
 Outlook calendar synchronization is a separate scheduled job controlled by
 `HEARTBEAT_INTERVAL`. Source jobs are registered first so the initial import
@@ -129,10 +135,10 @@ authoritative job may produce a partial observation that safely creates or
 updates fixtures without creating removal evidence. Removal reconciliation is
 supported for an unfiltered complete-season league scope, a qualified non-empty
 and exact complete-stage scope, and a non-empty exact complete-round
-knockout/cup scope. Candidate selection is bounded by source, competition,
-season, and the declared stage/round identifiers. This generic capability does
-not make a concrete stage or round complete or authoritative; that claim
-remains adapter- and competition-qualified.
+knockout/cup or hybrid-tournament scope. Candidate selection is bounded by
+source, competition, season, and the declared stage/round identifiers. This
+generic capability does not make a concrete stage or round complete or
+authoritative; that claim remains adapter- and competition-qualified.
 
 Public attribution is owned by the selected source catalog entry. The
 synchronization query resolves the optional attribution only from the enabled
@@ -163,3 +169,46 @@ Phase 5.1 adds no schema migration. The existing
 format, while observation lifecycle scope is persisted in existing provider
 import-run metadata. Unknown persisted formats fail closed at repository
 mapping boundaries.
+
+## Phase 6 hybrid tournament contract
+
+Phase 6.1 adds `hybrid_tournament` for competitions that combine qualifying,
+league-phase, and knockout lifecycle segments. It does not register or enable a
+UEFA authority.
+
+Phase 6.2 issue #154 evaluates a zero-cost UEFA Champions League 2026/27
+authority. On 2026-08-28 the operator selected football-data.org `CL` / 2001
+for continued qualification and approved a release boundary beginning with
+the league phase. The 2026/27 qualifying rounds are deliberately excluded
+because the provider separates them into paid `CLQ` / 2174. Credentialed
+2026/27 main-competition evidence is still pending, so no Champions League
+catalog profile, authoritative source assignment, job, credential, or runtime
+support is approved. API-Football and Sportmonks are rejected as authoritative
+candidates under the current rights and zero-cost constraints respectively.
+
+Hybrid observations use the same source-job, import, repository,
+reconciliation, and synchronization path as released competitions. A typed
+stage kind accompanies exact normalized stage and round identifiers. Partial
+or incrementally published observations remain non-removal-capable. Complete
+hybrid stage/round claims require competition-specific qualification and retain
+the existing non-empty, exact-boundary, authority, replay, and two-observation
+safeguards.
+
+Draw-dependent fixtures use explicit resolved/unresolved participant slots.
+
+Issue #170 applies this contract to `uefa_nations_league/2026_27` without
+expanding it. OpenLigaDB `nla` / 5978 is accepted only for the 48-fixture,
+16-participant League A group phase. The profile validates four disjoint groups
+of four teams and a complete directed double round robin within each group.
+Provider groups outside 1 through 4 are ignored before normalization. Leagues
+B, C, and D plus every later stage remain unassigned and cannot contribute
+canonical or removal evidence.
+Issue #155 applies the same permanent-partial contract to the Champions League
+league phase. OpenLigaDB `ucl` / 4946 admits only groups 1 through 8, exactly
+144 fixtures, and 36 reviewed clubs. Groups 9 through 16 plus qualification
+are filtered and cannot contribute canonical or removal evidence.
+Any unresolved slot produces `DEFER`, creates no placeholder participant or
+calendar event, and cannot replace the last known good participants of an
+already mapped event. First/second-leg metadata is diagnostic; stable source
+fixture ID remains the correlation identity. See
+[`adr/0011-model-hybrid-uefa-lifecycle.md`](adr/0011-model-hybrid-uefa-lifecycle.md).
