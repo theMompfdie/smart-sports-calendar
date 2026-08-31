@@ -2,8 +2,9 @@
 
 ## Decision
 
-**Qualified for implementation:** use the nflverse `schedules` release as the
-sole proposed authority for the NFL 2026 regular season, subject to explicit
+**Qualified, implemented, and accepted in isolated staging for the
+`v0.7.0-beta.1` release candidate:** use the nflverse `schedules` release as
+the sole authority for the NFL 2026 regular season, subject to explicit
 operator enablement and the non-destructive boundary below.
 
 The approved source asset is:
@@ -213,12 +214,9 @@ plan is an automatic fallback.
 Retained as a fallback under issue #168 if nflverse later becomes unavailable
 or unsuitable. It is not an automatic second writer.
 
-## Implementation gate
+## Implemented contract and remaining release gate
 
-Qualification permits a separate implementation issue. It does not enable a
-source job, perform live staging, or approve production deployment.
-
-Implementation must add:
+The completed Phase 7 implementation adds:
 
 1. a bounded GitHub-release CSV transport profile;
 2. strict NFL schedule parsing and timezone conversion;
@@ -228,6 +226,11 @@ Implementation must add:
 6. synthetic unit, repository, integration, mocked-Graph, failure, and
    idempotency coverage; and
 7. isolated live staging before release inclusion.
+
+All seven requirements passed deterministic tests and isolated staging.
+Publishing `v0.7.0-beta.1` remains a separate signed-tag and GitHub pre-release
+gate. Production promotion, preseason, postseason, and any second writer remain
+unapproved.
 
 ## Primary references
 
@@ -240,3 +243,5 @@ Implementation must add:
 - [NFL schedule structure](https://operations.nfl.com/gameday/nfl-schedule/creating-the-nfl-schedule)
 - [NFL 2026 flex-scheduling procedures](https://www.nfl.com/news/2026-flexible-scheduling-procedures-and-scheduling-for-week-18)
 - [NFL 2026 official schedule](https://www.nfl.com/schedules/2026/by-team)
+- [Phase 7 isolated staging validation](phase-7-staging-validation.md)
+- [v0.7.0-beta.1 release checklist](v0.7.0-beta.1-release-checklist.md)

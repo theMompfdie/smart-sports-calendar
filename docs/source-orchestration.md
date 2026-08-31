@@ -176,15 +176,12 @@ Phase 6.1 adds `hybrid_tournament` for competitions that combine qualifying,
 league-phase, and knockout lifecycle segments. It does not register or enable a
 UEFA authority.
 
-Phase 6.2 issue #154 evaluates a zero-cost UEFA Champions League 2026/27
-authority. On 2026-08-28 the operator selected football-data.org `CL` / 2001
-for continued qualification and approved a release boundary beginning with
-the league phase. The 2026/27 qualifying rounds are deliberately excluded
-because the provider separates them into paid `CLQ` / 2174. Credentialed
-2026/27 main-competition evidence is still pending, so no Champions League
-catalog profile, authoritative source assignment, job, credential, or runtime
-support is approved. API-Football and Sportmonks are rejected as authoritative
-candidates under the current rights and zero-cost constraints respectively.
+Phase 6.2 initially evaluated football-data.org for the UEFA Champions League
+but did not retain it as the released authority. The final
+`v0.6.0-beta.1` boundary assigns OpenLigaDB `ucl` / 4946 only to the 2026/27
+league phase. Qualifying, play-offs, knockout rounds, and every provider group
+outside the eight accepted matchdays remain excluded. API-Football,
+Sportmonks, and football-data.org are not concurrent writers for this scope.
 
 Hybrid observations use the same source-job, import, repository,
 reconciliation, and synchronization path as released competitions. A typed
@@ -212,3 +209,24 @@ calendar event, and cannot replace the last known good participants of an
 already mapped event. First/second-leg metadata is diagnostic; stable source
 fixture ID remains the correlation identity. See
 [`adr/0011-model-hybrid-uefa-lifecycle.md`](adr/0011-model-hybrid-uefa-lifecycle.md).
+
+## Phase 7 NFL regular-season contract
+
+Phase 7 adds `american_football/nfl/2026` through the same provider-neutral
+source assignment, import, persistence, scheduling, and Outlook synchronization
+path. nflverse `schedules/games.csv` is the sole approved authority for exactly
+272 `REG` games, 32 teams, and weeks 1–18. Its fixed asset requires no
+credential and is polled no more frequently than every six hours.
+
+Every accepted observation remains `partial`, `complete=false`, and
+`removal_eligible=false`. Stable nflverse `game_id` values correlate flexed
+kickoffs to existing events. A missing row, transport failure, schema change,
+identity-set change, mixed season, invalid Eastern time, or participant mapping
+failure rejects the observation and preserves last-known-good SQLite and
+Outlook state.
+
+Outlook events render nflverse CC BY 4.0 attribution and an NFL
+flex-scheduling notice. When no provider end time exists, NFL events reserve
+three hours; association football and other generic events retain the two-hour
+fallback. Preseason, postseason, results, scores, standings, statistics,
+rosters, venues, media, and logos are outside the contract.

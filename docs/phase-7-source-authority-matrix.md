@@ -2,9 +2,11 @@
 
 ## Status and release boundary
 
-This matrix records the source decision for Phase 7 master issue #178 and the
-NFL source qualification in #179. Evidence was reviewed on 2026-08-30 and must
-be revalidated before live staging or release.
+This matrix records the final source decision for Phase 7 master issue #178,
+the NFL source qualification in #179, and the accepted isolated-staging gate
+in #190. Qualification was reviewed on 2026-08-30 and the combined nine-
+authority candidate passed isolated staging on 2026-08-31. GitHub pre-release
+publication remains a separate gate in #198.
 
 The intended `v0.7.0-beta.1` boundary is the NFL 2026 regular season only:
 
@@ -22,7 +24,7 @@ betting, rosters, injuries, stadium metadata, weather, and media are excluded.
 
 | Competition | Season and scope | Outcome | Selected candidate | Authority assignment | Operating boundary |
 | --- | --- | --- | --- | --- | --- |
-| NFL | 2026 regular season | Qualified for implementation | nflverse automated `schedules/games.csv` release | Sole proposed writer when explicitly enabled after implementation | Exactly 272 games, 32 teams, weeks 1–18; `partial`, `complete=false`, and removal disabled |
+| NFL | 2026 regular season | Qualified, implemented, and accepted in isolated staging | nflverse automated `schedules/games.csv` release | Sole authoritative writer when explicitly enabled | Exactly 272 games, 32 teams, weeks 1–18; `partial`, `complete=false`, and removal disabled |
 
 ## Candidate comparison
 
@@ -67,12 +69,25 @@ The raw dataset and fixture inventory are not repository artifacts.
 10. A licence, source-availability, provenance, or attribution change disables
     further collection pending review while preserving last-known-good state.
 
-## Next delivery gate
+## Implemented and staged outcome
 
-Issue #179 must merge before the implementation child is created. The next
-slice then adds the catalog, strict CSV adapter, configuration, source job,
-SQLite-to-mocked-Graph proof, and documentation without enabling live runtime
-collection. Isolated staging remains a later child and release gate.
+Phase 7 implements the standard-library CSV transport, strict structural
+adapter, 32-team catalog and source mappings, provider-neutral source job,
+SQLite import, scheduler runtime, Outlook attribution, flex-scheduling notice,
+and deterministic three-hour NFL event fallback. Association-football events
+retain the generic two-hour fallback.
+
+The isolated candidate accepted exactly 272 active NFL fixtures, 32
+participant mappings, 272 source fixture mappings, 272 synchronized calendar
+mappings, and weeks 1–18 under stage `regular-season`. The complete candidate
+contained nine authorities, 2,088 active events and synchronized calendar
+mappings, and zero pending mapping revisions. Unchanged provider and calendar
+runs were write-free. Restart, controlled failure/recovery, and isolated
+backup/restore gates passed without publishing fixture rows or private
+deployment identifiers.
+
+The remaining gate is the reviewed `v0.7.0-beta.1` release workflow in #197
+and #198. Publication does not promote production.
 
 ## References
 
@@ -80,3 +95,5 @@ collection. Isolated staging remains a later child and release gate.
 - [ADR 0013](adr/0013-select-nflverse-for-nfl-regular-season.md)
 - [Public repository data safety](public-repository-data-safety.md)
 - [Provider integration contract](provider-integration-contract.md)
+- [Phase 7 isolated staging validation](phase-7-staging-validation.md)
+- [v0.7.0-beta.1 release checklist](v0.7.0-beta.1-release-checklist.md)
