@@ -37,6 +37,7 @@ class OpenLigaDBQualificationProfile:
     included_group_orders: tuple[int, ...] | None = None
     require_complete_double_round_robin: bool = False
     require_complete_group_round_robin: bool = False
+    require_complete_swiss_league_phase: bool = False
     allow_missing_timezone_id: bool = False
 
     def __post_init__(self) -> None:
@@ -60,10 +61,14 @@ class OpenLigaDBQualificationProfile:
             for order in included_group_orders
         ):
             raise ValueError("Qualification profile included groups are invalid.")
-        if (
-            self.require_complete_double_round_robin
-            and self.require_complete_group_round_robin
-        ):
+        completeness_modes = sum(
+            (
+                self.require_complete_double_round_robin,
+                self.require_complete_group_round_robin,
+                self.require_complete_swiss_league_phase,
+            )
+        )
+        if completeness_modes > 1:
             raise ValueError("Qualification profile completeness modes conflict.")
         if self.require_complete_double_round_robin and (
             self.expected_fixture_count is None
@@ -77,15 +82,15 @@ class OpenLigaDBQualificationProfile:
             raise ValueError(
                 "Qualification profile has invalid double-round-robin semantics."
             )
+        if self.require_complete_group_round_robin and (
+            self.expected_fixture_count is None
+            or self.expected_participant_count is None
+            or self.expected_participant_count % len(included_group_orders)
+        ):
+            raise ValueError(
+                "Qualification profile has invalid grouped-round-robin semantics."
+            )
         if self.require_complete_group_round_robin:
-            if (
-                self.expected_fixture_count is None
-                or self.expected_participant_count is None
-                or self.expected_participant_count % len(included_group_orders)
-            ):
-                raise ValueError(
-                    "Qualification profile has invalid grouped-round-robin semantics."
-                )
             participants_per_group = self.expected_participant_count // len(
                 included_group_orders
             )
@@ -101,6 +106,21 @@ class OpenLigaDBQualificationProfile:
             ):
                 raise ValueError(
                     "Qualification profile has invalid grouped-round-robin semantics."
+                )
+        if self.require_complete_swiss_league_phase:
+            included_capacities = tuple(
+                self.group_capacities[order - 1] for order in included_group_orders
+            )
+            if (
+                self.expected_fixture_count is None
+                or self.expected_participant_count is None
+                or self.expected_participant_count % 2
+                or set(included_capacities)
+                != {self.expected_participant_count // 2}
+                or sum(included_capacities) != self.expected_fixture_count
+            ):
+                raise ValueError(
+                    "Qualification profile has invalid Swiss league-phase semantics."
                 )
 
 
@@ -149,12 +169,29 @@ NATIONS_LEAGUE_A_GROUP_PHASE_PROFILE = OpenLigaDBQualificationProfile(
     included_group_orders=(1, 2, 3, 4),
     require_complete_group_round_robin=True,
 )
+CHAMPIONS_LEAGUE_LEAGUE_PHASE_PROFILE = OpenLigaDBQualificationProfile(
+    key="champions-league-league-phase",
+    competition_name="UEFA Champions League league phase",
+    league_id=4946,
+    league_shortcut="ucl",
+    league_season=2026,
+    sport_id=1,
+    authoritative_scope="partial",
+    season_start_date=date(2026, 9, 8),
+    season_end_date=date(2027, 1, 27),
+    group_capacities=(18,) * 8 + (16, 8, 8, 4, 4, 2, 2, 1),
+    expected_fixture_count=144,
+    expected_participant_count=36,
+    included_group_orders=tuple(range(1, 9)),
+    require_complete_swiss_league_phase=True,
+)
 QUALIFICATION_PROFILES = {
     profile.key: profile
     for profile in (
         DFB_POKAL_PROFILE,
         SECOND_BUNDESLIGA_PROFILE,
         NATIONS_LEAGUE_A_GROUP_PHASE_PROFILE,
+        CHAMPIONS_LEAGUE_LEAGUE_PHASE_PROFILE,
     )
 }
 
@@ -280,6 +317,7 @@ def qualify_openligadb(
     participant_appearances: Counter[int] = Counter()
     group_participants: defaultdict[int, set[int]] = defaultdict(set)
     directed_pairings: set[tuple[int, int]] = set()
+    undirected_pairings: set[frozenset[int]] = set()
     missing_timezone_declarations = 0
     included_group_orders = set(
         profile.included_group_orders or range(1, len(profile.group_capacities) + 1)
@@ -345,6 +383,15 @@ def qualify_openligadb(
                 "Provider returned a duplicate directed pairing."
             )
         directed_pairings.add(pairing)
+        undirected_pairing = frozenset(pairing)
+        if (
+            profile.require_complete_swiss_league_phase
+            and undirected_pairing in undirected_pairings
+        ):
+            raise OpenLigaDBQualificationError(
+                "Provider returned a duplicate opponent pairing."
+            )
+        undirected_pairings.add(undirected_pairing)
 
         timezone_id = match.get("timeZoneID")
         if timezone_id is None or timezone_id == "":
@@ -406,6 +453,16 @@ def qualify_openligadb(
             group_fixture_counts=group_fixture_counts,
             group_participants=group_participants,
             directed_pairings=directed_pairings,
+        )
+    if profile.require_complete_swiss_league_phase:
+        _validate_complete_swiss_league_phase(
+            profile,
+            fixture_count=len(fixture_ids),
+            participant_ids=participant_ids,
+            participant_appearances=participant_appearances,
+            group_fixture_counts=group_fixture_counts,
+            group_participants=group_participants,
+            undirected_pairings=undirected_pairings,
         )
 
     rounds = tuple(
@@ -477,6 +534,18 @@ def qualify_nations_league_a_group_phase(
 ) -> OpenLigaDBQualificationEvidence:
     return qualify_openligadb(
         profile=NATIONS_LEAGUE_A_GROUP_PHASE_PROFILE,
+        transport=transport,
+        clock=clock,
+    )
+
+
+def qualify_champions_league_league_phase(
+    *,
+    transport: OpenLigaDBQualificationTransport | None = None,
+    clock: Callable[[], datetime] | None = None,
+) -> OpenLigaDBQualificationEvidence:
+    return qualify_openligadb(
+        profile=CHAMPIONS_LEAGUE_LEAGUE_PHASE_PROFILE,
         transport=transport,
         clock=clock,
     )
@@ -625,6 +694,46 @@ def _validate_complete_group_round_robin(
         )
 
 
+def _validate_complete_swiss_league_phase(
+    profile: OpenLigaDBQualificationProfile,
+    *,
+    fixture_count: int,
+    participant_ids: set[int],
+    participant_appearances: Counter[int],
+    group_fixture_counts: Counter[int],
+    group_participants: Mapping[int, set[int]],
+    undirected_pairings: set[frozenset[int]],
+) -> None:
+    if fixture_count != profile.expected_fixture_count:
+        raise OpenLigaDBQualificationError(
+            f"Expected exactly {profile.expected_fixture_count} fixtures."
+        )
+    if len(participant_ids) != profile.expected_participant_count:
+        raise OpenLigaDBQualificationError(
+            f"Expected exactly {profile.expected_participant_count} participants."
+        )
+    included_group_orders = profile.included_group_orders or ()
+    expected_appearances = len(included_group_orders)
+    if set(participant_appearances) != participant_ids or any(
+        count != expected_appearances for count in participant_appearances.values()
+    ):
+        raise OpenLigaDBQualificationError(
+            "Provider returned an incomplete league-phase participant schedule."
+        )
+    if any(
+        group_fixture_counts[order] != profile.group_capacities[order - 1]
+        or group_participants[order] != participant_ids
+        for order in included_group_orders
+    ):
+        raise OpenLigaDBQualificationError(
+            "Provider returned an incomplete league-phase matchday schedule."
+        )
+    if len(undirected_pairings) != profile.expected_fixture_count:
+        raise OpenLigaDBQualificationError(
+            "Provider returned repeated league-phase opponents."
+        )
+
+
 def _request_list(
     transport: OpenLigaDBQualificationTransport,
     path: str,
@@ -759,8 +868,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             evidence = qualify_dfb_pokal()
         elif arguments.competition == SECOND_BUNDESLIGA_PROFILE.key:
             evidence = qualify_second_bundesliga()
-        else:
+        elif arguments.competition == NATIONS_LEAGUE_A_GROUP_PHASE_PROFILE.key:
             evidence = qualify_nations_league_a_group_phase()
+        else:
+            evidence = qualify_champions_league_league_phase()
     except OpenLigaDBQualificationError as error:
         parser.exit(status=1, message=f"OpenLigaDB qualification failed: {error}\n")
     print(render_qualification_evidence(evidence))

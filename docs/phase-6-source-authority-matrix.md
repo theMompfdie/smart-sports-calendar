@@ -10,7 +10,8 @@ competition tracker.
 Evidence was first reviewed on 2026-08-28, extended to the Europa League,
 Conference League, and Nations League on 2026-08-29, and updated with the
 Champions League readiness observation and Nations League authority decision
-on 2026-08-30. Provider coverage,
+on 2026-08-30. The OpenLigaDB Champions League league-phase authority was
+qualified on 2026-08-31. Provider coverage,
 terms, plans, competition formats, and season data can change. Every outcome
 requires a dated competition-specific qualification record before
 implementation.
@@ -57,7 +58,7 @@ create credentials, or approve release inclusion.
 
 | Competition | Intended edition/cycle | Outcome | Preferred candidate | Authority assignment | Release boundary | Qualification record |
 | --- | --- | --- | --- | --- | --- | --- |
-| UEFA Champions League | 2026/27 | Conditional | football-data.org API v4 `CL` / 2001, free tier; operator-selected 2026-08-28 | Unassigned pending credentialed qualification | League phase through final; 2026/27 qualifying rounds explicitly excluded | [Champions League qualification](uefa-champions-league-source-qualification.md) |
+| UEFA Champions League | 2026/27 | Qualified | OpenLigaDB `ucl` / 4946, free and credential-free | Sole bounded league-phase authority when explicitly enabled | Exactly 144 league-phase fixtures and 36 participants; qualifying and all knockout stages excluded | [Champions League qualification](uefa-champions-league-source-qualification.md) |
 | UEFA Europa League | 2026/27 | Conditional | OpenLigaDB `uel2026` / 6000 is the zero-cost candidate but currently incomplete; football-data.org `EL` / 2146 and Sportmonks league 5 are paid alternatives pending operator decision | Unassigned pending source, cost, and live qualification | League phase through final is the approved candidate boundary; qualification is separate and optional | [Europa League qualification](uefa-europa-league-source-qualification.md) |
 | UEFA Conference League | 2026/27 | Conditional | No zero-cost 2026/27 candidate currently exists; Sportmonks league 2286 and football-data.org `UCL` / 2154 are paid alternatives pending operator decision | Unassigned pending source, cost, and live qualification | League phase through final is the approved candidate boundary; qualification is separate and optional | [Conference League qualification](uefa-conference-league-source-qualification.md) |
 | UEFA Nations League | 2026/27 | Qualified | OpenLigaDB `nla` / 5978, free and credential-free; selected 2026-08-30 | Sole bounded League A group-phase authority when explicitly enabled | Exactly 48 League A group-phase fixtures and 16 participants; B/C/D and all later stages excluded | [Nations League qualification](uefa-nations-league-source-qualification.md) |
@@ -68,7 +69,8 @@ create credentials, or approve release inclusion.
 | Candidate | Cost fit | Technical fit | Rights/terms fit | Current decision |
 | --- | --- | --- | --- | --- |
 | Official UEFA public pages and regulations | Free | No documented automation contract or stable machine fixture identity | Authoritative manual evidence only | Manual verification; not an automated writer |
-| football-data.org `CL` / 2001 | Free registration and free tier | Correct 2026/27 season and 36 teams observed; fixture collection still empty on 2026-08-30 | One-application use, secret key, attribution, cancellation exit obligation | Preferred conditional candidate; not ready for the first successful observation |
+| OpenLigaDB `ucl` / 4946 | Free and credential-free | Two stable 144-fixture/36-team observations; exact eight-matchday structure and official UEFA date boundary | ODbL attribution applies; community-maintained rather than official | Selected authority for the league phase only; permanently removal-disabled |
+| football-data.org `CL` / 2001 | Free registration and free tier | Correct 2026/27 season and 36 teams observed; fixture collection still empty on 2026-08-30 | One-application use, secret key, attribution, cancellation exit obligation | Verification or future explicit alternative; not the selected writer |
 | football-data.org `CLQ` / 2174 | Paid tier | Separate qualification competition | Same football-data.org terms | Rejected by zero-cost constraint |
 | API-Football | Free registration, 100 requests/day | Broad technical coverage and existing transport | Provider grants no competition-data licence; UEFA permission not recorded | Rejected as authority under current evidence |
 | Sportmonks | Champions League requires paid plan | Strongest documented hybrid lifecycle model | Paid plan terms would require separate acceptance | Rejected by zero-cost constraint |
@@ -127,25 +129,19 @@ create credentials, or approve release inclusion.
 
 ## Champions League operator decision
 
-On 2026-08-28 the operator selected football-data.org and approved a bounded
-2026/27 release scope beginning with the league phase. The already completed
-qualifying rounds are deliberately excluded for this season. This resolves the
-scope-choice gate but does not yet qualify the provider or assign authority.
+On 2026-08-31 OpenLigaDB `ucl` / 4946 passed the zero-cost, technical,
+structural, identity, and official-comparison gates for exactly the 2026/27
+league phase. It replaces the earlier conditional football-data.org path as
+the selected writer. Qualifying and every knockout stage remain excluded.
 
 ## Required next gate
 
-The Champions League track cannot create an implementation issue until:
-
-1. the free football-data.org `CL` scope exposes all 144 confirmed 2026/27
-   league-phase fixtures rather than the currently empty fixture collection;
-2. two sanitized credentialed observations prove identity, structure,
-   pagination, quota fit, and stable fingerprints; and
-3. the operator accepts the current terms and attribution requirement when
-   registering or using the free credential.
-
-The 2026/27 qualification stage is not an implementation blocker because it is
-outside the approved release boundary. It must not be presented as imported,
-implemented, or released.
+The remaining release gate is isolated staging with the explicitly enabled
+`openligadb-uefa-champions-league` job, dedicated staging SQLite database, and
+dedicated Outlook calendar. Staging must prove 144 creates, an unchanged-cycle
+rerun, restart, one controlled update, provider failure/recovery, attribution,
+and no cancellation/deletion from absence. Later stages require independent
+qualification and cannot reuse this authority implicitly.
 
 ## Europa League operator decision and required next gate
 
