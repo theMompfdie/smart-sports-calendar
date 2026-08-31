@@ -2,8 +2,9 @@
 
 - Status: Accepted
 - Date: 2026-08-30
+- Implementation status: Implemented and accepted in isolated staging on 2026-08-31
 - Decision owners: SMART Sports Calendar maintainers
-- Related issues: #168, #178, #179
+- Related issues: #168, #178, #179, #181, #184, #190
 - Builds on: ADR 0004 and the provider integration contract
 
 ## Context
@@ -30,7 +31,7 @@ repository has an open licence.
 
 ## Decision
 
-Select nflverse `schedules/games.csv` as the sole proposed authoritative writer
+Select nflverse `schedules/games.csv` as the sole authoritative writer
 for exactly the NFL 2026 regular season, subject to explicit operator
 enablement and these conditions:
 
@@ -51,8 +52,9 @@ enablement and these conditions:
 - stop collection for review if the source, licence, provenance, attribution,
   or private-use boundary changes.
 
-Qualification authorizes a separate implementation issue. It does not enable
-collection, perform staging, or approve production deployment.
+The decision was implemented through the provider-neutral runtime and accepted
+in isolated staging. It does not authorize production promotion, additional
+NFL scopes, dataset publication, or a second writer.
 
 ## Consequences
 
@@ -102,6 +104,7 @@ run simultaneously as another authoritative writer.
 
 - [`../nfl-source-qualification.md`](../nfl-source-qualification.md)
 - [`../phase-7-source-authority-matrix.md`](../phase-7-source-authority-matrix.md)
+- [`../phase-7-staging-validation.md`](../phase-7-staging-validation.md)
 - [nflverse-data](https://github.com/nflverse/nflverse-data)
 - [nflverse schedules release](https://github.com/nflverse/nflverse-data/releases/tag/schedules)
 - [CC BY 4.0 licence](https://github.com/nflverse/nflverse-data/blob/main/LICENSE.md)
