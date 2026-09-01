@@ -291,9 +291,7 @@ def test_list_event_attachments_follows_bounded_paging() -> None:
         "_get_attachment_json",
         side_effect=[
             {
-                "value": [
-                    {"id": "a-1", "contentId": "cid-1", "name": "one.png"}
-                ],
+                "value": [{"id": "a-1", "contentId": "cid-1", "name": "one.png"}],
                 "@odata.nextLink": next_link,
             },
             {"value": [{"id": "a-2", "contentId": "cid-2"}]},
@@ -353,9 +351,7 @@ def test_attachment_request_retries_throttling_with_bounded_retry_after() -> Non
         hdrs={"Retry-After": "20"},
         fp=None,
     )
-    response_body = BytesIO(
-        json.dumps({"id": "attachment-1"}).encode("utf-8")
-    )
+    response_body = BytesIO(json.dumps({"id": "attachment-1"}).encode("utf-8"))
     response = Mock()
     response.__enter__ = Mock(return_value=response_body)
     response.__exit__ = Mock(return_value=None)

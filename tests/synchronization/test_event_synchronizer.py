@@ -221,6 +221,7 @@ def test_optional_media_failure_does_not_change_core_result() -> None:
     )
     logger.warning.assert_called_once()
 
+
 def test_synchronize_event_creates_event_without_existing_mapping() -> None:
     (
         synchronizer,

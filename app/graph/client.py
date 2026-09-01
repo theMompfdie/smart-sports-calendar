@@ -174,11 +174,7 @@ class GraphClient:
     ) -> OutlookAttachmentReference:
         if not name or name != name.strip() or len(name) > 255:
             raise ValueError("Attachment name is invalid.")
-        if (
-            not content_id
-            or content_id != content_id.strip()
-            or len(content_id) > 255
-        ):
+        if not content_id or content_id != content_id.strip() or len(content_id) > 255:
             raise ValueError("Attachment content ID is invalid.")
         if content_type != "image/png":
             raise ValueError("Inline media attachments must use PNG.")
@@ -400,9 +396,7 @@ class GraphClient:
         retry_after = error.headers.get("Retry-After") if error.headers else None
         try:
             requested_delay = (
-                float(retry_after)
-                if retry_after is not None
-                else 2 ** (attempt - 1)
+                float(retry_after) if retry_after is not None else 2 ** (attempt - 1)
             )
         except ValueError:
             requested_delay = 2 ** (attempt - 1)

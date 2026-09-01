@@ -65,9 +65,7 @@ class EventMediaSynchronizer:
             outlook_event_id,
             existing,
         )
-        if any(
-            state.obsolete_outlook_attachment_id is not None for state in existing
-        ):
+        if any(state.obsolete_outlook_attachment_id is not None for state in existing):
             return
         desired = self._selector.select(synchronization_event)
         states = self._attachments.reconcile_desired(mapping.id, desired)
@@ -93,9 +91,8 @@ class EventMediaSynchronizer:
         if not states:
             return
         applied = self._effective_attachments(states)
-        if (
-            not core_event_written
-            and not self._body_transition_required(states, applied)
+        if not core_event_written and not self._body_transition_required(
+            states, applied
         ):
             return
 
@@ -112,8 +109,7 @@ class EventMediaSynchronizer:
             )
             if reference.id != outlook_event_id:
                 raise EventMediaSynchronizationError(
-                    "Microsoft Graph returned a different event ID during "
-                    "media update."
+                    "Microsoft Graph returned a different event ID during media update."
                 )
         except Exception as error:
             for state in states:
@@ -152,9 +148,7 @@ class EventMediaSynchronizer:
             self._attachments.mark_cleanup_complete(state.id)
         if not states:
             return states
-        return self._attachments.list_for_mapping(
-            states[0].calendar_event_mapping_id
-        )
+        return self._attachments.list_for_mapping(states[0].calendar_event_mapping_id)
 
     def _prepare_uploads(
         self,
