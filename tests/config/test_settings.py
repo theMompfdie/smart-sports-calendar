@@ -29,6 +29,7 @@ def configure_required_environment(
         "INSTANCE_NAME",
         raising=False,
     )
+    monkeypatch.delenv("MEDIA_ROOT", raising=False)
     monkeypatch.delenv("SOURCE_JOBS_JSON", raising=False)
     for name in (
         "API_FOOTBALL_ENABLED",
@@ -89,6 +90,27 @@ def test_load_settings_validates_credential_free_nflverse_transport(
     assert settings.max_attempts == 4
     assert settings.max_redirects == 2
     assert settings.minimum_poll_interval_seconds == 21600
+
+
+def test_load_settings_uses_configured_media_root(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    media_root = tmp_path / "media"
+    monkeypatch.setenv("MEDIA_ROOT", str(media_root))
+
+    settings = load_settings()
+
+    assert settings.media_root == media_root
+
+
+def test_load_settings_rejects_empty_media_root(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MEDIA_ROOT", "   ")
+
+    with pytest.raises(ValueError, match="MEDIA_ROOT"):
+        load_settings()
 
 
 @pytest.mark.parametrize(

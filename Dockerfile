@@ -15,7 +15,7 @@ RUN useradd \
     --uid 10001 \
     --shell /usr/sbin/nologin \
     calendar \
-    && mkdir -p /data \
+    && mkdir -p /data/media \
     && chown -R calendar:calendar /app /data
 
 USER calendar

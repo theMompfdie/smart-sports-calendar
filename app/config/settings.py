@@ -112,6 +112,7 @@ class Settings:
     )
     source_jobs: tuple[SourceJobDefinition, ...] = ()
     instance_name: str = "default"
+    media_root: Path = Path("/data/media")
 
 
 def get_required_environment_variable(name: str) -> str:
@@ -134,6 +135,13 @@ def get_instance_name() -> str:
         )
 
     return value
+
+
+def get_media_root() -> Path:
+    value = os.getenv("MEDIA_ROOT", "/data/media").strip()
+    if not value:
+        raise ValueError("MEDIA_ROOT must be configured.")
+    return Path(value)
 
 
 def get_boolean_environment_variable(
@@ -728,4 +736,5 @@ def load_settings() -> Settings:
         nflverse=load_nflverse_settings(),
         oefb_ical=load_oefb_ical_settings(),
         source_jobs=load_source_jobs(),
+        media_root=get_media_root(),
     )

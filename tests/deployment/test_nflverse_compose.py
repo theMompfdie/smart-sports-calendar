@@ -16,3 +16,12 @@ def test_compose_forwards_all_nflverse_settings() -> None:
 
     for setting, default in expected_settings.items():
         assert f"{setting}: ${{{setting}:-{default}}}" in compose
+
+
+def test_compose_keeps_media_beside_database_in_persistent_data_volume() -> None:
+    compose = (Path(__file__).parents[2] / "docker-compose.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "MEDIA_ROOT: ${MEDIA_ROOT:-/data/media}" in compose
+    assert "smart_sports_data:/data" in compose

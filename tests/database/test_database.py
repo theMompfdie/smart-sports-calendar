@@ -18,6 +18,7 @@ EXPECTED_TABLES = {
     "event_results",
     "event_statistics",
     "fixture_reconciliation_state",
+    "media_assets",
     "participants",
     "reminder_rules",
     "schema_migrations",
@@ -104,7 +105,31 @@ def test_migrations_are_registered_once(
         ("008_add_calendar_sync_revisions",),
         ("009_create_reminder_rules",),
         ("010_add_presentation_sync_revisions",),
+        ("011_create_media_assets",),
     ]
+
+
+def test_media_assets_schema_enforces_versioned_approval_and_owner_state(
+    initialized_database: Database,
+    database_path: Path,
+) -> None:
+    with connect(database_path) as connection:
+        columns = {
+            row[1]: row for row in connection.execute("PRAGMA table_info(media_assets)")
+        }
+        indexes = {
+            row[1] for row in connection.execute("PRAGMA index_list(media_assets)")
+        }
+
+    assert columns["asset_key"][3] == 1
+    assert columns["sha256"][3] == 1
+    assert columns["is_approved"][4] == "0"
+    assert columns["is_active"][4] == "0"
+    assert {
+        "uq_media_assets_active_key",
+        "idx_media_assets_owner_variant",
+        "idx_media_assets_sha256",
+    }.issubset(indexes)
 
 
 def test_presentation_revision_schema_is_monotonic_and_indexed(
@@ -982,3 +1007,52 @@ def test_presentation_revision_migration_queues_existing_mapping(
         ).fetchone()
 
     assert revisions == (1, 0, 1, 1)
+
+
+def test_media_asset_migration_preserves_existing_data(tmp_path: Path) -> None:
+    database_path = tmp_path / "sports.db"
+    legacy_migrations = tmp_path / "legacy-migrations"
+    legacy_migrations.mkdir()
+    migrations = Path(__file__).parents[2] / "app" / "database" / "migrations"
+    for migration in sorted(migrations.glob("0[01][0-9]_*.sql")):
+        if migration.name.startswith("011_"):
+            continue
+        copy2(migration, legacy_migrations / migration.name)
+    Database(database_path, migrations_directory=legacy_migrations).initialize()
+    timestamp = "2026-09-01T10:00:00+00:00"
+    with connect(database_path) as connection:
+        sport_id = connection.execute(
+            """
+            INSERT INTO sports (sport_key, name, created_at, updated_at)
+            VALUES ('football', 'Football', ?, ?)
+            """,
+            (timestamp, timestamp),
+        ).lastrowid
+        connection.execute(
+            """
+            INSERT INTO sports_events (
+                sport_id, event_key, event_type, title, start_time,
+                first_seen_at, last_seen_at, created_at, updated_at
+            ) VALUES (?, 'existing-fixture', 'match', 'Existing fixture', ?, ?, ?, ?, ?)
+            """,
+            (sport_id, timestamp, timestamp, timestamp, timestamp, timestamp),
+        )
+
+    Database(database_path).initialize()
+    Database(database_path).initialize()
+
+    with connect(database_path) as connection:
+        event = connection.execute(
+            "SELECT event_key, title FROM sports_events"
+        ).fetchone()
+        assets = connection.execute("SELECT COUNT(*) FROM media_assets").fetchone()
+        migration = connection.execute(
+            """
+            SELECT COUNT(*) FROM schema_migrations
+            WHERE version = '011_create_media_assets'
+            """
+        ).fetchone()
+
+    assert event == ("existing-fixture", "Existing fixture")
+    assert assets == (0,)
+    assert migration == (1,)

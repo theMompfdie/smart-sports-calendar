@@ -217,6 +217,10 @@ Phase 8 design and implementation documentation:
   persisted rules, local CLI, Vienna-aware quiet-period calculation, and Graph
   payload projection are implemented together with targeted, revision-safe
   convergence of existing Outlook events
+- [Rights-controlled media asset registry](docs/media-asset-registry.md) —
+  persistent metadata, explicit approval and version history, safe local
+  PNG/JPEG normalization, and content-addressed operator storage are implemented;
+  Outlook body insertion remains Phase 8.8
 
 ### Database and Persistence
 

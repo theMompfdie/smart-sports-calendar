@@ -58,6 +58,7 @@ REQUIRED_GITIGNORE_RULES = frozenset(
         "exports/",
         "logs/",
         "manifests/private/",
+        "/media/",
         "private/",
         "provider-data/",
         "raw-provider-data/",
@@ -75,6 +76,7 @@ REQUIRED_DOCKERIGNORE_RULES = frozenset(
         "exports",
         "logs",
         "manifests",
+        "media/**",
         "private",
         "provider-data",
         "raw-provider-data",
@@ -173,6 +175,8 @@ def _audit_path(path: PurePosixPath) -> list[Finding]:
         findings.append(Finding(str(path), "private environment file is tracked"))
     if PRIVATE_DIRECTORY_NAMES.intersection(lowered_parts):
         findings.append(Finding(str(path), "private runtime-data directory is tracked"))
+    if lowered_parts[0] == "media":
+        findings.append(Finding(str(path), "private media directory is tracked"))
     if "manifests" in lowered_parts and "private" in lowered_parts:
         findings.append(Finding(str(path), "private fixture manifest is tracked"))
     if basename in PRIVATE_BASENAMES:
