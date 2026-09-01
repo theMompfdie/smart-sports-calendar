@@ -103,7 +103,29 @@ def test_migrations_are_registered_once(
         ("007_create_source_assignments",),
         ("008_add_calendar_sync_revisions",),
         ("009_create_reminder_rules",),
+        ("010_add_presentation_sync_revisions",),
     ]
+
+
+def test_presentation_revision_schema_is_monotonic_and_indexed(
+    initialized_database: Database,
+    database_path: Path,
+) -> None:
+    with connect(database_path) as connection:
+        columns = {
+            row[1]: row
+            for row in connection.execute("PRAGMA table_info(calendar_event_mappings)")
+        }
+        indexes = {
+            row[1]
+            for row in connection.execute("PRAGMA index_list(calendar_event_mappings)")
+        }
+
+    assert columns["presentation_revision"][3] == 1
+    assert columns["presentation_revision"][4] == "1"
+    assert columns["last_synced_presentation_revision"][3] == 1
+    assert columns["last_synced_presentation_revision"][4] == "0"
+    assert "idx_calendar_mappings_presentation_revision" in indexes
 
 
 def test_reminder_rules_schema_has_scope_and_policy_constraints(
@@ -906,3 +928,57 @@ def test_reminder_rule_migration_preserves_existing_events(tmp_path: Path) -> No
     assert event == ("existing-fixture", "Existing fixture")
     assert rules == (0,)
     assert migration == (1,)
+
+
+def test_presentation_revision_migration_queues_existing_mapping(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "sports.db"
+    legacy_migrations = tmp_path / "legacy-migrations"
+    legacy_migrations.mkdir()
+    migrations = Path(__file__).parents[2] / "app" / "database" / "migrations"
+    for migration in sorted(migrations.glob("00[1-9]_*.sql")):
+        copy2(migration, legacy_migrations / migration.name)
+    Database(database_path, migrations_directory=legacy_migrations).initialize()
+    timestamp = "2026-09-01T10:00:00+00:00"
+    with connect(database_path) as connection:
+        sport_id = connection.execute(
+            """
+            INSERT INTO sports (sport_key, name, created_at, updated_at)
+            VALUES ('football', 'Football', ?, ?)
+            """,
+            (timestamp, timestamp),
+        ).lastrowid
+        event_id = connection.execute(
+            """
+            INSERT INTO sports_events (
+                sport_id, event_key, event_type, title, start_time,
+                first_seen_at, last_seen_at, created_at, updated_at
+            ) VALUES (?, 'existing-fixture', 'match', 'Existing fixture', ?, ?, ?, ?, ?)
+            """,
+            (sport_id, timestamp, timestamp, timestamp, timestamp, timestamp),
+        ).lastrowid
+        connection.execute(
+            """
+            INSERT INTO calendar_event_mappings (
+                event_id, calendar_id, transaction_id, outlook_event_id,
+                content_hash, sync_status, last_synced_revision,
+                created_at, updated_at
+            ) VALUES (?, 'calendar-1', ?, 'outlook-1', 'hash-1', 'synced', 1, ?, ?)
+            """,
+            (event_id, str(uuid4()), timestamp, timestamp),
+        )
+
+    Database(database_path).initialize()
+
+    with connect(database_path) as connection:
+        revisions = connection.execute(
+            """
+            SELECT presentation_revision, last_synced_presentation_revision,
+                   sync_revision, last_synced_revision
+            FROM calendar_event_mappings
+            JOIN sports_events ON sports_events.id = calendar_event_mappings.event_id
+            """
+        ).fetchone()
+
+    assert revisions == (1, 0, 1, 1)

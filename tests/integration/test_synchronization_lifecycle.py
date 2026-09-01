@@ -2,12 +2,22 @@ import logging
 from dataclasses import replace
 from unittest.mock import MagicMock
 
+from app.database.reminder_rules_repository import (
+    ReminderRulesRepository,
+    ReminderRuleTarget,
+)
 from app.database.sports_events_repository import SportsEventsRepository
 from app.database.synchronization_query_repository import (
     SynchronizationEvent,
     SynchronizationQueryRepository,
 )
+from app.domain.reminder_rules import (
+    ReminderAction,
+    ReminderRuleWrite,
+    ReminderScope,
+)
 from app.graph.client import OutlookEventReference
+from app.synchronization.event_reminder_resolver import EventReminderResolver
 from app.synchronization.event_synchronizer import EventSynchronizer
 from app.synchronization.outlook_event_payload_builder import (
     OutlookEventPayload,
@@ -183,6 +193,91 @@ def test_existing_mapping_converges_to_new_presentation_without_duplicate(
     assert unchanged_result is not None
     assert unchanged_result.items_unchanged == 1
     synchronization_harness.graph_client.update_event.assert_called_once()
+
+
+def test_runtime_team_rule_converges_existing_outlook_event(
+    synchronization_harness: SynchronizationHarness,
+) -> None:
+    rules = ReminderRulesRepository(synchronization_harness.database_path)
+    service = _build_runtime_service(
+        synchronization_harness,
+        OutlookEventPayloadBuilder(
+            reminder_resolver=EventReminderResolver(rules),
+        ),
+    )
+    first_result = service.run(CALENDAR_ID, 100)
+    assert first_result is not None
+    assert first_result.items_created == 1
+    before = synchronization_harness.mappings_repository.get_by_event(
+        synchronization_harness.event.id,
+        CALENDAR_ID,
+    )
+    assert before is not None
+    assert before.last_synced_presentation_revision == 1
+
+    selector = rules.resolve_target(
+        ReminderRuleTarget(
+            ReminderScope.PARTICIPANT,
+            participant_key="arsenal",
+        )
+    )
+    rules.set(
+        ReminderRuleWrite(
+            selector,
+            action=ReminderAction.ENABLE,
+            preferred_lead_minutes=60,
+        )
+    )
+    invalidated = synchronization_harness.mappings_repository.get_by_id(before.id)
+    assert invalidated is not None
+    assert invalidated.presentation_revision == 2
+    assert invalidated.last_synced_presentation_revision == 1
+
+    synchronization_harness.graph_client.update_event.return_value = (
+        OutlookEventReference(id="outlook-event-1")
+    )
+    update_result = service.run(CALENDAR_ID, 100)
+
+    assert update_result is not None
+    assert update_result.items_created == 0
+    assert update_result.items_updated == 1
+    assert synchronization_harness.graph_client.create_event.call_count == 1
+    assert synchronization_harness.graph_client.update_event.call_count == 1
+    payload = synchronization_harness.graph_client.update_event.call_args.kwargs[
+        "payload"
+    ]
+    assert payload.is_reminder_on is True
+    assert payload.reminder_minutes_before_start == 60
+    after = synchronization_harness.mappings_repository.get_by_id(before.id)
+    assert after is not None
+    assert after.transaction_id == before.transaction_id
+    assert after.outlook_event_id == before.outlook_event_id
+    assert after.last_synced_presentation_revision == 2
+
+    rules.set(
+        ReminderRuleWrite(
+            selector,
+            action=ReminderAction.ENABLE,
+            preferred_lead_minutes=60,
+        )
+    )
+    unchanged_result = service.run(CALENDAR_ID, 100)
+
+    assert unchanged_result is not None
+    assert unchanged_result.items_unchanged == 1
+    assert synchronization_harness.graph_client.update_event.call_count == 1
+
+    rules.delete(selector)
+    fallback_result = service.run(CALENDAR_ID, 100)
+
+    assert fallback_result is not None
+    assert fallback_result.items_updated == 1
+    assert synchronization_harness.graph_client.update_event.call_count == 2
+    fallback_payload = (
+        synchronization_harness.graph_client.update_event.call_args.kwargs["payload"]
+    )
+    assert fallback_payload.is_reminder_on is True
+    assert fallback_payload.reminder_minutes_before_start == 15
 
 
 def test_changed_event_is_updated_in_outlook(

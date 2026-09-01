@@ -262,7 +262,11 @@ def collect_staging_evidence(
             FROM calendar_event_mappings AS mapping
             JOIN sports_events AS event ON event.id = mapping.event_id
             WHERE event.deleted_at IS NULL
-              AND mapping.last_synced_revision < event.sync_revision
+              AND (
+                  mapping.last_synced_revision < event.sync_revision
+                  OR mapping.last_synced_presentation_revision <
+                      mapping.presentation_revision
+              )
             """
         ).fetchone()
         authority_rows = connection.execute(
@@ -473,7 +477,11 @@ def _fixture_scope_summary(
         WHERE event.competition_id = ?
           AND event.season_id = ?
           AND event.deleted_at IS NULL
-          AND mapping.last_synced_revision < event.sync_revision
+          AND (
+              mapping.last_synced_revision < event.sync_revision
+              OR mapping.last_synced_presentation_revision <
+                  mapping.presentation_revision
+          )
         """,
         (authority["competition_id"], authority["season_id"]),
     ).fetchone()

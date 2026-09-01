@@ -94,6 +94,8 @@ def test_create_pending_creates_mapping(
     assert mapping.sync_attempts == 0
     assert mapping.last_synced_at is None
     assert mapping.last_sync_error is None
+    assert mapping.presentation_revision == 1
+    assert mapping.last_synced_presentation_revision == 0
     assert mapping.created_at
     assert mapping.updated_at
 
@@ -144,6 +146,8 @@ def test_mark_synced_updates_mapping(
     assert synced_mapping.sync_attempts == 1
     assert synced_mapping.last_synced_at is not None
     assert synced_mapping.last_sync_error is None
+    assert synced_mapping.presentation_revision == 1
+    assert synced_mapping.last_synced_presentation_revision == 1
     assert synced_mapping.created_at == created_mapping.created_at
     assert synced_mapping.updated_at >= created_mapping.updated_at
 
@@ -182,6 +186,88 @@ def test_mark_synced_keeps_mapping_pending_when_event_changed_concurrently(
     assert converged_mapping is not None
     assert converged_mapping.sync_status == "synced"
     assert converged_mapping.last_synced_revision == 2
+
+
+def test_mark_synced_keeps_mapping_pending_when_presentation_changed_concurrently(
+    tmp_path: Path,
+) -> None:
+    event_id, repository = create_repository(tmp_path)
+    mapping = repository.create_pending(event_id, "calendar-1")
+    with sqlite3.connect(repository.database_path) as connection:
+        connection.execute(
+            """
+            UPDATE calendar_event_mappings
+            SET presentation_revision = presentation_revision + 1
+            WHERE id = ?
+            """,
+            (mapping.id,),
+        )
+
+    raced_mapping = repository.mark_synced(
+        mapping_id=mapping.id,
+        outlook_event_id="outlook-event-1",
+        outlook_change_key=None,
+        content_hash="stale-hash",
+        event_revision=1,
+        presentation_revision=1,
+    )
+
+    assert raced_mapping is not None
+    assert raced_mapping.sync_status == "pending"
+    assert raced_mapping.presentation_revision == 2
+    assert raced_mapping.last_synced_presentation_revision == 1
+
+    converged_mapping = repository.mark_checked(
+        mapping.id,
+        event_revision=1,
+        presentation_revision=2,
+    )
+
+    assert converged_mapping is not None
+    assert converged_mapping.sync_status == "synced"
+    assert converged_mapping.last_synced_presentation_revision == 2
+
+
+def test_global_presentation_invalidation_queues_only_live_mappings(
+    tmp_path: Path,
+) -> None:
+    event_id, repository = create_repository(tmp_path)
+    live = repository.create_pending(event_id, "calendar-1")
+    assert repository.mark_synced(
+        live.id,
+        outlook_event_id="outlook-event-1",
+        outlook_change_key=None,
+        content_hash="hash-1",
+        event_revision=1,
+    )
+    deleted_event = SportsEventsRepository(repository.database_path).upsert(
+        sport_id=1,
+        event_key="deleted-fixture",
+        event_type="match",
+        title="Deleted fixture",
+        start_time="2026-08-22T19:00:00+00:00",
+    )
+    deleted = repository.create_pending(deleted_event.id, "calendar-1")
+    with sqlite3.connect(repository.database_path) as connection:
+        connection.execute(
+            "UPDATE sports_events SET deleted_at = updated_at WHERE id = ?",
+            (deleted_event.id,),
+        )
+        connection.execute(
+            "UPDATE calendar_event_mappings SET sync_status = 'deleted' WHERE id = ?",
+            (deleted.id,),
+        )
+
+    affected = repository.invalidate_all_presentations()
+
+    assert affected == 1
+    refreshed_live = repository.get_by_id(live.id)
+    refreshed_deleted = repository.get_by_id(deleted.id)
+    assert refreshed_live is not None
+    assert refreshed_live.presentation_revision == 2
+    assert refreshed_live.last_synced_presentation_revision == 1
+    assert refreshed_deleted is not None
+    assert refreshed_deleted.presentation_revision == 1
 
 
 def test_get_by_outlook_event_returns_synced_mapping(
