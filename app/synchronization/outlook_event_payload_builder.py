@@ -22,7 +22,7 @@ class OutlookDateTime:
 
 @dataclass(frozen=True)
 class OutlookEventPresentation:
-    categories: tuple[str, ...] = ("SMART Sports Calendar",)
+    fallback_category: str = "SMART Sports Calendar"
     reminder_minutes_before_start: int = 15
     default_duration_minutes: int = 120
     fallback_duration_minutes_by_sport: tuple[tuple[str, int], ...] = (
@@ -30,9 +30,13 @@ class OutlookEventPresentation:
     )
     show_as: str = "busy"
     cancelled_prefix: str = "[CANCELLED]"
-    cancelled_category: str = "Cancelled"
 
     def __post_init__(self) -> None:
+        if (
+            not self.fallback_category
+            or self.fallback_category != self.fallback_category.strip()
+        ):
+            raise ValueError("Fallback category must be normalized and non-empty.")
         if self.reminder_minutes_before_start < 0:
             raise ValueError("Reminder minutes must not be negative.")
         if self.default_duration_minutes <= 0:
@@ -107,7 +111,11 @@ class OutlookEventPayloadBuilder:
         start = self._build_date_time(event.start_time, event.timezone)
 
         return OutlookEventPayload(
-            subject=self._build_subject(event.title, is_cancelled),
+            subject=self._build_subject(
+                event.title,
+                synchronization_event.sport.icon,
+                is_cancelled,
+            ),
             body=self._build_body(synchronization_event, is_cancelled),
             start=start,
             end=(
@@ -126,7 +134,7 @@ class OutlookEventPayloadBuilder:
                 event.city,
                 event.country_code,
             ),
-            categories=self._build_categories(synchronization_event, is_cancelled),
+            categories=self._build_categories(synchronization_event),
             is_all_day=False,
             is_reminder_on=True,
             reminder_minutes_before_start=(
@@ -135,11 +143,19 @@ class OutlookEventPayloadBuilder:
             show_as="free" if is_cancelled else self._presentation.show_as,
         )
 
-    def _build_subject(self, title: str, is_cancelled: bool) -> str:
-        if not is_cancelled:
-            return title
+    def _build_subject(
+        self,
+        title: str,
+        sport_icon: str | None,
+        is_cancelled: bool,
+    ) -> str:
+        normalized_icon = sport_icon.strip() if sport_icon is not None else ""
+        subject = f"{normalized_icon} {title}" if normalized_icon else title
 
-        return f"{self._presentation.cancelled_prefix} {title}"
+        if not is_cancelled:
+            return subject
+
+        return f"{self._presentation.cancelled_prefix} {subject}"
 
     def _build_body(
         self,
@@ -207,21 +223,12 @@ class OutlookEventPayloadBuilder:
     def _build_categories(
         self,
         synchronization_event: SynchronizationEvent,
-        is_cancelled: bool,
     ) -> tuple[str, ...]:
-        categories = {
-            category.strip()
-            for category in self._presentation.categories
-            if category.strip()
-        }
-        categories.add(synchronization_event.sport.name)
+        competition = synchronization_event.competition
+        if competition is not None and competition.name.strip():
+            return (competition.name,)
 
-        if synchronization_event.competition is not None:
-            categories.add(synchronization_event.competition.name)
-        if is_cancelled:
-            categories.add(self._presentation.cancelled_category)
-
-        return tuple(sorted(categories, key=lambda value: (value.casefold(), value)))
+        return (self._presentation.fallback_category,)
 
     @staticmethod
     def _build_date_time(value: str, time_zone: str) -> OutlookDateTime:

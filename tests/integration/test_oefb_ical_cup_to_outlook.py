@@ -172,7 +172,8 @@ def test_oefb_cup_import_is_idempotent_and_renders_attribution(tmp_path) -> None
     assert first_sync.items_created == 1
     payload = graph.operations[0].payload
     assert payload is not None
-    assert payload["subject"] == "Wiener Viktoria vs FAC Wien"
+    assert payload["subject"] == "⚽ Wiener Viktoria vs FAC Wien"
+    assert payload["categories"] == ["UNIQA ÖFB Cup"]
     body = payload["body"]
     assert isinstance(body, dict)
     assert f"Source: {OEFB_ICAL_ATTRIBUTION}" in body["content"]

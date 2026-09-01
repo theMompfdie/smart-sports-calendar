@@ -168,7 +168,8 @@ def test_dfb_pokal_import_is_idempotent_and_renders_openligadb_attribution(
     assert len(graph.operations) == 1
     payload = graph.operations[0].payload
     assert payload is not None
-    assert payload["subject"] == "SC St. Tönis vs Eintracht Frankfurt"
+    assert payload["subject"] == "⚽ SC St. Tönis vs Eintracht Frankfurt"
+    assert payload["categories"] == ["DFB-Pokal"]
     body = payload["body"]
     assert isinstance(body, dict)
     assert f"Source: {OPENLIGADB_ATTRIBUTION}" in body["content"]
