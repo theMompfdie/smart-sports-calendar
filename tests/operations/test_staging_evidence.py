@@ -509,7 +509,7 @@ def test_collect_staging_evidence_returns_only_safe_operational_fields(
     payload = json.loads(rendered)
 
     assert payload["database_quick_check"] == "ok"
-    assert payload["schema_version"] == "008_add_calendar_sync_revisions"
+    assert payload["schema_version"] == "009_create_reminder_rules"
     assert payload["startup_records"] == 1
     assert payload["sports_events"] == 0
     assert payload["active_authorities"] == []

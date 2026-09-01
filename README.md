@@ -209,10 +209,13 @@ Phase 7 decision records:
 - [Phase 7 isolated staging validation](docs/phase-7-staging-validation.md)
 - [v0.7.0-beta.1 release checklist](docs/v0.7.0-beta.1-release-checklist.md)
 
-Phase 8 approved design (implementation planned):
+Phase 8 design and implementation documentation:
 
 - [Outlook presentation, reminder, and media ADR](docs/adr/0014-model-outlook-presentation-reminders-and-media.md)
 - [Outlook presentation, reminder, and media contract](docs/outlook-presentation-reminder-media-contract.md)
+- [Runtime reminder rule administration](docs/runtime-reminder-rules.md) —
+  persisted rules and local CLI are implemented; quiet-period calculation and
+  Outlook synchronization follow in the next Phase 8 slices
 
 ### Database and Persistence
 

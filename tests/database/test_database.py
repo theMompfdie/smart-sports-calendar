@@ -19,6 +19,7 @@ EXPECTED_TABLES = {
     "event_statistics",
     "fixture_reconciliation_state",
     "participants",
+    "reminder_rules",
     "schema_migrations",
     "season_participants",
     "seasons",
@@ -101,7 +102,35 @@ def test_migrations_are_registered_once(
         ("006_extend_provider_import_runs",),
         ("007_create_source_assignments",),
         ("008_add_calendar_sync_revisions",),
+        ("009_create_reminder_rules",),
     ]
+
+
+def test_reminder_rules_schema_has_scope_and_policy_constraints(
+    initialized_database: Database,
+    database_path: Path,
+) -> None:
+    with connect(database_path) as connection:
+        columns = {
+            row[1]: row
+            for row in connection.execute("PRAGMA table_info(reminder_rules)")
+        }
+        indexes = {
+            row[1] for row in connection.execute("PRAGMA index_list(reminder_rules)")
+        }
+
+    assert columns["scope"][3] == 1
+    assert columns["is_active"][3] == 1
+    assert columns["is_active"][4] == "1"
+    assert columns["deleted_at"][3] == 0
+    assert {
+        "uq_reminder_rules_global_current",
+        "uq_reminder_rules_competition_current",
+        "uq_reminder_rules_participant_current",
+        "uq_reminder_rules_competition_participant_current",
+        "uq_reminder_rules_event_current",
+        "idx_reminder_rules_active_scope",
+    }.issubset(indexes)
 
 
 def test_fixture_reconciliation_state_has_stable_constraints(
@@ -829,3 +858,51 @@ def test_sync_revision_migration_preserves_data_and_queues_reconciliation(
         ).fetchone()
 
     assert migrated == (1, 0, "synced")
+
+
+def test_reminder_rule_migration_preserves_existing_events(tmp_path: Path) -> None:
+    database_path = tmp_path / "sports.db"
+    legacy_migrations = tmp_path / "legacy-migrations"
+    legacy_migrations.mkdir()
+    migrations = Path(__file__).parents[2] / "app" / "database" / "migrations"
+    for migration in sorted(migrations.glob("00[1-8]_*.sql")):
+        copy2(migration, legacy_migrations / migration.name)
+    Database(database_path, migrations_directory=legacy_migrations).initialize()
+    timestamp = "2026-09-01T10:00:00+00:00"
+    with connect(database_path) as connection:
+        sport_id = connection.execute(
+            """
+            INSERT INTO sports (sport_key, name, created_at, updated_at)
+            VALUES ('football', 'Football', ?, ?)
+            """,
+            (timestamp, timestamp),
+        ).lastrowid
+        connection.execute(
+            """
+            INSERT INTO sports_events (
+                sport_id, event_key, event_type, title, start_time,
+                first_seen_at, last_seen_at, created_at, updated_at
+            ) VALUES (?, 'existing-fixture', 'match', 'Existing fixture', ?, ?, ?, ?, ?)
+            """,
+            (sport_id, timestamp, timestamp, timestamp, timestamp, timestamp),
+        )
+
+    database = Database(database_path)
+    database.initialize()
+    database.initialize()
+
+    with connect(database_path) as connection:
+        event = connection.execute(
+            "SELECT event_key, title FROM sports_events"
+        ).fetchone()
+        rules = connection.execute("SELECT COUNT(*) FROM reminder_rules").fetchone()
+        migration = connection.execute(
+            """
+            SELECT COUNT(*) FROM schema_migrations
+            WHERE version = '009_create_reminder_rules'
+            """
+        ).fetchone()
+
+    assert event == ("existing-fixture", "Existing fixture")
+    assert rules == (0,)
+    assert migration == (1,)
