@@ -221,6 +221,9 @@ Phase 8 design and implementation documentation:
   persistent metadata, explicit approval and version history, safe local
   PNG/JPEG normalization, content-addressed operator storage, and restart-safe
   Outlook inline-attachment reconciliation are implemented
+- [Phase 8 isolated staging validation](docs/phase-8-staging-validation.md) —
+  planned upgrade, Outlook-client, reminder-mutation, media-recovery,
+  unchanged-cycle, backup/restore, and release qualification for issue #214
 
 ### Database and Persistence
 

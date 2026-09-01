@@ -73,6 +73,17 @@ class SafeFixtureScopeSummary:
 
 
 @dataclass(frozen=True)
+class SafePhase8ProjectionSummary:
+    current_reminder_rules_by_scope: dict[str, int]
+    active_reminder_rules_by_scope: dict[str, int]
+    media_assets_by_state: dict[str, int]
+    active_media_assets_by_owner_type: dict[str, int]
+    event_attachments_by_status: dict[str, int]
+    synced_event_attachments_by_slot: dict[str, int]
+    event_attachments_pending_convergence: int
+
+
+@dataclass(frozen=True)
 class StagingEvidence:
     database_quick_check: str
     schema_version: str | None
@@ -83,6 +94,7 @@ class StagingEvidence:
     calendar_mappings_by_status: dict[str, int]
     recent_runs: tuple[SafeRunSummary, ...]
     calendar_mappings_revision_pending: int = 0
+    phase_8_projection: SafePhase8ProjectionSummary | None = None
 
 
 class StagingEvidenceValidationError(RuntimeError):
@@ -321,6 +333,7 @@ def collect_staging_evidence(
             """,
             (limit,),
         ).fetchall()
+        phase_8_projection = _phase_8_projection_summary(connection)
 
     if quick_check is None:
         raise RuntimeError("SQLite quick check returned no result.")
@@ -352,6 +365,7 @@ def collect_staging_evidence(
             int(revision_pending_row[0]) if revision_pending_row is not None else 0
         ),
         recent_runs=tuple(_safe_run_summary(row) for row in run_rows),
+        phase_8_projection=phase_8_projection,
     )
 
 
@@ -594,6 +608,109 @@ def _safe_count_map(rows: Sequence[sqlite3.Row], key: str) -> dict[str, int]:
     return result
 
 
+def _phase_8_projection_summary(
+    connection: sqlite3.Connection,
+) -> SafePhase8ProjectionSummary:
+    current_reminder_rows = connection.execute(
+        """
+        SELECT scope, COUNT(*) AS item_count
+        FROM reminder_rules
+        WHERE deleted_at IS NULL
+        GROUP BY scope
+        ORDER BY scope
+        """
+    ).fetchall()
+    active_reminder_rows = connection.execute(
+        """
+        SELECT scope, COUNT(*) AS item_count
+        FROM reminder_rules
+        WHERE deleted_at IS NULL AND is_active = 1
+        GROUP BY scope
+        ORDER BY scope
+        """
+    ).fetchall()
+    media_state_rows = connection.execute(
+        """
+        SELECT
+            CASE
+                WHEN is_active = 1 THEN 'active'
+                WHEN is_approved = 1 THEN 'approved_inactive'
+                ELSE 'pending'
+            END AS asset_state,
+            COUNT(*) AS item_count
+        FROM media_assets
+        GROUP BY asset_state
+        ORDER BY asset_state
+        """
+    ).fetchall()
+    active_media_owner_rows = connection.execute(
+        """
+        SELECT owner_type, COUNT(*) AS item_count
+        FROM media_assets
+        WHERE is_active = 1 AND is_approved = 1
+        GROUP BY owner_type
+        ORDER BY owner_type
+        """
+    ).fetchall()
+    attachment_status_rows = connection.execute(
+        """
+        SELECT status, COUNT(*) AS item_count
+        FROM calendar_event_asset_attachments
+        GROUP BY status
+        ORDER BY status
+        """
+    ).fetchall()
+    attachment_slot_rows = connection.execute(
+        """
+        SELECT slot, COUNT(*) AS item_count
+        FROM calendar_event_asset_attachments
+        WHERE status = 'synced'
+        GROUP BY slot
+        ORDER BY slot
+        """
+    ).fetchall()
+    pending_attachment_row = connection.execute(
+        """
+        SELECT COUNT(*)
+        FROM calendar_event_asset_attachments
+        WHERE status != 'synced'
+           OR desired_asset_id IS NOT synchronized_asset_id
+           OR desired_sha256 IS NOT synchronized_sha256
+           OR pending_asset_id IS NOT NULL
+           OR pending_sha256 IS NOT NULL
+           OR pending_content_id IS NOT NULL
+           OR pending_outlook_attachment_id IS NOT NULL
+           OR obsolete_outlook_attachment_id IS NOT NULL
+        """
+    ).fetchone()
+    return SafePhase8ProjectionSummary(
+        current_reminder_rules_by_scope=_safe_count_map(
+            current_reminder_rows,
+            "scope",
+        ),
+        active_reminder_rules_by_scope=_safe_count_map(
+            active_reminder_rows,
+            "scope",
+        ),
+        media_assets_by_state=_safe_count_map(media_state_rows, "asset_state"),
+        active_media_assets_by_owner_type=_safe_count_map(
+            active_media_owner_rows,
+            "owner_type",
+        ),
+        event_attachments_by_status=_safe_count_map(
+            attachment_status_rows,
+            "status",
+        ),
+        synced_event_attachments_by_slot=_safe_count_map(
+            attachment_slot_rows,
+            "slot",
+        ),
+        event_attachments_pending_convergence=(
+            0 if pending_attachment_row is None else int(pending_attachment_row[0])
+        ),
+    )
+
+
 def validate_phase_5_candidate(evidence: StagingEvidence) -> None:
     _validate_candidate(
         evidence,
@@ -625,6 +742,44 @@ def validate_phase_7_nfl_candidate(evidence: StagingEvidence) -> None:
         candidate_name="Phase 7 NFL",
         require_write_free_calendar_run=True,
     )
+
+
+def validate_phase_8_candidate(evidence: StagingEvidence) -> None:
+    _validate_candidate(
+        evidence,
+        requirements=PHASE_7_NFL_AUTHORITIES,
+        candidate_name="Phase 8",
+        require_write_free_calendar_run=True,
+    )
+    errors: list[str] = []
+    if evidence.schema_version != "012_create_calendar_event_asset_attachments":
+        errors.append("database schema is not the Phase 8 candidate schema")
+    projection = evidence.phase_8_projection
+    if projection is None:
+        errors.append("Phase 8 projection evidence is missing")
+    else:
+        active_rules = projection.active_reminder_rules_by_scope
+        if active_rules.get("global", 0) < 1 or active_rules.get("participant", 0) < 2:
+            errors.append("Phase 8 reminder profile is incomplete")
+        active_media = projection.active_media_assets_by_owner_type
+        if (
+            active_media.get("project", 0) < 1
+            or active_media.get("competition", 0) < 1
+            or active_media.get("participant", 0) < 2
+        ):
+            errors.append("Phase 8 active media coverage is incomplete")
+        attachment_statuses = projection.event_attachments_by_status
+        if not attachment_statuses:
+            errors.append("Phase 8 event attachment evidence is missing")
+        elif set(attachment_statuses) != {"synced"}:
+            errors.append("Phase 8 event attachments are not fully synchronized")
+        if projection.event_attachments_pending_convergence != 0:
+            errors.append("Phase 8 event attachments have pending convergence")
+        slots = projection.synced_event_attachments_by_slot
+        if any(slots.get(slot, 0) < 1 for slot in ("competition", "home", "away")):
+            errors.append("Phase 8 required attachment slots are missing")
+    if errors:
+        raise StagingEvidenceValidationError("; ".join(errors))
 
 
 def _validate_candidate(
@@ -901,6 +1056,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             "converged."
         ),
     )
+    validation_group.add_argument(
+        "--validate-phase-8-candidate",
+        action="store_true",
+        help=(
+            "Require the released Phase 7 authority set plus the Phase 8 schema, "
+            "runtime reminder profile, approved media coverage, synchronized "
+            "inline attachments, and a write-free calendar cycle."
+        ),
+    )
     arguments = parser.parse_args(argv)
 
     try:
@@ -916,6 +1080,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             validate_champions_league_candidate(evidence)
         elif arguments.validate_phase_7_nfl_candidate:
             validate_phase_7_nfl_candidate(evidence)
+        elif arguments.validate_phase_8_candidate:
+            validate_phase_8_candidate(evidence)
     except (FileNotFoundError, RuntimeError, ValueError, sqlite3.Error) as error:
         parser.exit(status=1, message=f"staging evidence failed: {error}\n")
 
