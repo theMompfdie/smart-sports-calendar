@@ -34,7 +34,7 @@ def create_client() -> GraphClient:
 def create_event_payload() -> OutlookEventPayload:
     return OutlookEventPayload(
         subject="Austria Wien – Rapid Wien",
-        body="Status: scheduled\nSport: Football",
+        body="<p>Status: scheduled</p><p>Sport: Football</p>",
         start=OutlookDateTime(
             date_time="2026-08-21T19:00:00",
             time_zone="Europe/Vienna",

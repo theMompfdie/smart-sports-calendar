@@ -171,8 +171,8 @@ def test_second_bundesliga_import_is_idempotent_and_non_destructive(
     assert len(graph.operations) == 306
     first_payload = graph.operations[0].payload
     assert first_payload is not None
-    assert "Round: matchday-1" in first_payload["body"]["content"]
-    assert f"Source: {OPENLIGADB_ATTRIBUTION}" in first_payload["body"]["content"]
+    assert ">matchday-1</td>" in first_payload["body"]["content"]
+    assert OPENLIGADB_ATTRIBUTION in first_payload["body"]["content"]
 
     assert provider.import_current_competition().items_unchanged == 306
     assert calendar.synchronize(CALENDAR_ID, 400).items_unchanged == 306

@@ -14,7 +14,7 @@ from app.synchronization.outlook_event_payload_builder import (
 def create_payload() -> OutlookEventPayload:
     return OutlookEventPayload(
         subject="Austria Wien – Rapid Wien",
-        body="Status: scheduled\nSport: Football",
+        body="<p>Status: scheduled</p><p>Sport: Football</p>",
         start=OutlookDateTime(
             date_time="2026-08-21T19:00:00",
             time_zone="Europe/Vienna",
@@ -38,7 +38,7 @@ def test_calculate_content_hash_returns_expected_sha256_digest() -> None:
     content_hash = calculate_content_hash(payload)
 
     assert content_hash == (
-        "eae295c06476b78f61282d12cecc1014d7f5eb28a76911500d53ab26991572d2"
+        "1e381b999db31af88c155641253fc62ddadbbea120b988832a7807792e05c9d6"
     )
 
 
@@ -56,6 +56,16 @@ def test_calculate_content_hash_changes_when_payload_changes() -> None:
     changed_payload = replace(
         payload,
         subject="Austria Wien – Rapid Wien (updated)",
+    )
+
+    assert calculate_content_hash(payload) != calculate_content_hash(changed_payload)
+
+
+def test_calculate_content_hash_changes_when_html_body_changes() -> None:
+    payload = create_payload()
+    changed_payload = replace(
+        payload,
+        body="<p>Status: postponed</p><p>Sport: Football</p>",
     )
 
     assert calculate_content_hash(payload) != calculate_content_hash(changed_payload)

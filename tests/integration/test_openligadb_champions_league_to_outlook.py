@@ -173,9 +173,9 @@ def test_champions_league_import_is_idempotent_attributed_and_non_destructive(
     assert isinstance(first_body, Mapping)
     first_content = first_body["content"]
     assert isinstance(first_content, str)
-    assert "Stage: league_phase" in first_content
-    assert "Round: matchday-1" in first_content
-    assert f"Source: {OPENLIGADB_ATTRIBUTION}" in first_content
+    assert ">league_phase</td>" in first_content
+    assert ">matchday-1</td>" in first_content
+    assert OPENLIGADB_ATTRIBUTION in first_content
 
     assert provider.import_current_competition().items_unchanged == 144
     assert calendar.synchronize(CALENDAR_ID, 200).items_unchanged == 144

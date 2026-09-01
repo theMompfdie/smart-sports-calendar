@@ -1,13 +1,11 @@
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from app.database.event_results_repository import EventResult
-from app.database.event_statistics_repository import EventStatistic
-from app.database.synchronization_query_repository import (
-    SynchronizationEvent,
-    SynchronizationParticipant,
+from app.database.synchronization_query_repository import SynchronizationEvent
+from app.synchronization.outlook_html_event_body_renderer import (
+    OutlookHtmlEventBodyRenderer,
 )
 
 
@@ -76,11 +74,12 @@ class OutlookEventPayload:
     is_reminder_on: bool
     reminder_minutes_before_start: int
     show_as: str
+    body_content_type: Literal["html", "text"] = "html"
 
     def to_graph_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "subject": self.subject,
-            "body": {"contentType": "text", "content": self.body},
+            "body": {"contentType": self.body_content_type, "content": self.body},
             "start": self.start.to_graph_dict(),
             "categories": list(self.categories),
             "isAllDay": self.is_all_day,
@@ -102,13 +101,20 @@ class OutlookEventPayloadBuilder:
     def __init__(
         self,
         presentation: OutlookEventPresentation | None = None,
+        body_renderer: OutlookHtmlEventBodyRenderer | None = None,
     ) -> None:
         self._presentation = presentation or OutlookEventPresentation()
+        self._body_renderer = body_renderer or OutlookHtmlEventBodyRenderer()
 
     def build(self, synchronization_event: SynchronizationEvent) -> OutlookEventPayload:
         event = synchronization_event.event
         is_cancelled = event.status.casefold() == "cancelled"
         start = self._build_date_time(event.start_time, event.timezone)
+        location = self._build_location(
+            event.venue_name,
+            event.city,
+            event.country_code,
+        )
 
         return OutlookEventPayload(
             subject=self._build_subject(
@@ -116,7 +122,11 @@ class OutlookEventPayloadBuilder:
                 synchronization_event.sport.icon,
                 is_cancelled,
             ),
-            body=self._build_body(synchronization_event, is_cancelled),
+            body=self._body_renderer.render(
+                synchronization_event,
+                is_cancelled=is_cancelled,
+                location=location,
+            ),
             start=start,
             end=(
                 self._build_date_time(event.end_time, event.timezone)
@@ -129,11 +139,7 @@ class OutlookEventPayloadBuilder:
                     ),
                 )
             ),
-            location=self._build_location(
-                event.venue_name,
-                event.city,
-                event.country_code,
-            ),
+            location=location,
             categories=self._build_categories(synchronization_event),
             is_all_day=False,
             is_reminder_on=True,
@@ -156,69 +162,6 @@ class OutlookEventPayloadBuilder:
             return subject
 
         return f"{self._presentation.cancelled_prefix} {subject}"
-
-    def _build_body(
-        self,
-        synchronization_event: SynchronizationEvent,
-        is_cancelled: bool,
-    ) -> str:
-        event = synchronization_event.event
-        lines = [
-            f"Status: {'Cancelled' if is_cancelled else event.status}",
-            f"Sport: {synchronization_event.sport.name}",
-        ]
-
-        if synchronization_event.competition is not None:
-            lines.append(f"Competition: {synchronization_event.competition.name}")
-        if synchronization_event.season is not None:
-            lines.append(f"Season: {synchronization_event.season.name}")
-        if synchronization_event.parent_event is not None:
-            lines.append(f"Parent event: {synchronization_event.parent_event.title}")
-        if event.stage is not None:
-            lines.append(f"Stage: {event.stage}")
-        if event.round_name is not None:
-            lines.append(f"Round: {event.round_name}")
-
-        participants = sorted(
-            synchronization_event.participants,
-            key=self._participant_sort_key,
-        )
-        if participants:
-            lines.extend(("", "Participants:"))
-            lines.extend(
-                f"- {participant.role}: {participant.participant.name}"
-                for participant in participants
-            )
-
-        participant_names = {
-            participant.participant.id: participant.participant.name
-            for participant in synchronization_event.participants
-        }
-        results = sorted(synchronization_event.results, key=self._result_sort_key)
-        if results:
-            lines.extend(("", "Results:"))
-            lines.extend(
-                self._render_result(result, participant_names) for result in results
-            )
-
-        statistics = sorted(
-            synchronization_event.statistics,
-            key=self._statistic_sort_key,
-        )
-        if statistics:
-            lines.extend(("", "Statistics:"))
-            lines.extend(
-                self._render_statistic(statistic, participant_names)
-                for statistic in statistics
-            )
-
-        if synchronization_event.operator_notice is not None:
-            lines.extend(("", f"Notice: {synchronization_event.operator_notice.text}"))
-
-        if synchronization_event.source_attribution is not None:
-            lines.extend(("", f"Source: {synchronization_event.source_attribution}"))
-
-        return "\n".join(lines)
 
     def _build_categories(
         self,
@@ -283,77 +226,3 @@ class OutlookEventPayloadBuilder:
     def _build_location(*parts: str | None) -> str | None:
         values = tuple(value.strip() for value in parts if value and value.strip())
         return ", ".join(dict.fromkeys(values)) or None
-
-    @staticmethod
-    def _participant_sort_key(
-        participant: SynchronizationParticipant,
-    ) -> tuple[bool, int, str, int]:
-        return (
-            participant.position_number is None,
-            participant.position_number or 0,
-            participant.role.casefold(),
-            participant.participant.id,
-        )
-
-    @staticmethod
-    def _result_sort_key(result: EventResult) -> tuple[bool, int, str, int, int]:
-        return (
-            result.position_number is None,
-            result.position_number or 0,
-            result.result_type.casefold(),
-            result.participant_id or 0,
-            result.id,
-        )
-
-    @staticmethod
-    def _statistic_sort_key(
-        statistic: EventStatistic,
-    ) -> tuple[bool, int, str, str, int]:
-        return (
-            statistic.participant_id is None,
-            statistic.participant_id or 0,
-            statistic.statistic_key.casefold(),
-            statistic.recorded_at or "",
-            statistic.id,
-        )
-
-    @classmethod
-    def _render_result(
-        cls,
-        result: EventResult,
-        participant_names: dict[int, str],
-    ) -> str:
-        label = (
-            result.result_type
-            if result.participant_id is None
-            else participant_names.get(result.participant_id, result.result_type)
-        )
-        value = cls._render_value(result.value_number, result.value_text)
-        final_suffix = " (final)" if result.is_final else ""
-        return f"- {label}: {value}{final_suffix}"
-
-    @classmethod
-    def _render_statistic(
-        cls,
-        statistic: EventStatistic,
-        participant_names: dict[int, str],
-    ) -> str:
-        name = statistic.statistic_name or statistic.statistic_key
-        participant = (
-            None
-            if statistic.participant_id is None
-            else participant_names.get(statistic.participant_id)
-        )
-        label = f"{participant} – {name}" if participant is not None else name
-        value = cls._render_value(statistic.value_number, statistic.value_text)
-        unit = f" {statistic.unit}" if statistic.unit is not None else ""
-        period = f" ({statistic.period})" if statistic.period is not None else ""
-        return f"- {label}: {value}{unit}{period}"
-
-    @staticmethod
-    def _render_value(value_number: float | None, value_text: str | None) -> str:
-        if value_text is not None:
-            return value_text
-        if value_number is None:
-            return "n/a"
-        return f"{value_number:g}"
