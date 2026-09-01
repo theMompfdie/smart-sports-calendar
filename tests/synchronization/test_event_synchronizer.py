@@ -11,6 +11,7 @@ from app.graph.client import (
     OutlookEventNotFoundError,
     OutlookEventReference,
 )
+from app.synchronization.event_media_synchronizer import EventMediaSynchronizer
 from app.synchronization.event_synchronizer import (
     EventSynchronizationError,
     EventSynchronizationStatus,
@@ -180,6 +181,45 @@ def create_synchronizer() -> tuple[
         graph_client,
         mappings_repository,
     )
+
+
+def test_optional_media_failure_does_not_change_core_result() -> None:
+    payload = Mock(spec=OutlookEventPayload)
+    payload_builder = Mock(spec=OutlookEventPayloadBuilder)
+    payload_builder.build.return_value = payload
+    graph_client = Mock(spec=GraphClient)
+    mappings_repository = Mock(spec=CalendarEventMappingsRepository)
+    media = Mock(spec=EventMediaSynchronizer)
+    logger = Mock()
+    mapping = create_mapping(content_hash="same-hash")
+    mappings_repository.mark_checked.return_value = mapping
+    mappings_repository.get_by_event.return_value = mapping
+    media.reconcile.side_effect = RuntimeError("optional media unavailable")
+    synchronization_event = create_synchronization_event(mapping=mapping)
+    synchronizer = EventSynchronizer(
+        payload_builder,
+        graph_client,
+        mappings_repository,
+        media_synchronizer=media,
+        logger=logger,
+    )
+
+    with patch(
+        "app.synchronization.event_synchronizer.calculate_content_hash",
+        return_value="same-hash",
+    ):
+        result = synchronizer.synchronize_event(
+            synchronization_event,
+            "calendar-1",
+        )
+
+    assert result.status is EventSynchronizationStatus.UNCHANGED
+    media.reconcile.assert_called_once_with(
+        synchronization_event,
+        mapping,
+        core_event_written=False,
+    )
+    logger.warning.assert_called_once()
 
 
 def test_synchronize_event_creates_event_without_existing_mapping() -> None:

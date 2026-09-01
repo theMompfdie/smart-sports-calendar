@@ -265,7 +265,8 @@ docker compose start calendar-sync
 Store the backup outside the Docker volume and verify that the copied file is
 non-empty. Never use `docker compose down --volumes` during an upgrade.
 
-After migration `011_create_media_assets`, copy the complete `/data` state
+After migrations `011_create_media_assets` and
+`012_create_calendar_event_asset_attachments`, copy the complete `/data` state
 instead of only the database. Verify the copied database with
 `PRAGMA quick_check` and keep a private SHA-256 manifest for the database and
 all files below `media/`. Restore both from the same snapshot; a database and

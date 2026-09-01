@@ -1,5 +1,7 @@
 """Safe, deterministic HTML rendering for Outlook sports events."""
 
+import re
+from dataclasses import dataclass
 from datetime import datetime
 from html import escape
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -25,6 +27,22 @@ _LABEL_CELL_STYLE = (
     "vertical-align:top;width:120px;"
 )
 _VALUE_CELL_STYLE = "border-bottom:1px solid #e5e7eb;padding:4px 0;vertical-align:top;"
+_CONTENT_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._@-]{0,254}$")
+
+
+@dataclass(frozen=True)
+class OutlookInlineImage:
+    slot: str
+    content_id: str
+    alt_text: str
+
+    def __post_init__(self) -> None:
+        if self.slot not in {"competition", "home", "away", "final"}:
+            raise ValueError("Inline image slot is invalid.")
+        if not _CONTENT_ID_PATTERN.fullmatch(self.content_id):
+            raise ValueError("Inline image content ID is invalid.")
+        if not self.alt_text or self.alt_text != self.alt_text.strip():
+            raise ValueError("Inline image alternative text is invalid.")
 
 
 class OutlookHtmlEventBodyRenderer:
@@ -45,12 +63,16 @@ class OutlookHtmlEventBodyRenderer:
         *,
         is_cancelled: bool,
         location: str | None,
+        inline_images: tuple[OutlookInlineImage, ...] = (),
     ) -> str:
         """Return one complete fragment with all dynamic text HTML-escaped."""
 
+        images = {image.slot: image for image in inline_images}
+        if len(images) != len(inline_images):
+            raise ValueError("Inline image slots must be unique.")
         sections = [
             f'<div style="{_CONTAINER_STYLE}">',
-            self._render_header(synchronization_event),
+            self._render_header(synchronization_event, images),
             self._render_event_details(
                 synchronization_event,
                 is_cancelled=is_cancelled,
@@ -63,7 +85,7 @@ class OutlookHtmlEventBodyRenderer:
             key=self._participant_sort_key,
         )
         if participants:
-            sections.append(self._render_participants(participants))
+            sections.append(self._render_participants(participants, images))
 
         participant_names = {
             participant.participant.id: participant.participant.name
@@ -98,15 +120,25 @@ class OutlookHtmlEventBodyRenderer:
         sections.append("</div>")
         return "\n".join(sections)
 
-    def _render_header(self, synchronization_event: SynchronizationEvent) -> str:
+    def _render_header(
+        self,
+        synchronization_event: SynchronizationEvent,
+        images: dict[str, OutlookInlineImage],
+    ) -> str:
         event = synchronization_event.event
         context = (
             synchronization_event.competition.name
             if synchronization_event.competition is not None
             else synchronization_event.sport.name
         )
+        image_cells = "".join(
+            self._render_image_cell(images[slot])
+            for slot in ("competition", "final")
+            if slot in images
+        )
         return (
             f'<table role="presentation" style="{_HEADER_TABLE_STYLE}"><tbody><tr>'
+            f"{image_cells}"
             f'<td style="{_HEADER_CELL_STYLE}">'
             '<div style="font-size:20px;font-weight:600;margin:0 0 2px;">'
             f"{self._text(event.title)}</div>"
@@ -153,12 +185,19 @@ class OutlookHtmlEventBodyRenderer:
     def _render_participants(
         self,
         participants: list[SynchronizationParticipant],
+        images: dict[str, OutlookInlineImage],
     ) -> str:
         rows = [
-            (participant.role, participant.participant.name)
+            (
+                participant.role,
+                self._participant_value(
+                    participant.participant.name,
+                    images.get(participant.role),
+                ),
+            )
             for participant in participants
         ]
-        return self._render_table("Participants", rows)
+        return self._render_table("Participants", rows, values_are_html=True)
 
     def _render_results(
         self,
@@ -208,11 +247,14 @@ class OutlookHtmlEventBodyRenderer:
         cls,
         heading: str,
         rows: list[tuple[str, str]],
+        *,
+        values_are_html: bool = False,
     ) -> str:
         rendered_rows = "".join(
             "<tr>"
             f'<td style="{_LABEL_CELL_STYLE}">{cls._text(label)}:</td>'
-            f'<td style="{_VALUE_CELL_STYLE}">{cls._text(value)}</td>'
+            f'<td style="{_VALUE_CELL_STYLE}">'
+            f"{value if values_are_html else cls._text(value)}</td>"
             "</tr>"
             for label, value in rows
         )
@@ -220,6 +262,32 @@ class OutlookHtmlEventBodyRenderer:
             f'<h3 style="{_SECTION_HEADING_STYLE}">{cls._text(heading)}</h3>'
             f'<table role="presentation" style="{_TABLE_STYLE}"><tbody>'
             f"{rendered_rows}</tbody></table>"
+        )
+
+    @classmethod
+    def _participant_value(
+        cls,
+        name: str,
+        image: OutlookInlineImage | None,
+    ) -> str:
+        if image is None:
+            return cls._text(name)
+        return f"{cls._render_image(image)}&nbsp;{cls._text(name)}"
+
+    @classmethod
+    def _render_image_cell(cls, image: OutlookInlineImage) -> str:
+        return (
+            '<td style="padding:10px 0 10px 12px;vertical-align:middle;">'
+            f"{cls._render_image(image)}</td>"
+        )
+
+    @classmethod
+    def _render_image(cls, image: OutlookInlineImage) -> str:
+        return (
+            f'<img src="cid:{cls._text(image.content_id)}" '
+            f'alt="{cls._text(image.alt_text)}" width="30" height="30" '
+            'style="border:0;display:inline-block;height:30px;max-height:30px;'
+            'max-width:30px;vertical-align:middle;width:30px;" />'
         )
 
     def _format_start_time(self, value: str, event_time_zone: str) -> str:

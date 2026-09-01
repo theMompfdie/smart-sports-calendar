@@ -260,6 +260,7 @@ class MediaAssetsRepository:
                 """,
                 (reviewer, timestamp, timestamp, target["id"]),
             )
+            self._invalidate_owner_mappings(connection, target, timestamp)
             asset = self._get_by_id(connection, target["id"])
             if asset is None:
                 raise MediaAssetRepositoryError(
@@ -288,6 +289,7 @@ class MediaAssetsRepository:
                 """,
                 (timestamp, timestamp, row["id"]),
             )
+            self._invalidate_owner_mappings(connection, row, timestamp)
             asset = self._get_by_id(connection, row["id"])
             assert asset is not None
             return asset
@@ -300,6 +302,51 @@ class MediaAssetsRepository:
                 (asset_key,),
             ).fetchone()
         return None if row is None else self._map_row(row)
+
+    def get_active_for_owner_variant(
+        self,
+        owner: MediaAssetOwner,
+        variant: str,
+    ) -> MediaAsset | None:
+        """Return the single approved active asset for an owner/variant pair.
+
+        Asset keys are version families, so different keys could otherwise claim
+        the same visual role. Treat that configuration as ambiguous instead of
+        selecting one by insertion order.
+        """
+        if not _VARIANT_PATTERN.fullmatch(variant):
+            raise MediaAssetRepositoryError("Media asset variant is invalid.")
+        owner_values = (
+            owner.owner_type.value,
+            owner.project_key,
+            owner.sport_id,
+            owner.competition_id,
+            owner.participant_id,
+            variant,
+        )
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT *
+                FROM media_assets
+                WHERE owner_type = ?
+                  AND project_key IS ?
+                  AND sport_id IS ?
+                  AND competition_id IS ?
+                  AND participant_id IS ?
+                  AND variant = ?
+                  AND is_approved = 1
+                  AND is_active = 1
+                ORDER BY id
+                LIMIT 2
+                """,
+                owner_values,
+            ).fetchall()
+        if len(rows) > 1:
+            raise MediaAssetRepositoryError(
+                "Multiple active media assets claim the same owner and variant."
+            )
+        return None if not rows else self._map_row(rows[0])
 
     def get_version(self, asset_key: str, version: int) -> MediaAsset | None:
         self._validate_key(asset_key, "Media asset key")
@@ -447,6 +494,44 @@ class MediaAssetsRepository:
             write.license_name,
             write.permission_reference,
             write.attribution,
+        )
+
+    @staticmethod
+    def _invalidate_owner_mappings(
+        connection: sqlite3.Connection,
+        asset: sqlite3.Row,
+        timestamp: str,
+    ) -> None:
+        owner_type = asset["owner_type"]
+        if owner_type == MediaOwnerType.PROJECT.value:
+            predicate = "1 = 1"
+            arguments: tuple[object, ...] = ()
+        elif owner_type == MediaOwnerType.SPORT.value:
+            predicate = "se.sport_id = ?"
+            arguments = (asset["sport_id"],)
+        elif owner_type == MediaOwnerType.COMPETITION.value:
+            predicate = "se.competition_id = ?"
+            arguments = (asset["competition_id"],)
+        else:
+            predicate = (
+                "EXISTS ("
+                "SELECT 1 FROM event_participants AS ep "
+                "WHERE ep.event_id = se.id AND ep.participant_id = ?"
+                ")"
+            )
+            arguments = (asset["participant_id"],)
+        connection.execute(
+            f"""
+            UPDATE calendar_event_mappings
+            SET presentation_revision = presentation_revision + 1,
+                updated_at = ?
+            WHERE event_id IN (
+                SELECT se.id
+                FROM sports_events AS se
+                WHERE {predicate}
+            )
+            """,
+            (timestamp, *arguments),
         )
 
     @staticmethod

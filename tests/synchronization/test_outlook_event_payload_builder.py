@@ -23,6 +23,7 @@ from app.synchronization.outlook_event_payload_builder import (
 )
 from app.synchronization.outlook_html_event_body_renderer import (
     OutlookHtmlEventBodyRenderer,
+    OutlookInlineImage,
 )
 
 TIMESTAMP = "2026-08-01T10:00:00+00:00"
@@ -570,6 +571,28 @@ def test_graph_serialization_uses_expected_microsoft_graph_shape() -> None:
     assert graph_payload["isReminderOn"] is True
     assert graph_payload["reminderMinutesBeforeStart"] == 30
     assert graph_payload["showAs"] == "tentative"
+
+
+def test_build_renders_bounded_cid_images_without_changing_text_fallback() -> None:
+    aggregate = make_aggregate()
+    builder = OutlookEventPayloadBuilder()
+    text_only = builder.build(aggregate)
+    with_images = builder.build(
+        aggregate,
+        inline_images=(
+            OutlookInlineImage("competition", "competition@example", "League"),
+            OutlookInlineImage("home", "home@example", "Arsenal & Co"),
+            OutlookInlineImage("away", "away@example", "Liverpool"),
+            OutlookInlineImage("final", "final@example", "Final"),
+        ),
+    )
+
+    assert "cid:" not in text_only.body
+    assert with_images.body.count("<img ") == 4
+    assert 'src="cid:competition@example"' in with_images.body
+    assert 'src="cid:home@example"' in with_images.body
+    assert 'alt="Arsenal &amp; Co"' in with_images.body
+    assert 'width="30" height="30"' in with_images.body
 
 
 def test_payload_is_immutable() -> None:

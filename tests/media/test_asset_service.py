@@ -224,3 +224,24 @@ def test_approval_rejects_traversal_even_for_corrupt_registry_state(
         unsafe_service.approve(pending.asset_key, pending.version, "operator")
 
     mocked_repository.approve.assert_not_called()
+
+
+def test_read_active_content_revalidates_approval_hash_and_size(tmp_path: Path) -> None:
+    service, repository, media_root = create_service(tmp_path)
+    source_file = tmp_path / "source.png"
+    create_png(source_file)
+    pending = import_project_asset(service, repository, source_file)
+
+    with pytest.raises(MediaAssetValidationError, match="approved active"):
+        service.read_active_content(pending)
+
+    approved = service.approve(pending.asset_key, pending.version, "operator")
+    content = service.read_active_content(approved)
+    assert content == (media_root / approved.storage_path).read_bytes()
+
+    with pytest.raises(MediaAssetValidationError, match="attachment limits"):
+        service.read_active_content(approved, maximum_bytes=len(content) - 1)
+
+    (media_root / approved.storage_path).write_bytes(b"corrupted")
+    with pytest.raises(MediaAssetValidationError, match="integrity"):
+        service.read_active_content(approved)

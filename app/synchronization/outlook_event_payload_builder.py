@@ -7,6 +7,7 @@ from app.database.synchronization_query_repository import SynchronizationEvent
 from app.domain.reminder_schedule import ResolvedReminder
 from app.synchronization.outlook_html_event_body_renderer import (
     OutlookHtmlEventBodyRenderer,
+    OutlookInlineImage,
 )
 
 
@@ -122,7 +123,12 @@ class OutlookEventPayloadBuilder:
         self._body_renderer = body_renderer or OutlookHtmlEventBodyRenderer()
         self._reminder_resolver = reminder_resolver
 
-    def build(self, synchronization_event: SynchronizationEvent) -> OutlookEventPayload:
+    def build(
+        self,
+        synchronization_event: SynchronizationEvent,
+        *,
+        inline_images: tuple[OutlookInlineImage, ...] = (),
+    ) -> OutlookEventPayload:
         event = synchronization_event.event
         is_cancelled = event.status.casefold() == "cancelled"
         start = self._build_date_time(event.start_time, event.timezone)
@@ -147,6 +153,7 @@ class OutlookEventPayloadBuilder:
                 synchronization_event,
                 is_cancelled=is_cancelled,
                 location=location,
+                inline_images=inline_images,
             ),
             start=start,
             end=(

@@ -219,8 +219,8 @@ Phase 8 design and implementation documentation:
   convergence of existing Outlook events
 - [Rights-controlled media asset registry](docs/media-asset-registry.md) —
   persistent metadata, explicit approval and version history, safe local
-  PNG/JPEG normalization, and content-addressed operator storage are implemented;
-  Outlook body insertion remains Phase 8.8
+  PNG/JPEG normalization, content-addressed operator storage, and restart-safe
+  Outlook inline-attachment reconciliation are implemented
 
 ### Database and Persistence
 
