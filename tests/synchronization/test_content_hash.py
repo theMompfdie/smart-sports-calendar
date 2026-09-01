@@ -61,6 +61,17 @@ def test_calculate_content_hash_changes_when_payload_changes() -> None:
     assert calculate_content_hash(payload) != calculate_content_hash(changed_payload)
 
 
+def test_calculate_content_hash_changes_when_reminder_is_disabled() -> None:
+    payload = create_payload()
+    changed_payload = replace(
+        payload,
+        is_reminder_on=False,
+        reminder_minutes_before_start=0,
+    )
+
+    assert calculate_content_hash(payload) != calculate_content_hash(changed_payload)
+
+
 def test_calculate_content_hash_changes_when_html_body_changes() -> None:
     payload = create_payload()
     changed_payload = replace(

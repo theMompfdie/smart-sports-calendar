@@ -4,14 +4,19 @@ import argparse
 import json
 import sqlite3
 from collections.abc import Sequence
+from datetime import UTC
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from app.database.database import Database
 from app.database.reminder_rules_repository import (
     ReminderRuleRepositoryError,
     ReminderRulesRepository,
     ReminderRuleTarget,
+)
+from app.database.synchronization_query_repository import (
+    SynchronizationQueryRepository,
 )
 from app.domain.reminder_rules import (
     ReminderAction,
@@ -20,6 +25,10 @@ from app.domain.reminder_rules import (
     ReminderRuleWrite,
     ReminderScope,
 )
+from app.domain.reminder_schedule import ReminderResolutionError
+from app.synchronization.event_reminder_resolver import EventReminderResolver
+
+_PREVIEW_CALENDAR_ID = "__reminder_preview__"
 
 
 def _add_target_arguments(parser: argparse.ArgumentParser) -> None:
@@ -124,6 +133,54 @@ def _delete_rule(
     _print_json(_rule_payload(repository, repository.delete(selector)))
 
 
+def _preview_rule(
+    repository: ReminderRulesRepository,
+    args: argparse.Namespace,
+) -> None:
+    selector = repository.resolve_target(
+        ReminderRuleTarget(
+            scope=ReminderScope.EVENT,
+            event_key=args.event,
+        )
+    )
+    if selector.event_id is None:
+        raise ReminderRuleRepositoryError(
+            "Canonical preview event could not be resolved."
+        )
+    synchronization_event = SynchronizationQueryRepository(
+        repository.database_path
+    ).get_by_event_id(selector.event_id, _PREVIEW_CALENDAR_ID)
+    if synchronization_event is None:
+        raise ReminderRuleRepositoryError(
+            "Canonical preview event could not be loaded."
+        )
+    reminder = EventReminderResolver(repository).resolve(synchronization_event)
+    reminder_at_utc = (
+        None
+        if reminder.reminder_at is None
+        else reminder.reminder_at.astimezone(UTC).isoformat(timespec="seconds")
+    )
+    reminder_at_local = (
+        None
+        if reminder.reminder_at is None
+        else reminder.reminder_at.astimezone(ZoneInfo(reminder.timezone)).isoformat(
+            timespec="seconds"
+        )
+    )
+    _print_json(
+        {
+            "event": args.event,
+            "is_reminder_on": reminder.is_reminder_on,
+            "reminder_minutes_before_start": reminder.minutes_before_start,
+            "reason": reminder.reason.value,
+            "timezone": reminder.timezone,
+            "reminder_at_utc": reminder_at_utc,
+            "reminder_at_local": reminder_at_local,
+            "conflict_fields": list(reminder.conflict_fields),
+        }
+    )
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
@@ -179,6 +236,13 @@ def _build_parser() -> argparse.ArgumentParser:
     _add_target_arguments(delete_parser)
     delete_parser.set_defaults(handler=_delete_rule)
 
+    preview_parser = subparsers.add_parser(
+        "effective-preview",
+        help="Resolve one canonical event with the current persisted rules.",
+    )
+    preview_parser.add_argument("--event", required=True)
+    preview_parser.set_defaults(handler=_preview_rule)
+
     return parser
 
 
@@ -189,7 +253,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         Database(args.database).initialize()
         repository = ReminderRulesRepository(args.database)
         args.handler(repository, args)
-    except ReminderRuleError as error:
+    except (ReminderRuleError, ReminderResolutionError) as error:
         parser.exit(status=1, message=f"Reminder rule command failed: {error}\n")
     except (OSError, sqlite3.Error):
         parser.exit(

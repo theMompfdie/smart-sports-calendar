@@ -214,8 +214,9 @@ Phase 8 design and implementation documentation:
 - [Outlook presentation, reminder, and media ADR](docs/adr/0014-model-outlook-presentation-reminders-and-media.md)
 - [Outlook presentation, reminder, and media contract](docs/outlook-presentation-reminder-media-contract.md)
 - [Runtime reminder rule administration](docs/runtime-reminder-rules.md) —
-  persisted rules and local CLI are implemented; quiet-period calculation and
-  Outlook synchronization follow in the next Phase 8 slices
+  persisted rules, local CLI, Vienna-aware quiet-period calculation, and Graph
+  payload projection are implemented; targeted convergence of existing events
+  follows in the next Phase 8 slice
 
 ### Database and Persistence
 

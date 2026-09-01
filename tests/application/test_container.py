@@ -23,6 +23,7 @@ from app.config.settings import (
     Settings,
 )
 from app.database.fixture_import_repository import FixtureImportRepository
+from app.database.reminder_rules_repository import ReminderRulesRepository
 from app.database.synchronization_query_repository import (
     SynchronizationQueryRepository,
 )
@@ -33,6 +34,7 @@ from app.providers.contracts import (
     SourceRole,
     SourceScope,
 )
+from app.synchronization.event_reminder_resolver import EventReminderResolver
 from app.synchronization.event_synchronizer import EventSynchronizer
 from app.synchronization.outlook_event_payload_builder import (
     OutlookEventPayloadBuilder,
@@ -727,10 +729,26 @@ def test_container_provides_event_synchronizer(
         container.event_synchronizer,
         EventSynchronizer,
     )
+    assert isinstance(
+        container.reminder_rules_repository,
+        ReminderRulesRepository,
+    )
+    assert isinstance(
+        container.event_reminder_resolver,
+        EventReminderResolver,
+    )
 
     assert (
         container.event_synchronizer._payload_builder
         is container.outlook_event_payload_builder
+    )
+    assert (
+        container.outlook_event_payload_builder._reminder_resolver
+        is container.event_reminder_resolver
+    )
+    assert (
+        container.event_reminder_resolver._repository
+        is container.reminder_rules_repository
     )
     assert container.event_synchronizer._graph_client is container.graph_client
     assert (

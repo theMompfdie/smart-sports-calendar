@@ -71,6 +71,7 @@ from app.database.event_statistics_repository import EventStatisticsRepository
 from app.database.fixture_import_repository import FixtureImportRepository
 from app.database.participants_catalog import initialize_participants_catalog
 from app.database.participants_repository import ParticipantsRepository
+from app.database.reminder_rules_repository import ReminderRulesRepository
 from app.database.season_participants_repository import SeasonParticipantsRepository
 from app.database.seasons_catalog import initialize_seasons_catalog
 from app.database.seasons_repository import SeasonsRepository
@@ -117,6 +118,7 @@ from app.providers.openligadb.profiles import (
     get_competition_profile as get_openligadb_competition_profile,
 )
 from app.scheduler.scheduler import ScheduledJob, Scheduler
+from app.synchronization.event_reminder_resolver import EventReminderResolver
 from app.synchronization.event_synchronizer import EventSynchronizer
 from app.synchronization.outlook_event_payload_builder import (
     OutlookEventPayloadBuilder,
@@ -287,6 +289,9 @@ class ApplicationContainer:
         )
         self.seasons_repository = SeasonsRepository(self.settings.database_path)
         self.participants_repository = ParticipantsRepository(
+            self.settings.database_path
+        )
+        self.reminder_rules_repository = ReminderRulesRepository(
             self.settings.database_path
         )
         self.synchronization_query_repository = SynchronizationQueryRepository(
@@ -651,7 +656,13 @@ class ApplicationContainer:
             if self.nflverse_import_orchestrator is not None
             else None
         )
-        self.outlook_event_payload_builder = OutlookEventPayloadBuilder()
+        self.event_reminder_resolver = EventReminderResolver(
+            self.reminder_rules_repository,
+            logger=self.logger,
+        )
+        self.outlook_event_payload_builder = OutlookEventPayloadBuilder(
+            reminder_resolver=self.event_reminder_resolver,
+        )
         self.event_synchronizer = EventSynchronizer(
             payload_builder=self.outlook_event_payload_builder,
             graph_client=self.graph_client,

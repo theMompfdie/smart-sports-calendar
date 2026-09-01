@@ -1,16 +1,19 @@
 # Runtime reminder rule administration
 
-Status: Implemented persistence and local operator CLI for Phase 8.4 (#209)
+Status: Implemented persistence, local operator CLI, and Vienna-aware reminder
+resolution for Phase 8.4–8.5 (#209 and #210)
 
 SMART Sports Calendar stores reminder preferences in the same SQLite database
 as its canonical sports data. Migration `009_create_reminder_rules` is
 forward-only, deterministic, and idempotent. It creates the reminder-rule
 schema without modifying or deleting existing sports events.
 
-This delivery slice manages and validates rules only. Quiet-period calculation
-and effective reminder times are owned by #210. Presentation invalidation and
-Outlook convergence are owned by #211. Until those slices are merged and
-deployed, changing a rule does not alter an existing Outlook event.
+Each Outlook payload build reads and resolves the currently committed rules.
+Quiet-period calculation produces exactly one integer Graph lead or a disabled
+reminder. Presentation invalidation and targeted Outlook convergence are owned
+by #211. Until that slice is merged and deployed, a rule change is reflected
+whenever an event is otherwise selected for synchronization, but it does not
+yet make every affected existing event immediately actionable.
 
 ## Rule scopes and inheritance
 
@@ -64,6 +67,7 @@ python -m app.operations.reminder_rules --database /data/sports.db list --includ
 python -m app.operations.reminder_rules --database /data/sports.db show --scope participant --participant manchester_united
 python -m app.operations.reminder_rules --database /data/sports.db disable --scope participant --participant manchester_united
 python -m app.operations.reminder_rules --database /data/sports.db delete --scope participant --participant manchester_united
+python -m app.operations.reminder_rules --database /data/sports.db effective-preview --event nfl:new_england_patriots:night_game
 ```
 
 `suppress` is a reminder policy action and therefore participates in
@@ -77,6 +81,30 @@ credentials. It rejects unknown or ambiguous canonical keys, malformed local
 times, negative or inconsistent lead ranges, and unknown IANA timezones. JSON
 output contains canonical keys and audit timestamps but omits internal database
 IDs, Outlook IDs, event titles, the database path, and private provider data.
+`effective-preview` additionally reports the resolution reason, integer lead,
+UTC and configured-local reminder instants, and any conflicting policy fields.
+It does not contact Microsoft Graph or a sports provider.
+
+## Quiet-period resolution
+
+Lead limits are inclusive elapsed minutes between UTC instants. Quiet-period
+membership and boundary selection use the effective rule's IANA timezone.
+The resolver starts with the preferred lead. If that instant is strictly
+inside the quiet period, it moves backward to the most recent quiet-start
+boundary and recomputes the actual lead. Exact quiet-start and quiet-end values
+are allowed. Equal boundaries mean no quiet period.
+
+The resulting reminder is disabled with a zero-minute Graph lead when the
+policy is suppressed, equal-precedence fields conflict, the shifted lead is
+outside its configured bounds, or the shifted instant cannot be represented as
+an exact integer number of minutes before kickoff.
+
+Daylight-saving boundaries are resolved independently of the host timezone.
+For an ambiguous local boundary, the earlier absolute instant is selected so a
+notification is never silently moved later. For a nonexistent boundary during
+the spring transition, the resolver selects the latest valid local minute
+before it. Canonical kickoff changes and committed rule changes are recalculated
+on the next payload build without restarting the process.
 
 ## Backup, restore, and rollback
 
