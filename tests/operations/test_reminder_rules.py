@@ -2,9 +2,12 @@ import json
 from pathlib import Path
 
 import pytest
+from app.database.competitions_repository import CompetitionsRepository
 from app.database.database import Database
+from app.database.event_participants_repository import EventParticipantsRepository
 from app.database.participants_repository import ParticipantsRepository
 from app.database.reminder_rules_repository import ReminderRulesRepository
+from app.database.sports_events_repository import SportsEventsRepository
 from app.database.sports_repository import SportsRepository
 from app.operations.reminder_rules import main
 
@@ -14,7 +17,10 @@ def database_path(tmp_path: Path) -> Path:
     path = tmp_path / "sports.db"
     Database(path).initialize()
     sports = SportsRepository(path)
+    competitions = CompetitionsRepository(path)
     participants = ParticipantsRepository(path)
+    events = SportsEventsRepository(path)
+    event_participants = EventParticipantsRepository(path)
     football = sports.upsert("football", "Football", "⚽")
     american_football = sports.upsert(
         "american_football",
@@ -27,12 +33,26 @@ def database_path(tmp_path: Path) -> Path:
         "team",
         "Manchester United",
     )
-    participants.upsert(
+    new_england = participants.upsert(
         american_football.id,
         "new_england_patriots",
         "team",
         "New England Patriots",
     )
+    nfl = competitions.upsert(
+        american_football.id,
+        "nfl",
+        "National Football League",
+    )
+    night_game = events.upsert(
+        sport_id=american_football.id,
+        competition_id=nfl.id,
+        event_key="nfl:new_england_patriots:night_game",
+        event_type="match",
+        title="New England Patriots night game",
+        start_time="2026-09-02T00:20:00+00:00",
+    )
+    event_participants.upsert(night_game.id, new_england.id, "home", 1)
     return path
 
 
@@ -205,3 +225,60 @@ def test_database_failure_does_not_expose_path(
     assert output.out == ""
     assert output.err == ("Reminder rule command failed: database operation failed.\n")
     assert str(database_path) not in output.err
+
+
+def test_effective_preview_resolves_live_nfl_quiet_policy_safely(
+    database_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    run(database_path, "set", "--scope", "global", "--action", "suppress")
+    capsys.readouterr()
+    run(
+        database_path,
+        "set",
+        "--scope",
+        "participant",
+        "--participant",
+        "new_england_patriots",
+        "--action",
+        "enable",
+        "--preferred-lead-minutes",
+        "60",
+        "--minimum-lead-minutes",
+        "60",
+        "--maximum-lead-minutes",
+        "480",
+        "--quiet-start",
+        "22:00",
+        "--quiet-end",
+        "08:00",
+        "--timezone",
+        "Europe/Vienna",
+    )
+    capsys.readouterr()
+
+    assert (
+        run(
+            database_path,
+            "effective-preview",
+            "--event",
+            "nfl:new_england_patriots:night_game",
+        )
+        == 0
+    )
+    payload = json.loads(capsys.readouterr().out)
+
+    assert payload == {
+        "conflict_fields": [],
+        "event": "nfl:new_england_patriots:night_game",
+        "is_reminder_on": True,
+        "reason": "quiet_shifted",
+        "reminder_at_local": "2026-09-01T22:00:00+02:00",
+        "reminder_at_utc": "2026-09-01T20:00:00+00:00",
+        "reminder_minutes_before_start": 260,
+        "timezone": "Europe/Vienna",
+    }
+    rendered = json.dumps(payload)
+    assert "New England Patriots night game" not in rendered
+    assert str(database_path) not in rendered
+    assert "outlook" not in rendered.casefold()

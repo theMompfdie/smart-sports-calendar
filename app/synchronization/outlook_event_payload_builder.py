@@ -1,12 +1,20 @@
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any, Literal
+from typing import Any, Literal, Protocol
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from app.database.synchronization_query_repository import SynchronizationEvent
+from app.domain.reminder_schedule import ResolvedReminder
 from app.synchronization.outlook_html_event_body_renderer import (
     OutlookHtmlEventBodyRenderer,
 )
+
+
+class ReminderResolver(Protocol):
+    def resolve(
+        self,
+        synchronization_event: SynchronizationEvent,
+    ) -> ResolvedReminder: ...
 
 
 @dataclass(frozen=True)
@@ -76,6 +84,12 @@ class OutlookEventPayload:
     show_as: str
     body_content_type: Literal["html", "text"] = "html"
 
+    def __post_init__(self) -> None:
+        if self.reminder_minutes_before_start < 0:
+            raise ValueError("Reminder minutes must not be negative.")
+        if not self.is_reminder_on and self.reminder_minutes_before_start != 0:
+            raise ValueError("Disabled reminders must use a zero-minute lead.")
+
     def to_graph_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "subject": self.subject,
@@ -102,9 +116,11 @@ class OutlookEventPayloadBuilder:
         self,
         presentation: OutlookEventPresentation | None = None,
         body_renderer: OutlookHtmlEventBodyRenderer | None = None,
+        reminder_resolver: ReminderResolver | None = None,
     ) -> None:
         self._presentation = presentation or OutlookEventPresentation()
         self._body_renderer = body_renderer or OutlookHtmlEventBodyRenderer()
+        self._reminder_resolver = reminder_resolver
 
     def build(self, synchronization_event: SynchronizationEvent) -> OutlookEventPayload:
         event = synchronization_event.event
@@ -114,6 +130,11 @@ class OutlookEventPayloadBuilder:
             event.venue_name,
             event.city,
             event.country_code,
+        )
+        reminder = (
+            None
+            if self._reminder_resolver is None
+            else self._reminder_resolver.resolve(synchronization_event)
         )
 
         return OutlookEventPayload(
@@ -142,9 +163,11 @@ class OutlookEventPayloadBuilder:
             location=location,
             categories=self._build_categories(synchronization_event),
             is_all_day=False,
-            is_reminder_on=True,
+            is_reminder_on=(True if reminder is None else reminder.is_reminder_on),
             reminder_minutes_before_start=(
                 self._presentation.reminder_minutes_before_start
+                if reminder is None
+                else reminder.minutes_before_start
             ),
             show_as="free" if is_cancelled else self._presentation.show_as,
         )
