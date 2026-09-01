@@ -60,73 +60,49 @@ def test_initialize_competitions_catalog_creates_reviewed_competitions(
     assert premier_league.short_name == "PL"
     assert premier_league.country_code == "GB-ENG"
     assert premier_league.competition_type == "league"
-    assert premier_league.metadata == {
-        "region": "England",
-        "calendar_category": "SMART | England",
-    }
+    assert premier_league.metadata == {"region": "England"}
     assert bundesliga.sport_id == football.id
     assert bundesliga.name == "Bundesliga"
     assert bundesliga.short_name == "BL"
     assert bundesliga.country_code == "DE"
     assert bundesliga.competition_type == "league"
-    assert bundesliga.metadata == {
-        "region": "Germany",
-        "calendar_category": "SMART | Germany",
-    }
+    assert bundesliga.metadata == {"region": "Germany"}
     assert championship.sport_id == football.id
     assert championship.name == "EFL Championship"
     assert championship.short_name == "EFL"
     assert championship.country_code == "GB-ENG"
     assert championship.competition_type == "league"
-    assert championship.metadata == {
-        "region": "England",
-        "calendar_category": "SMART | England",
-    }
+    assert championship.metadata == {"region": "England"}
     assert second_bundesliga.sport_id == football.id
     assert second_bundesliga.name == "2. Bundesliga"
     assert second_bundesliga.short_name == "2BL"
     assert second_bundesliga.country_code == "DE"
     assert second_bundesliga.competition_type == "league"
-    assert second_bundesliga.metadata == {
-        "region": "Germany",
-        "calendar_category": "SMART | Germany",
-    }
+    assert second_bundesliga.metadata == {"region": "Germany"}
     assert dfb_pokal.sport_id == football.id
     assert dfb_pokal.name == "DFB-Pokal"
     assert dfb_pokal.short_name == "DFB"
     assert dfb_pokal.country_code == "DE"
     assert dfb_pokal.competition_type == "knockout_cup"
-    assert dfb_pokal.metadata == {
-        "region": "Germany",
-        "calendar_category": "SMART | Germany",
-    }
+    assert dfb_pokal.metadata == {"region": "Germany"}
     assert oefb_cup.sport_id == football.id
     assert oefb_cup.name == "UNIQA ÖFB Cup"
     assert oefb_cup.short_name == "ÖFB Cup"
     assert oefb_cup.country_code == "AT"
     assert oefb_cup.competition_type == "knockout_cup"
-    assert oefb_cup.metadata == {
-        "region": "Austria",
-        "calendar_category": "SMART | Austria",
-    }
+    assert oefb_cup.metadata == {"region": "Austria"}
     assert nations_league.sport_id == football.id
     assert nations_league.name == "UEFA Nations League"
     assert nations_league.short_name == "UNL"
     assert nations_league.country_code == "INT"
     assert nations_league.competition_type == "hybrid_tournament"
-    assert nations_league.metadata == {
-        "region": "Europe",
-        "calendar_category": "SMART | UEFA",
-    }
+    assert nations_league.metadata == {"region": "Europe"}
     assert champions_league.sport_id == football.id
     assert champions_league.name == "UEFA Champions League"
     assert champions_league.short_name == "UCL"
     assert champions_league.country_code == "INT"
     assert champions_league.competition_type == "hybrid_tournament"
-    assert champions_league.metadata == {
-        "region": "Europe",
-        "calendar_category": "SMART | UEFA",
-    }
+    assert champions_league.metadata == {"region": "Europe"}
     american_football = sports_repository.get_by_key("american_football")
     assert american_football is not None
     assert nfl.sport_id == american_football.id
@@ -134,10 +110,7 @@ def test_initialize_competitions_catalog_creates_reviewed_competitions(
     assert nfl.short_name == "NFL"
     assert nfl.country_code == "US"
     assert nfl.competition_type == "league"
-    assert nfl.metadata == {
-        "region": "United States",
-        "calendar_category": "SMART | NFL",
-    }
+    assert nfl.metadata == {"region": "United States"}
 
 
 def test_initialize_competitions_catalog_can_run_repeatedly(
@@ -189,7 +162,10 @@ def test_initialize_competitions_catalog_restores_master_data(
         short_name=None,
         country_code=None,
         competition_type=None,
-        metadata=None,
+        metadata={
+            "region": "England",
+            "calendar_category": "SMART | England",
+        },
     )
 
     initialize_competitions_catalog(
@@ -207,10 +183,7 @@ def test_initialize_competitions_catalog_restores_master_data(
     assert premier_league.short_name == "PL"
     assert premier_league.country_code == "GB-ENG"
     assert premier_league.competition_type == "league"
-    assert premier_league.metadata == {
-        "region": "England",
-        "calendar_category": "SMART | England",
-    }
+    assert premier_league.metadata == {"region": "England"}
 
     bundesliga = competitions_repository.get_by_key(
         sport_id=football.id,
@@ -242,10 +215,7 @@ def test_initialize_competitions_catalog_restores_master_data(
     assert restored_bundesliga.short_name == "BL"
     assert restored_bundesliga.country_code == "DE"
     assert restored_bundesliga.competition_type == "league"
-    assert restored_bundesliga.metadata == {
-        "region": "Germany",
-        "calendar_category": "SMART | Germany",
-    }
+    assert restored_bundesliga.metadata == {"region": "Germany"}
 
 
 def test_initialize_competitions_catalog_requires_football(

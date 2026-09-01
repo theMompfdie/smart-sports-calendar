@@ -233,6 +233,21 @@ def graph_body(operation: CapturedGraphOperation) -> str:
     return content
 
 
+def graph_subject(operation: CapturedGraphOperation) -> str:
+    assert operation.payload is not None
+    subject = operation.payload["subject"]
+    assert isinstance(subject, str)
+    return subject
+
+
+def graph_categories(operation: CapturedGraphOperation) -> tuple[str, ...]:
+    assert operation.payload is not None
+    categories = operation.payload["categories"]
+    assert isinstance(categories, list)
+    assert all(isinstance(category, str) for category in categories)
+    return tuple(categories)
+
+
 def graph_start(operation: CapturedGraphOperation) -> datetime:
     assert operation.payload is not None
     start = operation.payload["start"]
@@ -272,6 +287,14 @@ def test_nfl_snapshot_synchronizes_272_events_and_is_idempotent(
     assert len(harness.graph.events) == 272
     assert first_operation_count == 272
     assert {operation.method for operation in harness.graph.operations} == {"POST"}
+    assert all(
+        graph_subject(operation).startswith("🏈 ")
+        for operation in harness.graph.operations
+    )
+    assert all(
+        graph_categories(operation) == ("National Football League",)
+        for operation in harness.graph.operations
+    )
     assert all(
         "Schedule data provided by nflverse under CC BY 4.0" in graph_body(operation)
         for operation in harness.graph.operations

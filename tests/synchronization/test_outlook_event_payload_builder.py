@@ -1,6 +1,10 @@
 from dataclasses import FrozenInstanceError, replace
 
 import pytest
+from app.database.competitions_catalog import (
+    COMPETITION_CATALOG,
+    CompetitionCatalogEntry,
+)
 from app.database.competitions_repository import Competition
 from app.database.event_results_repository import EventResult
 from app.database.event_statistics_repository import EventStatistic
@@ -60,10 +64,11 @@ def make_aggregate(
     complete: bool = True,
     sport_key: str = "football",
     sport_name: str = "Football",
+    sport_icon: str | None = "⚽",
     source_attribution: str | None = None,
     operator_notice: OperatorNotice | None = None,
 ) -> SynchronizationEvent:
-    sport = Sport(1, sport_key, sport_name, None, None, TIMESTAMP, TIMESTAMP)
+    sport = Sport(1, sport_key, sport_name, sport_icon, None, TIMESTAMP, TIMESTAMP)
 
     if not complete:
         return SynchronizationEvent(
@@ -190,17 +195,13 @@ def make_aggregate(
 def test_build_maps_complete_event() -> None:
     payload = OutlookEventPayloadBuilder().build(make_aggregate())
 
-    assert payload.subject == "Arsenal vs Liverpool"
+    assert payload.subject == "⚽ Arsenal vs Liverpool"
     assert payload.start.date_time == "2026-08-21T19:00:00"
     assert payload.end is not None
     assert payload.end.date_time == "2026-08-21T21:00:00"
     assert payload.start.time_zone == "Europe/London"
     assert payload.location == "Emirates Stadium, London, GB"
-    assert payload.categories == (
-        "Football",
-        "Premier League",
-        "SMART Sports Calendar",
-    )
+    assert payload.categories == ("Premier League",)
     assert "- home: Arsenal" in payload.body
     assert payload.body.index("- home: Arsenal") < payload.body.index(
         "- away: Liverpool"
@@ -224,6 +225,45 @@ def test_build_adds_fallback_end_to_minimal_event() -> None:
     assert "location" not in graph_payload
     assert "Competition:" not in payload.body
     assert "Participants:" not in payload.body
+    assert payload.categories == ("SMART Sports Calendar",)
+
+
+@pytest.mark.parametrize(
+    "catalog_entry",
+    COMPETITION_CATALOG,
+    ids=lambda entry: entry.competition_key,
+)
+def test_build_uses_exact_competition_name_as_sole_category(
+    catalog_entry: CompetitionCatalogEntry,
+) -> None:
+    aggregate = make_aggregate(
+        sport_key=catalog_entry.sport_key,
+        sport_name=(
+            "American Football"
+            if catalog_entry.sport_key == "american_football"
+            else "Football"
+        ),
+        sport_icon=("🏈" if catalog_entry.sport_key == "american_football" else "⚽"),
+    )
+    assert aggregate.competition is not None
+    competition = replace(
+        aggregate.competition,
+        competition_key=catalog_entry.competition_key,
+        name=catalog_entry.name,
+    )
+
+    payload = OutlookEventPayloadBuilder().build(
+        replace(aggregate, competition=competition)
+    )
+
+    assert payload.categories == (catalog_entry.name,)
+
+
+def test_build_omits_subject_prefix_when_sport_icon_is_missing() -> None:
+    payload = OutlookEventPayloadBuilder().build(make_aggregate(sport_icon=None))
+
+    assert payload.subject == "Arsenal vs Liverpool"
+    assert payload.categories == ("Premier League",)
 
 
 def test_build_uses_three_hour_fallback_for_american_football() -> None:
@@ -238,9 +278,11 @@ def test_build_uses_three_hour_fallback_for_american_football() -> None:
             event=event,
             sport_key="american_football",
             sport_name="American Football",
+            sport_icon="🏈",
         )
     )
 
+    assert payload.subject == "🏈 Arsenal vs Liverpool"
     assert payload.end is not None
     assert payload.end.date_time == "2026-09-10T03:20:00"
     assert payload.end.time_zone == "UTC"
@@ -258,6 +300,7 @@ def test_build_prefers_explicit_end_for_american_football() -> None:
             event=event,
             sport_key="american_football",
             sport_name="American Football",
+            sport_icon="🏈",
         )
     )
 
@@ -337,6 +380,7 @@ def test_american_football_fallback_uses_absolute_duration_across_dst() -> None:
             event=event,
             sport_key="american_football",
             sport_name="American Football",
+            sport_icon="🏈",
         )
     )
 
@@ -350,6 +394,17 @@ def test_presentation_rejects_non_positive_default_duration() -> None:
         OutlookEventPresentation(default_duration_minutes=0)
 
 
+@pytest.mark.parametrize("fallback_category", ["", " Calendar", "Calendar "])
+def test_presentation_rejects_invalid_fallback_category(
+    fallback_category: str,
+) -> None:
+    with pytest.raises(
+        ValueError,
+        match="Fallback category must be normalized and non-empty",
+    ):
+        OutlookEventPresentation(fallback_category=fallback_category)
+
+
 def test_presentation_rejects_non_positive_sport_duration() -> None:
     with pytest.raises(ValueError, match="Fallback duration minutes must be positive"):
         OutlookEventPresentation(
@@ -361,9 +416,9 @@ def test_build_represents_cancelled_event_deterministically() -> None:
     event = make_sports_event(status="cancelled", cancelled_at=TIMESTAMP)
     payload = OutlookEventPayloadBuilder().build(make_aggregate(event=event))
 
-    assert payload.subject == "[CANCELLED] Arsenal vs Liverpool"
+    assert payload.subject == "[CANCELLED] ⚽ Arsenal vs Liverpool"
     assert payload.show_as == "free"
-    assert "Cancelled" in payload.categories
+    assert payload.categories == ("Premier League",)
     assert payload.body.startswith("Status: Cancelled\n")
 
 
@@ -431,7 +486,6 @@ def test_build_renders_event_level_result_and_statistic_without_participant() ->
 def test_graph_serialization_uses_expected_microsoft_graph_shape() -> None:
     payload = OutlookEventPayloadBuilder(
         OutlookEventPresentation(
-            categories=("Sports",),
             reminder_minutes_before_start=30,
             show_as="tentative",
         )

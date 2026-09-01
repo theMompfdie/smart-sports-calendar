@@ -58,8 +58,8 @@ The currently integrated competition categories are:
 | --- | --- |
 | `premier_league` | `Premier League` |
 | `bundesliga` | `Bundesliga` |
-| `efl_championship` | `EFL Championship` |
-| `zweite_bundesliga` | `2. Bundesliga` |
+| `championship` | `EFL Championship` |
+| `second_bundesliga` | `2. Bundesliga` |
 | `dfb_pokal` | `DFB-Pokal` |
 | `oefb_cup` | `UNIQA ÖFB Cup` |
 | `uefa_nations_league` | `UEFA Nations League` |
