@@ -156,6 +156,10 @@ class ReminderRulesRepository:
             with self._connect() as connection:
                 connection.execute("BEGIN IMMEDIATE")
                 current = self._select_current_row(connection, selector)
+                presentation_changed = self._presentation_fields_changed(
+                    current,
+                    write,
+                )
                 values = (
                     None if write.action is None else write.action.value,
                     write.preferred_lead_minutes,
@@ -220,6 +224,12 @@ class ReminderRulesRepository:
                         "Reminder rule could not be loaded after mutation."
                     )
                 self._validate_existing_event_policies(connection)
+                if presentation_changed:
+                    self._invalidate_presentations(
+                        connection,
+                        selector=selector,
+                        timestamp=timestamp,
+                    )
                 return rule
         except sqlite3.IntegrityError as error:
             raise ReminderRuleRepositoryError(
@@ -279,6 +289,7 @@ class ReminderRulesRepository:
             current = self._select_current_row(connection, selector)
             if current is None:
                 raise ReminderRuleNotFoundError("Current reminder rule was not found.")
+            presentation_changed = bool(current["is_active"])
             connection.execute(
                 """
                 UPDATE reminder_rules
@@ -294,7 +305,105 @@ class ReminderRulesRepository:
                 raise ReminderRuleRepositoryError(
                     "Reminder rule could not be loaded after mutation."
                 )
+            self._validate_existing_event_policies(connection)
+            if presentation_changed:
+                self._invalidate_presentations(
+                    connection,
+                    selector=selector,
+                    timestamp=timestamp,
+                )
             return rule
+
+    @staticmethod
+    def _presentation_fields_changed(
+        current: sqlite3.Row | None,
+        write: ReminderRuleWrite,
+    ) -> bool:
+        if current is None:
+            return True
+        expected = (
+            None if write.action is None else write.action.value,
+            write.preferred_lead_minutes,
+            write.minimum_lead_minutes,
+            write.maximum_lead_minutes,
+            write.quiet_start,
+            write.quiet_end,
+            write.timezone,
+            1,
+        )
+        actual = tuple(
+            current[column]
+            for column in (
+                "action",
+                "preferred_lead_minutes",
+                "minimum_lead_minutes",
+                "maximum_lead_minutes",
+                "quiet_start",
+                "quiet_end",
+                "timezone",
+                "is_active",
+            )
+        )
+        return actual != expected
+
+    @staticmethod
+    def _invalidate_presentations(
+        connection: sqlite3.Connection,
+        *,
+        selector: ReminderRuleSelector,
+        timestamp: str,
+    ) -> int:
+        if selector.scope is ReminderScope.GLOBAL:
+            scope_filter = "1 = 1"
+            parameters: tuple[object, ...] = ()
+        elif selector.scope is ReminderScope.COMPETITION:
+            scope_filter = "event.competition_id = ?"
+            parameters = (selector.competition_id,)
+        elif selector.scope is ReminderScope.PARTICIPANT:
+            scope_filter = """
+                EXISTS (
+                    SELECT 1
+                    FROM event_participants AS participant
+                    WHERE participant.event_id = event.id
+                      AND participant.participant_id = ?
+                )
+            """
+            parameters = (selector.participant_id,)
+        elif selector.scope is ReminderScope.COMPETITION_PARTICIPANT:
+            scope_filter = """
+                event.competition_id = ?
+                AND EXISTS (
+                    SELECT 1
+                    FROM event_participants AS participant
+                    WHERE participant.event_id = event.id
+                      AND participant.participant_id = ?
+                )
+            """
+            parameters = (
+                selector.competition_id,
+                selector.participant_id,
+            )
+        else:
+            scope_filter = "event.id = ?"
+            parameters = (selector.event_id,)
+
+        cursor = connection.execute(
+            f"""
+            UPDATE calendar_event_mappings
+            SET presentation_revision = presentation_revision + 1,
+                updated_at = ?
+            WHERE sync_status IN ('pending', 'failed', 'synced')
+              AND EXISTS (
+                  SELECT 1
+                  FROM sports_events AS event
+                  WHERE event.id = calendar_event_mappings.event_id
+                    AND event.deleted_at IS NULL
+                    AND ({scope_filter})
+              )
+            """,
+            (timestamp, *parameters),
+        )
+        return cursor.rowcount
 
     def _validate_existing_event_policies(
         self,

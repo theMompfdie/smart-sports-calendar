@@ -129,31 +129,38 @@ class EventSynchronizer:
                 content_hash=None,
             )
 
+        mapping_was_created = False
+        if mapping is None:
+            try:
+                mapping = self._mappings_repository.create_pending(
+                    event_id=event.id,
+                    calendar_id=calendar_id,
+                )
+            except Exception as error:
+                raise EventSynchronizationError(
+                    f"Pending calendar mapping could not be created for "
+                    f"event {event.id}."
+                ) from error
+            mapping_was_created = True
+
         try:
             payload = self._payload_builder.build(synchronization_event)
             content_hash = calculate_content_hash(payload)
         except Exception as error:
+            self._record_failure(mapping, error)
             raise EventSynchronizationError(
                 f"Outlook payload preparation failed for event {event.id}."
             ) from error
 
-        if mapping_was_revived:
+        if mapping_was_revived or mapping_was_created:
             return self._create_event(
                 event_id=event.id,
                 event_revision=event.sync_revision,
+                presentation_revision=mapping.presentation_revision,
                 calendar_id=calendar_id,
                 payload=payload,
                 content_hash=content_hash,
                 mapping=mapping,
-            )
-
-        if mapping is None:
-            return self._create_event(
-                event_id=event.id,
-                event_revision=event.sync_revision,
-                calendar_id=calendar_id,
-                payload=payload,
-                content_hash=content_hash,
             )
 
         if mapping.outlook_event_id is None:
@@ -169,6 +176,7 @@ class EventSynchronizer:
             return self._create_event(
                 event_id=event.id,
                 event_revision=event.sync_revision,
+                presentation_revision=mapping.presentation_revision,
                 calendar_id=calendar_id,
                 payload=payload,
                 content_hash=content_hash,
@@ -179,6 +187,7 @@ class EventSynchronizer:
             checked_mapping = self._mappings_repository.mark_checked(
                 mapping.id,
                 event_revision=event.sync_revision,
+                presentation_revision=mapping.presentation_revision,
             )
             if checked_mapping is None:
                 raise EventSynchronizationError(
@@ -200,6 +209,7 @@ class EventSynchronizer:
         return self._update_event(
             mapping=mapping,
             event_revision=event.sync_revision,
+            presentation_revision=mapping.presentation_revision,
             calendar_id=calendar_id,
             payload=payload,
             content_hash=content_hash,
@@ -214,23 +224,13 @@ class EventSynchronizer:
         self,
         event_id: int,
         event_revision: int,
+        presentation_revision: int,
         calendar_id: str,
         payload: OutlookEventPayload,
         content_hash: str,
-        mapping: CalendarEventMapping | None = None,
+        mapping: CalendarEventMapping,
     ) -> EventSynchronizationResult:
-        if mapping is None:
-            try:
-                mapping = self._mappings_repository.create_pending(
-                    event_id=event_id,
-                    calendar_id=calendar_id,
-                )
-            except Exception as error:
-                raise EventSynchronizationError(
-                    f"Pending calendar mapping could not be created for "
-                    f"event {event_id}."
-                ) from error
-        elif mapping.sync_status == "failed":
+        if mapping.sync_status == "failed":
             try:
                 pending_mapping = self._mappings_repository.mark_pending(
                     mapping_id=mapping.id,
@@ -260,6 +260,7 @@ class EventSynchronizer:
                 outlook_change_key=None,
                 content_hash=content_hash,
                 event_revision=event_revision,
+                presentation_revision=presentation_revision,
             )
 
             if synchronized_mapping is None:
@@ -288,6 +289,7 @@ class EventSynchronizer:
         self,
         mapping: CalendarEventMapping,
         event_revision: int,
+        presentation_revision: int,
         calendar_id: str,
         payload: OutlookEventPayload,
         content_hash: str,
@@ -320,6 +322,7 @@ class EventSynchronizer:
                 outlook_change_key=mapping.outlook_change_key,
                 content_hash=content_hash,
                 event_revision=event_revision,
+                presentation_revision=presentation_revision,
             )
 
             if synchronized_mapping is None:

@@ -711,6 +711,55 @@ def test_get_candidates_rotates_synced_mappings_by_oldest_sync_time(
     assert [candidate.event.id for candidate in candidates] == [older_sync_event.id]
 
 
+def test_get_candidates_converges_presentation_changes_in_bounded_batches(
+    tmp_path: Path,
+) -> None:
+    database_path = create_database(tmp_path)
+    sport = SportsRepository(database_path).upsert("football", "Football")
+    events = SportsEventsRepository(database_path)
+    mappings = CalendarEventMappingsRepository(database_path)
+    event_ids: list[int] = []
+    mapping_ids: list[int] = []
+    for day in range(1, 4):
+        event = events.upsert(
+            sport_id=sport.id,
+            event_key=f"presentation-{day}",
+            event_type="match",
+            title=f"Presentation fixture {day}",
+            start_time=f"2026-09-{day:02d}T19:00:00+00:00",
+        )
+        mapping = mappings.create_pending(event.id, "calendar-1")
+        assert mappings.mark_synced(
+            mapping.id,
+            outlook_event_id=f"outlook-{day}",
+            outlook_change_key=None,
+            content_hash=f"hash-{day}",
+            event_revision=event.sync_revision,
+        )
+        event_ids.append(event.id)
+        mapping_ids.append(mapping.id)
+
+    assert mappings.invalidate_all_presentations() == 3
+    repository = SynchronizationQueryRepository(database_path)
+    first_batch = repository.get_candidates("calendar-1", limit=2)
+
+    assert [candidate.event.id for candidate in first_batch] == event_ids[:2]
+    for candidate in first_batch:
+        assert candidate.mapping is not None
+        assert mappings.mark_checked(
+            candidate.mapping.id,
+            event_revision=candidate.event.sync_revision,
+            presentation_revision=candidate.mapping.presentation_revision,
+        )
+
+    second_batch = repository.get_candidates("calendar-1", limit=2)
+
+    assert second_batch[0].event.id == event_ids[2]
+    remaining = mappings.get_by_id(mapping_ids[2])
+    assert remaining is not None
+    assert remaining.presentation_revision > remaining.last_synced_presentation_revision
+
+
 def test_get_candidates_prioritizes_revision_drift_at_championship_scale(
     tmp_path: Path,
 ) -> None:

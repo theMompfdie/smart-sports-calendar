@@ -21,6 +21,8 @@ class CalendarEventMapping:
     created_at: str
     updated_at: str
     last_synced_revision: int = 0
+    presentation_revision: int = 1
+    last_synced_presentation_revision: int = 0
 
 
 class CalendarEventMappingsRepository:
@@ -180,8 +182,10 @@ class CalendarEventMappingsRepository:
         outlook_change_key: str | None,
         content_hash: str,
         event_revision: int,
+        presentation_revision: int = 1,
     ) -> CalendarEventMapping | None:
         self._validate_event_revision(event_revision)
+        self._validate_presentation_revision(presentation_revision)
         timestamp = self._timestamp()
 
         with self._connect() as connection:
@@ -196,10 +200,12 @@ class CalendarEventMappingsRepository:
                             SELECT sync_revision
                             FROM sports_events
                             WHERE id = calendar_event_mappings.event_id
-                        ) THEN 'synced'
+                        )
+                        AND presentation_revision = ? THEN 'synced'
                         ELSE 'pending'
                     END,
                     last_synced_revision = ?,
+                    last_synced_presentation_revision = ?,
                     sync_attempts = sync_attempts + 1,
                     last_synced_at = ?,
                     last_sync_error = NULL,
@@ -211,7 +217,9 @@ class CalendarEventMappingsRepository:
                     outlook_change_key,
                     content_hash,
                     event_revision,
+                    presentation_revision,
                     event_revision,
+                    presentation_revision,
                     timestamp,
                     timestamp,
                     mapping_id,
@@ -227,8 +235,10 @@ class CalendarEventMappingsRepository:
         self,
         mapping_id: int,
         event_revision: int,
+        presentation_revision: int = 1,
     ) -> CalendarEventMapping | None:
         self._validate_event_revision(event_revision)
+        self._validate_presentation_revision(presentation_revision)
         timestamp = self._timestamp()
 
         with self._connect() as connection:
@@ -240,10 +250,12 @@ class CalendarEventMappingsRepository:
                             SELECT sync_revision
                             FROM sports_events
                             WHERE id = calendar_event_mappings.event_id
-                        ) THEN 'synced'
+                        )
+                        AND presentation_revision = ? THEN 'synced'
                         ELSE 'pending'
                     END,
                     last_synced_revision = ?,
+                    last_synced_presentation_revision = ?,
                     last_synced_at = ?,
                     last_sync_error = NULL,
                     updated_at = ?
@@ -252,7 +264,9 @@ class CalendarEventMappingsRepository:
                 """,
                 (
                     event_revision,
+                    presentation_revision,
                     event_revision,
+                    presentation_revision,
                     timestamp,
                     timestamp,
                     mapping_id,
@@ -292,6 +306,27 @@ class CalendarEventMappingsRepository:
             return None
 
         return self.get_by_id(mapping_id)
+
+    def invalidate_all_presentations(self) -> int:
+        """Queue every live Outlook mapping after a global template change."""
+        timestamp = self._timestamp()
+        with self._connect() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE calendar_event_mappings
+                SET presentation_revision = presentation_revision + 1,
+                    updated_at = ?
+                WHERE sync_status IN ('pending', 'failed', 'synced')
+                  AND EXISTS (
+                      SELECT 1
+                      FROM sports_events AS event
+                      WHERE event.id = calendar_event_mappings.event_id
+                        AND event.deleted_at IS NULL
+                  )
+                """,
+                (timestamp,),
+            )
+        return cursor.rowcount
 
     def mark_delete_failed(
         self,
@@ -373,6 +408,7 @@ class CalendarEventMappingsRepository:
                     outlook_change_key = NULL,
                     content_hash = NULL,
                     last_synced_revision = 0,
+                    last_synced_presentation_revision = 0,
                     sync_status = 'pending',
                     last_sync_error = NULL,
                     updated_at = ?
@@ -458,6 +494,8 @@ class CalendarEventMappingsRepository:
                 last_synced_at,
                 last_sync_error,
                 last_synced_revision,
+                presentation_revision,
+                last_synced_presentation_revision,
                 created_at,
                 updated_at
             FROM calendar_event_mappings
@@ -480,9 +518,16 @@ class CalendarEventMappingsRepository:
             created_at=row["created_at"],
             updated_at=row["updated_at"],
             last_synced_revision=row["last_synced_revision"],
+            presentation_revision=row["presentation_revision"],
+            last_synced_presentation_revision=row["last_synced_presentation_revision"],
         )
 
     @staticmethod
     def _validate_event_revision(event_revision: int) -> None:
         if event_revision < 1:
             raise ValueError("Event synchronization revision must be positive.")
+
+    @staticmethod
+    def _validate_presentation_revision(presentation_revision: int) -> None:
+        if presentation_revision < 1:
+            raise ValueError("Presentation synchronization revision must be positive.")

@@ -1,7 +1,7 @@
 # Runtime reminder rule administration
 
-Status: Implemented persistence, local operator CLI, and Vienna-aware reminder
-resolution for Phase 8.4–8.5 (#209 and #210)
+Status: Implemented persistence, local operator CLI, Vienna-aware reminder
+resolution, and targeted Outlook convergence for Phase 8.4–8.6 (#209–#211)
 
 SMART Sports Calendar stores reminder preferences in the same SQLite database
 as its canonical sports data. Migration `009_create_reminder_rules` is
@@ -10,10 +10,10 @@ schema without modifying or deleting existing sports events.
 
 Each Outlook payload build reads and resolves the currently committed rules.
 Quiet-period calculation produces exactly one integer Graph lead or a disabled
-reminder. Presentation invalidation and targeted Outlook convergence are owned
-by #211. Until that slice is merged and deployed, a rule change is reflected
-whenever an event is otherwise selected for synchronization, but it does not
-yet make every affected existing event immediately actionable.
+reminder. Migration `010_add_presentation_sync_revisions` separates desired
+and last-synchronized Outlook presentation revisions from canonical fixture
+revisions. A rule mutation and its mapping invalidations commit in one SQLite
+transaction, so only matching live mappings become immediately actionable.
 
 ## Rule scopes and inheritance
 
@@ -85,6 +85,25 @@ IDs, Outlook IDs, event titles, the database path, and private provider data.
 UTC and configured-local reminder instants, and any conflicting policy fields.
 It does not contact Microsoft Graph or a sports provider.
 
+Rule updates do not increment `sports_events.sync_revision`. A presentation
+revision is acknowledged only for the revision captured before rendering. If a
+second rule mutation commits during a Graph request, the newer revision remains
+pending for the next bounded synchronization cycle. If re-rendering produces
+the same content hash, the application records the captured revision as checked
+without sending an unnecessary Graph PATCH.
+
+After changing a global HTML template or another project-wide presentation
+policy, explicitly queue every live mapping:
+
+```console
+python -m app.operations.presentation_revisions --database /data/sports.db --invalidate-all
+```
+
+The command prints only the number of affected mappings. Existing transaction
+IDs, Outlook IDs, retry state, deletions, and canonical revisions remain
+unchanged. The configured synchronization batch limit drains this backlog over
+successive cycles; canonical fixture changes retain higher candidate priority.
+
 ## Quiet-period resolution
 
 Lead limits are inclusive elapsed minutes between UTC instants. Quiet-period
@@ -108,13 +127,15 @@ on the next payload build without restarting the process.
 
 ## Backup, restore, and rollback
 
-Before first running code that contains migration 009, stop the exact instance
-and create a transactionally consistent copy of its project-scoped
+Before first running code that contains migrations 009 and 010, stop the exact
+instance and create a transactionally consistent copy of its project-scoped
 `/data/sports.db` as described in [Deployment](deployment.md). Keep the backup
 outside the Docker volume and verify it with `PRAGMA quick_check`.
 
-The migration record and reminder rules are part of the SQLite database, so a
-normal database backup and restore includes them. There is no destructive
+The migration records, reminder rules, and presentation revisions are part of
+the SQLite database, so a normal database backup and restore includes them.
+Migration 010 intentionally queues every existing mapping once to converge the
+Phase 8 HTML/category/icon/reminder projection. There is no destructive
 downgrade SQL. If an application rollback requires the pre-migration schema:
 
 1. stop the exact application instance;

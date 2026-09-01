@@ -3,6 +3,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+from app.database.calendar_event_mappings_repository import (
+    CalendarEventMappingsRepository,
+)
 from app.database.competitions_repository import CompetitionsRepository
 from app.database.database import Database
 from app.database.event_participants_repository import EventParticipantsRepository
@@ -211,12 +214,134 @@ def test_conflicting_participant_rule_rolls_back_atomically(
         target(ReminderScope.PARTICIPANT, participant="liverpool")
     )
     rules.set(ReminderRuleWrite(manchester, preferred_lead_minutes=60))
+    mappings = CalendarEventMappingsRepository(reminder_scope["database_path"])
+    mapping = mappings.create_pending(reminder_scope["event"].id, "calendar-1")
+    assert mappings.mark_synced(
+        mapping.id,
+        outlook_event_id="outlook-1",
+        outlook_change_key=None,
+        content_hash="hash-1",
+        event_revision=reminder_scope["event"].sync_revision,
+    )
+    revision_before_conflict = mappings.get_by_id(mapping.id).presentation_revision
 
     with pytest.raises(ReminderRuleRepositoryError, match="equal precedence"):
         rules.set(ReminderRuleWrite(liverpool, preferred_lead_minutes=120))
 
     assert rules.get_current(liverpool) is None
     assert len(rules.list()) == 1
+    assert (
+        mappings.get_by_id(mapping.id).presentation_revision == revision_before_conflict
+    )
+
+
+def test_rule_mutations_invalidate_only_matching_live_mappings(
+    reminder_scope: dict[str, object],
+) -> None:
+    database_path = reminder_scope["database_path"]
+    events = SportsEventsRepository(database_path)
+    event_participants = EventParticipantsRepository(database_path)
+    nfl_event = events.upsert(
+        sport_id=reminder_scope["nfl"].sport_id,
+        competition_id=reminder_scope["nfl"].id,
+        event_key="nfl:new_england_patriots:night_game",
+        event_type="match",
+        title="New England Patriots night game",
+        start_time="2026-09-13T00:00:00+00:00",
+    )
+    event_participants.upsert(
+        nfl_event.id,
+        reminder_scope["new_england"].id,
+        "home",
+        1,
+    )
+    mappings = CalendarEventMappingsRepository(database_path)
+    football_mapping = mappings.create_pending(
+        reminder_scope["event"].id,
+        "calendar-1",
+    )
+    nfl_mapping = mappings.create_pending(nfl_event.id, "calendar-1")
+    for mapping, event in (
+        (football_mapping, reminder_scope["event"]),
+        (nfl_mapping, nfl_event),
+    ):
+        current_event = events.get_by_id(event.id)
+        assert current_event is not None
+        assert mappings.mark_synced(
+            mapping.id,
+            outlook_event_id=f"outlook-{mapping.id}",
+            outlook_change_key=None,
+            content_hash=f"hash-{mapping.id}",
+            event_revision=current_event.sync_revision,
+        )
+
+    canonical_revision = events.get_by_id(reminder_scope["event"].id).sync_revision
+
+    rules = repository(reminder_scope)
+    manchester = rules.resolve_target(
+        target(ReminderScope.PARTICIPANT, participant="manchester_united")
+    )
+    first = rules.set(
+        ReminderRuleWrite(
+            manchester,
+            action=ReminderAction.ENABLE,
+            preferred_lead_minutes=60,
+            operator_note="initial",
+        )
+    )
+
+    assert mappings.get_by_id(football_mapping.id).presentation_revision == 2
+    assert mappings.get_by_id(nfl_mapping.id).presentation_revision == 1
+    assert (
+        SportsEventsRepository(database_path)
+        .get_by_id(reminder_scope["event"].id)
+        .sync_revision
+        == canonical_revision
+    )
+
+    rules.set(
+        ReminderRuleWrite(
+            manchester,
+            action=ReminderAction.ENABLE,
+            preferred_lead_minutes=60,
+            operator_note="note-only change",
+        )
+    )
+    assert mappings.get_by_id(football_mapping.id).presentation_revision == 2
+
+    disabled = rules.disable(manchester)
+    assert disabled.id == first.id
+    assert mappings.get_by_id(football_mapping.id).presentation_revision == 3
+
+    rules.delete(manchester)
+    assert mappings.get_by_id(football_mapping.id).presentation_revision == 3
+
+    new_england = rules.resolve_target(
+        target(ReminderScope.PARTICIPANT, participant="new_england_patriots")
+    )
+    rules.set(
+        ReminderRuleWrite(
+            new_england,
+            action=ReminderAction.ENABLE,
+            preferred_lead_minutes=60,
+            minimum_lead_minutes=60,
+            maximum_lead_minutes=480,
+            quiet_start="22:00",
+            quiet_end="08:00",
+            timezone="Europe/Vienna",
+        )
+    )
+    assert mappings.get_by_id(football_mapping.id).presentation_revision == 3
+    assert mappings.get_by_id(nfl_mapping.id).presentation_revision == 2
+
+    rules.delete(new_england)
+    assert mappings.get_by_id(football_mapping.id).presentation_revision == 3
+    assert mappings.get_by_id(nfl_mapping.id).presentation_revision == 3
+
+    global_selector = rules.resolve_target(target(ReminderScope.GLOBAL))
+    rules.set(ReminderRuleWrite(global_selector, action=ReminderAction.SUPPRESS))
+    assert mappings.get_by_id(football_mapping.id).presentation_revision == 4
+    assert mappings.get_by_id(nfl_mapping.id).presentation_revision == 4
 
 
 def test_event_rule_can_resolve_participant_conflict(
