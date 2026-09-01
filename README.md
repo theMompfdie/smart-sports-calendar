@@ -209,6 +209,11 @@ Phase 7 decision records:
 - [Phase 7 isolated staging validation](docs/phase-7-staging-validation.md)
 - [v0.7.0-beta.1 release checklist](docs/v0.7.0-beta.1-release-checklist.md)
 
+Phase 8 approved design (implementation planned):
+
+- [Outlook presentation, reminder, and media ADR](docs/adr/0014-model-outlook-presentation-reminders-and-media.md)
+- [Outlook presentation, reminder, and media contract](docs/outlook-presentation-reminder-media-contract.md)
+
 ### Database and Persistence
 
 - versioned SQLite schema migrations
