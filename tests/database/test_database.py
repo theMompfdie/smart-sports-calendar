@@ -12,6 +12,7 @@ EXPECTED_TABLES = {
     "betting_outcomes",
     "bookmakers",
     "calendar_event_mappings",
+    "calendar_event_asset_attachments",
     "competitions",
     "data_sources",
     "event_participants",
@@ -106,7 +107,38 @@ def test_migrations_are_registered_once(
         ("009_create_reminder_rules",),
         ("010_add_presentation_sync_revisions",),
         ("011_create_media_assets",),
+        ("012_create_calendar_event_asset_attachments",),
     ]
+
+
+def test_event_asset_attachment_schema_is_scoped_and_restart_safe(
+    initialized_database: Database,
+    database_path: Path,
+) -> None:
+    with connect(database_path) as connection:
+        columns = {
+            row[1]: row
+            for row in connection.execute(
+                "PRAGMA table_info(calendar_event_asset_attachments)"
+            )
+        }
+        indexes = {
+            row[1]
+            for row in connection.execute(
+                "PRAGMA index_list(calendar_event_asset_attachments)"
+            )
+        }
+
+    assert columns["calendar_event_mapping_id"][3] == 1
+    assert columns["slot"][3] == 1
+    assert columns["status"][4] == "'pending'"
+    assert columns["attempt_count"][4] == "0"
+    assert {
+        "uq_event_asset_slot",
+        "idx_event_asset_status",
+        "idx_event_asset_desired",
+        "idx_event_asset_synchronized",
+    }.issubset(indexes)
 
 
 def test_media_assets_schema_enforces_versioned_approval_and_owner_state(

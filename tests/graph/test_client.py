@@ -1,3 +1,4 @@
+import base64
 import json
 from io import BytesIO
 from unittest.mock import Mock, patch
@@ -9,6 +10,8 @@ from app.graph.client import (
     CalendarNotUniqueError,
     GraphClient,
     GraphClientError,
+    OutlookAttachmentNotFoundError,
+    OutlookAttachmentReference,
     OutlookEventNotFoundError,
     OutlookEventReference,
 )
@@ -237,6 +240,137 @@ def test_delete_event_sends_delete_request() -> None:
         ),
         method="DELETE",
     )
+
+
+def test_create_inline_attachment_sends_cid_file_attachment() -> None:
+    client = create_client()
+    with patch.object(
+        client,
+        "_send_attachment_json",
+        return_value={
+            "id": "attachment-1",
+            "contentId": "ssc-home@example",
+            "name": "ssc-home.png",
+        },
+    ) as send:
+        result = client.create_inline_attachment(
+            "calendar/one",
+            "event/one",
+            name="ssc-home.png",
+            content_id="ssc-home@example",
+            content=b"png-bytes",
+        )
+
+    assert result == OutlookAttachmentReference(
+        "attachment-1",
+        "ssc-home@example",
+        "ssc-home.png",
+    )
+    send.assert_called_once_with(
+        url=(
+            "https://graph.microsoft.com/v1.0/users/user%40example.com/"
+            "calendars/calendar%2Fone/events/event%2Fone/attachments"
+        ),
+        method="POST",
+        payload={
+            "@odata.type": "#microsoft.graph.fileAttachment",
+            "name": "ssc-home.png",
+            "contentType": "image/png",
+            "contentId": "ssc-home@example",
+            "isInline": True,
+            "contentBytes": base64.b64encode(b"png-bytes").decode("ascii"),
+        },
+    )
+
+
+def test_list_event_attachments_follows_bounded_paging() -> None:
+    client = create_client()
+    next_link = "https://graph.microsoft.com/v1.0/next"
+    with patch.object(
+        client,
+        "_get_attachment_json",
+        side_effect=[
+            {
+                "value": [
+                    {"id": "a-1", "contentId": "cid-1", "name": "one.png"}
+                ],
+                "@odata.nextLink": next_link,
+            },
+            {"value": [{"id": "a-2", "contentId": "cid-2"}]},
+        ],
+    ) as get_json:
+        result = client.list_event_attachments("calendar-1", "event-1")
+
+    assert result == (
+        OutlookAttachmentReference("a-1", "cid-1", "one.png"),
+        OutlookAttachmentReference("a-2", "cid-2", None),
+    )
+    assert get_json.call_count == 2
+    get_json.assert_called_with(next_link)
+
+
+def test_delete_event_attachment_encodes_ids_and_maps_not_found() -> None:
+    client = create_client()
+    with (
+        patch.object(
+            client,
+            "_send_attachment_empty",
+            side_effect=OutlookAttachmentNotFoundError("missing"),
+        ) as send,
+        pytest.raises(OutlookAttachmentNotFoundError),
+    ):
+        client.delete_event_attachment(
+            "calendar/one",
+            "event/one",
+            "attachment/one",
+        )
+
+    send.assert_called_once_with(
+        url=(
+            "https://graph.microsoft.com/v1.0/users/user%40example.com/"
+            "calendars/calendar%2Fone/events/event%2Fone/attachments/"
+            "attachment%2Fone"
+        ),
+        method="DELETE",
+    )
+
+
+def test_attachment_request_retries_throttling_with_bounded_retry_after() -> None:
+    sleeper = Mock()
+    token_provider = Mock()
+    token_provider.get_access_token.return_value = "test-token"
+    client = GraphClient(
+        "https://graph.microsoft.com/v1.0",
+        "user@example.com",
+        token_provider,
+        maximum_retry_after_seconds=5,
+        sleeper=sleeper,
+    )
+    error = HTTPError(
+        url="https://graph.microsoft.com/v1.0/test",
+        code=429,
+        msg="Too Many Requests",
+        hdrs={"Retry-After": "20"},
+        fp=None,
+    )
+    response_body = BytesIO(
+        json.dumps({"id": "attachment-1"}).encode("utf-8")
+    )
+    response = Mock()
+    response.__enter__ = Mock(return_value=response_body)
+    response.__exit__ = Mock(return_value=None)
+
+    with patch("app.graph.client.urlopen", side_effect=[error, response]):
+        result = client.create_inline_attachment(
+            "calendar-1",
+            "event-1",
+            name="image.png",
+            content_id="cid-1",
+            content=b"png",
+        )
+
+    assert result.id == "attachment-1"
+    sleeper.assert_called_once_with(5)
 
 
 @pytest.mark.parametrize(

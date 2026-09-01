@@ -1,8 +1,8 @@
 # Rights-controlled media asset registry
 
-Status: Implemented registry, validation, normalization, and local operator
-administration for Phase 8.7 (#212). Outlook event-body insertion remains the
-separate Phase 8.8 scope (#213).
+Status: Implemented registry, validation, normalization, local operator
+administration, and Outlook inline-attachment reconciliation for Phase 8.7 and
+Phase 8.8 (#212 and #213).
 
 SMART Sports Calendar keeps media metadata and approval history in SQLite while
 storing normalized binary content below the persistent `MEDIA_ROOT`. The
@@ -36,6 +36,53 @@ Generic trophy and final artwork may use independently authored project assets
 under the repository's MIT licence. Provider or team artwork must never be
 labelled as project-owned. No command performs an internet search or downloads
 a remote logo.
+
+## Outlook selection and reconciliation
+
+Only approved active assets are eligible. Selection uses canonical database
+owners, never provider display text or insertion order:
+
+- competition owner plus `logo` variant for the event header;
+- participant owner plus `logo` variant for the canonical `home` and `away`
+  roles;
+- project owner `smart_sports_calendar`, preferring `final` and falling back to
+  `trophy`, for an exact normalized final-stage name.
+
+The final allowlist is deliberately exact (`final`, `finale`, `finals`,
+`grand_final`, `championship`, `championship_game`, and `super_bowl`). A
+semifinal is not a final. Ambiguous active assets for one owner and variant
+fail closed instead of being selected by row order. Approval and disable
+operations atomically increment only the affected calendar mappings'
+presentation revisions so the scheduler converges them promptly.
+
+Migration `012_create_calendar_event_asset_attachments` stores one row per
+calendar mapping and semantic slot. It retains desired, pending, synchronized,
+and obsolete asset/attachment identity plus hashes, content IDs, attempts,
+timestamps, status, and a sanitized failure class. The local normalized file
+is stored once, while Microsoft Graph receives a distinct inline attachment
+for every Outlook event.
+
+Reconciliation always keeps the text event authoritative and uses this order:
+
+1. create or update the complete text event;
+2. recover an already uploaded attachment by its stable pending content ID, or
+   upload the approved PNG;
+3. patch the HTML body with a bounded 30 x 30 `cid:` image reference;
+4. delete the obsolete attachment only after the body switch succeeds.
+
+An unchanged cycle performs no attachment upload, event patch, or deletion.
+Replacement uploads new content before switching the body and removes the old
+attachment afterward. A restart between those steps resumes from SQLite and
+remote content-ID evidence. Missing, disabled, corrupt, oversized, ambiguous,
+or Graph-rejected media leaves a complete text presentation and retryable
+state; it never changes the core fixture synchronization result.
+
+Inline uploads are restricted to PNG and must remain below the Microsoft Graph
+3 MB simple-attachment boundary. Registry normalization already enforces a
+stricter 1 MiB output limit. Attachment listing is page-bounded, and HTTP 429,
+503, and 504 responses use bounded retries with `Retry-After` support. Logs
+contain only slot and failure class, never bytes, rights records, tokens, or
+secret-bearing URLs.
 
 ## Registry identity and storage
 
@@ -124,6 +171,10 @@ Primary references:
 - [Pillow project metadata and release files](https://pypi.org/project/pillow/)
 - [Pillow releases and security notes](https://github.com/python-pillow/Pillow/releases)
 - [Pillow licence](https://github.com/python-pillow/Pillow/blob/main/LICENSE)
+- [Microsoft Graph: add attachment to an event](https://learn.microsoft.com/en-us/graph/api/event-post-attachments?view=graph-rest-1.0)
+- [Microsoft Graph: fileAttachment resource](https://learn.microsoft.com/en-us/graph/api/resources/fileattachment?view=graph-rest-1.0)
+- [Microsoft Graph: delete attachment](https://learn.microsoft.com/en-us/graph/api/attachment-delete?view=graph-rest-1.0)
+- [Microsoft Graph throttling guidance](https://learn.microsoft.com/en-us/graph/throttling)
 
 ## Backup, restore, and rollback
 
@@ -140,8 +191,11 @@ snapshot, verify the integrity manifest, initialize one application instance,
 and list all media versions. Never combine a current database with an older
 media directory or the reverse.
 
-Migration `011_create_media_assets` is forward-only, deterministic, and
-preserves all existing application data. There is no destructive downgrade.
+Migrations `011_create_media_assets` and
+`012_create_calendar_event_asset_attachments` are forward-only, deterministic,
+and preserve all existing application data. There is no destructive downgrade.
 If rollback to pre-migration code is required, stop the instance and restore
 both the verified pre-upgrade database and media directory from their matching
-snapshot before starting the previously verified application version.
+snapshot before starting the previously verified application version. Restore
+the Outlook calendar from the matching operational backup if the rollback must
+also reverse already synchronized inline attachments.

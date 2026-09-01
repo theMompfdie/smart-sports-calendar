@@ -100,6 +100,44 @@ class MediaAssetService:
     def disable(self, asset_key: str) -> MediaAsset:
         return self._repository.disable(asset_key)
 
+    def read_active_content(
+        self,
+        asset: MediaAsset,
+        *,
+        maximum_bytes: int = 3_000_000 - 1,
+    ) -> bytes:
+        """Read a registry-approved PNG after revalidating stored integrity."""
+        if maximum_bytes <= 0:
+            raise ValueError("Maximum attachment size must be positive.")
+        if not asset.is_approved or not asset.is_active:
+            raise MediaAssetValidationError(
+                "Only approved active media assets may be synchronized."
+            )
+        if asset.mime_type != "image/png" or asset.byte_size > maximum_bytes:
+            raise MediaAssetValidationError(
+                "Media asset is outside the Graph attachment limits."
+            )
+        self._verify_stored_asset(asset)
+        root = self._resolved_root()
+        target = self._resolve_contained(root, Path(asset.storage_path))
+        try:
+            content = target.read_bytes()
+        except OSError as error:
+            raise MediaAssetValidationError(
+                "Stored media asset could not be read."
+            ) from error
+        if len(content) > maximum_bytes:
+            raise MediaAssetValidationError(
+                "Media asset is outside the Graph attachment limits."
+            )
+        if len(content) != asset.byte_size or hashlib.sha256(content).hexdigest() != (
+            asset.sha256
+        ):
+            raise MediaAssetValidationError(
+                "Stored media asset failed integrity validation."
+            )
+        return content
+
     def _normalize(self, source_file: Path) -> bytes:
         try:
             with source_file.open("rb") as source:

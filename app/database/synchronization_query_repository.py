@@ -90,6 +90,12 @@ class SynchronizationQueryRepository:
                         WHEN cem.id IS NULL THEN 0
                         WHEN cem.sync_status != 'synced' THEN 0
                         WHEN se.sync_revision > cem.last_synced_revision THEN 0
+                        WHEN EXISTS (
+                            SELECT 1
+                            FROM calendar_event_asset_attachments AS ceaa
+                            WHERE ceaa.calendar_event_mapping_id = cem.id
+                              AND ceaa.status != 'synced'
+                        ) THEN 1
                         WHEN cem.presentation_revision >
                             cem.last_synced_presentation_revision THEN 1
                         ELSE 2

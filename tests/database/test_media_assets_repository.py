@@ -130,6 +130,33 @@ def test_approval_and_replacement_retain_version_history(
     assert len(repository.list(include_inactive=True)) == 2
 
 
+def test_owner_variant_lookup_returns_one_active_asset_and_rejects_ambiguity(
+    repository: MediaAssetsRepository,
+) -> None:
+    first = repository.create_pending(write_for(repository))
+    approved = repository.approve(first.asset_key, first.version, "operator")
+
+    assert (
+        repository.get_active_for_owner_variant(first.owner, first.variant) == approved
+    )
+
+    second_write = MediaAssetWrite(
+        **{
+            **write_for(
+                repository,
+                digest="b" * 64,
+                source_reference="second-family",
+            ).__dict__,
+            "asset_key": "team.manchester_united.alternate",
+        }
+    )
+    second = repository.create_pending(second_write)
+    repository.approve(second.asset_key, second.version, "operator")
+
+    with pytest.raises(MediaAssetRepositoryError, match="Multiple active"):
+        repository.get_active_for_owner_variant(first.owner, first.variant)
+
+
 def test_disable_preserves_approval_and_audit_history(
     repository: MediaAssetsRepository,
 ) -> None:
