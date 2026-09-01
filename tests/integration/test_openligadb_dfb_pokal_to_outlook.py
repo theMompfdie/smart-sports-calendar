@@ -172,8 +172,8 @@ def test_dfb_pokal_import_is_idempotent_and_renders_openligadb_attribution(
     assert payload["categories"] == ["DFB-Pokal"]
     body = payload["body"]
     assert isinstance(body, dict)
-    assert f"Source: {OPENLIGADB_ATTRIBUTION}" in body["content"]
-    assert "Round: round-1" in body["content"]
+    assert OPENLIGADB_ATTRIBUTION in body["content"]
+    assert ">round-1</td>" in body["content"]
 
     second_import = provider.import_current_competition()
     second_sync = calendar.synchronize(CALENDAR_ID, 100)

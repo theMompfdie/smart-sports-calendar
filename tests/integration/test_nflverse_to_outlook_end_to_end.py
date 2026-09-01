@@ -300,7 +300,7 @@ def test_nfl_snapshot_synchronizes_272_events_and_is_idempotent(
         for operation in harness.graph.operations
     )
     assert all(
-        "Notice: Subject to NFL flex scheduling." in graph_body(operation)
+        "Subject to NFL flex scheduling." in graph_body(operation)
         for operation in harness.graph.operations
     )
     assert all(
@@ -402,7 +402,7 @@ def test_changed_operator_notice_updates_one_stable_outlook_event(
     operation = harness.graph.operations[-1]
     assert operation.method == "PATCH"
     assert operation.event_id == before.outlook_event_id
-    assert "Notice: Schedule time confirmed." in graph_body(operation)
+    assert "Schedule time confirmed." in graph_body(operation)
     assert after.outlook_event_id == before.outlook_event_id
     assert after.transaction_id == before.transaction_id
 

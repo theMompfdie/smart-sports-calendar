@@ -34,6 +34,8 @@ class _LegacyPresentationBuilder(OutlookEventPayloadBuilder):
         return replace(
             payload,
             subject=synchronization_event.event.title,
+            body="Status: scheduled\nSport: Football",
+            body_content_type="text",
             categories=("Football", "Premier League", "SMART Sports Calendar"),
         )
 
@@ -164,6 +166,8 @@ def test_existing_mapping_converges_to_new_presentation_without_duplicate(
     ]
     assert update_payload.subject == "⚽ Arsenal vs Liverpool"
     assert update_payload.categories == ("Premier League",)
+    assert update_payload.body_content_type == "html"
+    assert "<h3" in update_payload.body
 
     after = synchronization_harness.mappings_repository.get_by_event(
         synchronization_harness.event.id,
