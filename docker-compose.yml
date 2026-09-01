@@ -13,6 +13,7 @@ services:
       INSTANCE_NAME: ${INSTANCE_NAME:-local}
       TZ: ${TZ:-Europe/Vienna}
       DATABASE_PATH: ${DATABASE_PATH:-/data/sports.db}
+      MEDIA_ROOT: ${MEDIA_ROOT:-/data/media}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       HEARTBEAT_INTERVAL: ${HEARTBEAT_INTERVAL:-300}
       M365_TENANT_ID: ${M365_TENANT_ID}

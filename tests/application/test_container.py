@@ -23,11 +23,13 @@ from app.config.settings import (
     Settings,
 )
 from app.database.fixture_import_repository import FixtureImportRepository
+from app.database.media_assets_repository import MediaAssetsRepository
 from app.database.reminder_rules_repository import ReminderRulesRepository
 from app.database.synchronization_query_repository import (
     SynchronizationQueryRepository,
 )
 from app.graph.client import CalendarReference
+from app.media.asset_service import MediaAssetService
 from app.providers.contracts import (
     SourceConfigurationError,
     SourceJobDefinition,
@@ -736,6 +738,11 @@ def test_container_provides_event_synchronizer(
     assert isinstance(
         container.event_reminder_resolver,
         EventReminderResolver,
+    )
+    assert isinstance(container.media_assets_repository, MediaAssetsRepository)
+    assert isinstance(container.media_asset_service, MediaAssetService)
+    assert (
+        container.media_asset_service._repository is container.media_assets_repository
     )
 
     assert (

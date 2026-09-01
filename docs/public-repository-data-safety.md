@@ -68,6 +68,14 @@ It must not contain:
   or
 - provider logos, photographs, or media assets without separate permission.
 
+The Phase 8 media registry stores normalized binaries under the private
+operator-controlled `MEDIA_ROOT` and stores source, licence, permission, and
+approval records in SQLite. Neither location belongs in Git, Docker build
+contexts, release assets, CI artifacts, screenshots, or public backups.
+Synthetic or independently authored project artwork may be tracked only when
+its provenance and redistributable licence are explicit. See
+[Rights-controlled media asset registry](media-asset-registry.md).
+
 The API-Football response-shape fixtures in `tests/fixtures/api_football` are
 repository-authored deterministic test material. Their adjacent
 `catalog_metadata.json` records that no live provider request was used. Any
@@ -92,7 +100,8 @@ suspected secret value. CI runs the same command.
 keeps private runtime classes, tests, documents, operator files, and unrelated
 development artifacts out of the Docker build context. The Dockerfile copies
 only `requirements.txt` and `app/`; the runtime database stays on `/data` in a
-persistent operator-controlled volume.
+persistent operator-controlled volume. The default `/data/media` root shares
+that isolated volume and is never copied into the image.
 
 These controls reduce accidental disclosure but do not prove that Git history,
 GitHub discussions, external artifacts, or an already pushed image is clean.

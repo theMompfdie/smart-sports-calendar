@@ -10,6 +10,7 @@ __pycache__
 *.sqlite
 *.sqlite3
 data
+media/**
 logs
 backups
 exports
