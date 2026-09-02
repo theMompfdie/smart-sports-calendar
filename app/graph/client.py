@@ -204,9 +204,9 @@ class GraphClient:
     ) -> tuple[OutlookAttachmentReference, ...]:
         if maximum_pages < 1:
             raise ValueError("Attachment page limit must be positive.")
-        next_url: str | None = (
-            f"{self._attachment_collection_url(calendar_id, event_id)}"
-            "?$select=id,name,contentId,isInline"
+        next_url: str | None = self._attachment_collection_url(
+            calendar_id,
+            event_id,
         )
         attachments: list[OutlookAttachmentReference] = []
         pages = 0

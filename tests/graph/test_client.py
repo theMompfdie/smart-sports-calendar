@@ -304,6 +304,10 @@ def test_list_event_attachments_follows_bounded_paging() -> None:
         OutlookAttachmentReference("a-2", "cid-2", None),
     )
     assert get_json.call_count == 2
+    get_json.assert_any_call(
+        "https://graph.microsoft.com/v1.0/users/user%40example.com/"
+        "calendars/calendar-1/events/event-1/attachments"
+    )
     get_json.assert_called_with(next_link)
 
 
