@@ -28,6 +28,8 @@ _LABEL_CELL_STYLE = (
 )
 _VALUE_CELL_STYLE = "border-bottom:1px solid #e5e7eb;padding:4px 0;vertical-align:top;"
 _CONTENT_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._@-]{0,254}$")
+_INLINE_IMAGE_SIZE = 30
+_COMPETITION_HEADER_IMAGE_SIZE = 44
 
 
 @dataclass(frozen=True)
@@ -276,18 +278,28 @@ class OutlookHtmlEventBodyRenderer:
 
     @classmethod
     def _render_image_cell(cls, image: OutlookInlineImage) -> str:
+        size = (
+            _COMPETITION_HEADER_IMAGE_SIZE
+            if image.slot == "competition"
+            else _INLINE_IMAGE_SIZE
+        )
         return (
             '<td style="padding:10px 0 10px 12px;vertical-align:middle;">'
-            f"{cls._render_image(image)}</td>"
+            f"{cls._render_image(image, size=size)}</td>"
         )
 
     @classmethod
-    def _render_image(cls, image: OutlookInlineImage) -> str:
+    def _render_image(
+        cls,
+        image: OutlookInlineImage,
+        *,
+        size: int = _INLINE_IMAGE_SIZE,
+    ) -> str:
         return (
             f'<img src="cid:{cls._text(image.content_id)}" '
-            f'alt="{cls._text(image.alt_text)}" width="30" height="30" '
-            'style="border:0;display:inline-block;height:30px;max-height:30px;'
-            'max-width:30px;vertical-align:middle;width:30px;" />'
+            f'alt="{cls._text(image.alt_text)}" width="{size}" height="{size}" '
+            f'style="border:0;display:inline-block;height:{size}px;max-height:{size}px;'
+            f'max-width:{size}px;vertical-align:middle;width:{size}px;" />'
         )
 
     def _format_start_time(self, value: str, event_time_zone: str) -> str:
