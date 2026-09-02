@@ -16,6 +16,7 @@ from app.database.synchronization_query_repository import (
     SynchronizationEvent,
     SynchronizationParticipant,
 )
+from app.domain.competition_lifecycle import CompetitionFormat
 from app.domain.operator_notice import OperatorNotice
 from app.synchronization.outlook_event_payload_builder import (
     DEFAULT_OUTLOOK_GRAPH_TIME_ZONE,
@@ -108,7 +109,7 @@ def make_aggregate(
         "Premier League",
         "PL",
         "GB",
-        "league",
+        CompetitionFormat.LEAGUE,
         None,
         TIMESTAMP,
         TIMESTAMP,
@@ -646,6 +647,32 @@ def test_build_renders_bounded_cid_images_without_changing_text_fallback() -> No
     assert "height:44px;max-height:44px" in with_images.body
     assert with_images.body.count('width="30" height="30"') == 3
     assert with_images.body.count("height:30px;max-height:30px") == 3
+    assert with_images.body.count('src="cid:home@example"') == 1
+    assert with_images.body.count('src="cid:away@example"') == 1
+
+
+def test_build_centers_participant_logo_and_uses_it_as_header_fallback() -> None:
+    payload = OutlookEventPayloadBuilder().build(
+        make_aggregate(),
+        inline_images=(
+            OutlookInlineImage("home", "home@example", "Arsenal & Co"),
+            OutlookInlineImage("away", "away@example", "Liverpool"),
+        ),
+    )
+
+    assert payload.body.count('src="cid:home@example"') == 2
+    assert payload.body.count('src="cid:away@example"') == 2
+    assert payload.body.index('alt="Arsenal &amp; Co" width="44" height="44"') < (
+        payload.body.index('alt="Liverpool" width="44" height="44"')
+    )
+    assert 'alt="Arsenal &amp; Co" width="30" height="30"' in payload.body
+    assert 'alt="Liverpool" width="30" height="30"' in payload.body
+    assert (
+        '<table role="presentation" style="border-collapse:collapse;margin:0;">'
+        in payload.body
+    )
+    assert "line-height:0;padding:0 8px 0 0;vertical-align:middle;" in payload.body
+    assert 'padding:0;vertical-align:middle;">Arsenal</td>' in payload.body
 
 
 def test_payload_is_immutable() -> None:
