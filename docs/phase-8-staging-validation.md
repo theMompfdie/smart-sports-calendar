@@ -100,6 +100,8 @@ operator's supported desktop client. Confirm:
 
 - exactly one competition category with the manually assigned Outlook color;
 - one canonical sport icon prefix in the subject;
+- the event editor itself shows the Vienna-compatible timezone rather than UTC,
+  with summer and winter samples matching the canonical instant;
 - cancellation wording remains unambiguous;
 - escaped, readable HTML with participants, Vienna kickoff, location when
   available, status, notices, and source attribution;

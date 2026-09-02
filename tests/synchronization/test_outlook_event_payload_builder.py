@@ -18,6 +18,7 @@ from app.database.synchronization_query_repository import (
 )
 from app.domain.operator_notice import OperatorNotice
 from app.synchronization.outlook_event_payload_builder import (
+    DEFAULT_OUTLOOK_GRAPH_TIME_ZONE,
     OutlookEventPayloadBuilder,
     OutlookEventPresentation,
 )
@@ -200,10 +201,10 @@ def test_build_maps_complete_event() -> None:
     payload = OutlookEventPayloadBuilder().build(make_aggregate())
 
     assert payload.subject == "⚽ Arsenal vs Liverpool"
-    assert payload.start.date_time == "2026-08-21T19:00:00"
+    assert payload.start.date_time == "2026-08-21T20:00:00"
     assert payload.end is not None
-    assert payload.end.date_time == "2026-08-21T21:00:00"
-    assert payload.start.time_zone == "Europe/London"
+    assert payload.end.date_time == "2026-08-21T22:00:00"
+    assert payload.start.time_zone == DEFAULT_OUTLOOK_GRAPH_TIME_ZONE
     assert payload.location == "Emirates Stadium, London, GB"
     assert payload.categories == ("Premier League",)
     assert ">home:</td>" in payload.body
@@ -220,12 +221,12 @@ def test_build_adds_fallback_end_to_minimal_event() -> None:
     graph_payload = payload.to_graph_dict()
 
     assert payload.end is not None
-    assert payload.end.date_time == "2026-08-21T21:00:00"
-    assert payload.end.time_zone == "Europe/London"
+    assert payload.end.date_time == "2026-08-21T22:00:00"
+    assert payload.end.time_zone == DEFAULT_OUTLOOK_GRAPH_TIME_ZONE
     assert payload.location is None
     assert graph_payload["end"] == {
-        "dateTime": "2026-08-21T21:00:00",
-        "timeZone": "Europe/London",
+        "dateTime": "2026-08-21T22:00:00",
+        "timeZone": DEFAULT_OUTLOOK_GRAPH_TIME_ZONE,
     }
     assert "location" not in graph_payload
     assert ">Competition:</td>" not in payload.body
@@ -296,8 +297,8 @@ def test_build_uses_three_hour_fallback_for_american_football() -> None:
 
     assert payload.subject == "🏈 Arsenal vs Liverpool"
     assert payload.end is not None
-    assert payload.end.date_time == "2026-09-10T03:20:00"
-    assert payload.end.time_zone == "UTC"
+    assert payload.end.date_time == "2026-09-10T05:20:00"
+    assert payload.end.time_zone == DEFAULT_OUTLOOK_GRAPH_TIME_ZONE
 
 
 def test_build_prefers_explicit_end_for_american_football() -> None:
@@ -317,7 +318,8 @@ def test_build_prefers_explicit_end_for_american_football() -> None:
     )
 
     assert payload.end is not None
-    assert payload.end.date_time == "2026-09-10T02:50:00"
+    assert payload.end.date_time == "2026-09-10T04:50:00"
+    assert payload.end.time_zone == DEFAULT_OUTLOOK_GRAPH_TIME_ZONE
 
 
 def test_build_appends_authoritative_source_attribution() -> None:
@@ -428,9 +430,9 @@ def test_build_fallback_end_uses_absolute_duration_across_dst_change() -> None:
 
     payload = OutlookEventPayloadBuilder().build(make_aggregate(event=event))
 
-    assert payload.start.date_time == "2026-10-25T01:30:00"
+    assert payload.start.date_time == "2026-10-25T02:30:00"
     assert payload.end is not None
-    assert payload.end.date_time == "2026-10-25T02:30:00"
+    assert payload.end.date_time == "2026-10-25T03:30:00"
 
 
 def test_american_football_fallback_uses_absolute_duration_across_dst() -> None:
@@ -449,14 +451,62 @@ def test_american_football_fallback_uses_absolute_duration_across_dst() -> None:
         )
     )
 
-    assert payload.start.date_time == "2026-10-25T01:30:00"
+    assert payload.start.date_time == "2026-10-25T02:30:00"
     assert payload.end is not None
-    assert payload.end.date_time == "2026-10-25T03:30:00"
+    assert payload.end.date_time == "2026-10-25T04:30:00"
+
+
+def test_build_converts_utc_source_to_vienna_in_summer_and_winter() -> None:
+    builder = OutlookEventPayloadBuilder()
+
+    summer = builder.build(
+        make_aggregate(
+            event=make_sports_event(
+                start_time="2026-09-08T16:45:00+00:00",
+                end_time="2026-09-08T18:45:00+00:00",
+                timezone="UTC",
+            )
+        )
+    )
+    winter = builder.build(
+        make_aggregate(
+            event=make_sports_event(
+                start_time="2026-11-25T17:45:00+00:00",
+                end_time="2026-11-25T19:45:00+00:00",
+                timezone="UTC",
+            )
+        )
+    )
+
+    assert summer.start.to_graph_dict() == {
+        "dateTime": "2026-09-08T18:45:00",
+        "timeZone": DEFAULT_OUTLOOK_GRAPH_TIME_ZONE,
+    }
+    assert summer.end is not None
+    assert summer.end.date_time == "2026-09-08T20:45:00"
+    assert winter.start.to_graph_dict() == {
+        "dateTime": "2026-11-25T18:45:00",
+        "timeZone": DEFAULT_OUTLOOK_GRAPH_TIME_ZONE,
+    }
+    assert winter.end is not None
+    assert winter.end.date_time == "2026-11-25T20:45:00"
 
 
 def test_presentation_rejects_non_positive_default_duration() -> None:
     with pytest.raises(ValueError, match="Default duration minutes must be positive"):
         OutlookEventPresentation(default_duration_minutes=0)
+
+
+@pytest.mark.parametrize("time_zone", ["", " Europe/Vienna", "Invalid/Zone"])
+def test_presentation_rejects_invalid_time_zone(time_zone: str) -> None:
+    with pytest.raises(ValueError, match="Outlook presentation time zone"):
+        OutlookEventPresentation(time_zone=time_zone)
+
+
+@pytest.mark.parametrize("graph_time_zone", ["", " UTC", "UTC "])
+def test_presentation_rejects_invalid_graph_time_zone(graph_time_zone: str) -> None:
+    with pytest.raises(ValueError, match="Outlook Graph time zone"):
+        OutlookEventPresentation(graph_time_zone=graph_time_zone)
 
 
 @pytest.mark.parametrize("fallback_category", ["", " Calendar", "Calendar "])
@@ -563,8 +613,8 @@ def test_graph_serialization_uses_expected_microsoft_graph_shape() -> None:
 
     assert graph_payload["body"]["contentType"] == "html"
     assert graph_payload["start"] == {
-        "dateTime": "2026-08-21T19:00:00",
-        "timeZone": "Europe/London",
+        "dateTime": "2026-08-21T20:00:00",
+        "timeZone": DEFAULT_OUTLOOK_GRAPH_TIME_ZONE,
     }
     assert graph_payload["location"] == {"displayName": "Emirates Stadium, London, GB"}
     assert graph_payload["isAllDay"] is False

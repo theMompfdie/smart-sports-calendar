@@ -39,12 +39,28 @@ optional rendering slots for canonical data that may be introduced later.
 | Sport icon | Canonical sport catalog | Trusted presentation prefix |
 | Reminder preference | Local operator | Stored in SQLite and changed through an operator CLI |
 | Reminder calculation | Synchronization presentation layer | Resolved deterministically for each event |
+| Canonical fixture timezone | Provider and canonical domain | Preserved as supplied, normally UTC |
+| Outlook event timezone | Synchronization presentation layer | Converted to Vienna and sent as `W. Europe Standard Time` |
 | HTML structure | Application | Fixed template with escaped dynamic data |
 | Media rights and approval | Local operator | Recorded before an asset becomes renderable |
 | Outlook attachment state | Graph synchronization layer | Reconciled independently from event content |
 
 Provider text must never define HTML, an emoji/icon, a category color, a local
 reminder policy, or a media attachment.
+
+## Outlook event timezone contract
+
+Canonical fixture timestamps retain their authoritative timezone and instant in
+SQLite. The Outlook projection converts start and end to `Europe/Vienna` and
+sends Microsoft Graph the Windows calendar identifier
+`W. Europe Standard Time`. This ensures Outlook stores the intended event-level
+timezone while Python's IANA timezone database performs deterministic summer,
+winter, and daylight-saving calculations.
+
+The conversion must preserve the absolute start and end instants. Explicit
+provider end times remain authoritative, fallback durations remain absolute
+across DST boundaries, and changing only the Outlook projection must converge
+existing mappings through normal idempotent UPDATE operations.
 
 ## Outlook category contract
 
