@@ -686,6 +686,19 @@ def test_collect_staging_evidence_reports_safe_phase_8_projection_counts(
                     timestamp,
                     timestamp,
                 ),
+                (
+                    1,
+                    "away",
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    "synced",
+                    timestamp,
+                    timestamp,
+                ),
             ),
         )
 
@@ -697,7 +710,7 @@ def test_collect_staging_evidence_reports_safe_phase_8_projection_counts(
         "active_media_assets_by_owner_type": {"competition": 1, "project": 1},
         "active_reminder_rules_by_scope": {"global": 1, "participant": 1},
         "current_reminder_rules_by_scope": {"global": 1, "participant": 2},
-        "event_attachments_by_status": {"failed": 1, "synced": 1},
+        "event_attachments_by_status": {"failed": 1, "synced": 2},
         "event_attachments_pending_convergence": 1,
         "media_assets_by_state": {"active": 2, "pending": 1},
         "synced_event_attachments_by_slot": {"competition": 1},

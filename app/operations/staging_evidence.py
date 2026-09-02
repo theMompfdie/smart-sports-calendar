@@ -665,6 +665,12 @@ def _phase_8_projection_summary(
         SELECT slot, COUNT(*) AS item_count
         FROM calendar_event_asset_attachments
         WHERE status = 'synced'
+          AND desired_asset_id IS NOT NULL
+          AND synchronized_asset_id = desired_asset_id
+          AND desired_sha256 IS NOT NULL
+          AND synchronized_sha256 = desired_sha256
+          AND content_id IS NOT NULL
+          AND outlook_attachment_id IS NOT NULL
         GROUP BY slot
         ORDER BY slot
         """
