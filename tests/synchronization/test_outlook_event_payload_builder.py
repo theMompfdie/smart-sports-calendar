@@ -592,7 +592,10 @@ def test_build_renders_bounded_cid_images_without_changing_text_fallback() -> No
     assert 'src="cid:competition@example"' in with_images.body
     assert 'src="cid:home@example"' in with_images.body
     assert 'alt="Arsenal &amp; Co"' in with_images.body
-    assert 'width="30" height="30"' in with_images.body
+    assert 'alt="League" width="44" height="44"' in with_images.body
+    assert "height:44px;max-height:44px" in with_images.body
+    assert with_images.body.count('width="30" height="30"') == 3
+    assert with_images.body.count("height:30px;max-height:30px") == 3
 
 
 def test_payload_is_immutable() -> None:
