@@ -640,19 +640,21 @@ def test_build_renders_bounded_cid_images_without_changing_text_fallback() -> No
 
     assert "cid:" not in text_only.body
     assert "vertical-align:middle" not in text_only.body
-    assert with_images.body.count("<img ") == 4
+    assert with_images.body.count("<img ") == 6
     assert 'src="cid:competition@example"' in with_images.body
     assert 'src="cid:home@example"' in with_images.body
     assert 'alt="Arsenal &amp; Co"' in with_images.body
     assert 'alt="League" width="44" height="44"' in with_images.body
     assert "height:44px;max-height:44px" in with_images.body
+    assert with_images.body.count('width="44" height="44"') == 3
+    assert with_images.body.count("height:44px;max-height:44px") == 3
     assert with_images.body.count('width="30" height="30"') == 3
     assert with_images.body.count("height:30px;max-height:30px") == 3
-    assert with_images.body.count('src="cid:home@example"') == 1
-    assert with_images.body.count('src="cid:away@example"') == 1
+    assert with_images.body.count('src="cid:home@example"') == 2
+    assert with_images.body.count('src="cid:away@example"') == 2
 
 
-def test_build_centers_participant_logo_and_uses_it_as_header_fallback() -> None:
+def test_build_places_participant_logos_beside_their_title_names() -> None:
     payload = OutlookEventPayloadBuilder().build(
         make_aggregate(),
         inline_images=(
@@ -663,37 +665,43 @@ def test_build_centers_participant_logo_and_uses_it_as_header_fallback() -> None
 
     assert payload.body.count('src="cid:home@example"') == 2
     assert payload.body.count('src="cid:away@example"') == 2
-    assert payload.body.index('alt="Arsenal &amp; Co" width="44" height="44"') < (
-        payload.body.index('alt="Liverpool" width="44" height="44"')
+    home_logo = payload.body.index('alt="Arsenal &amp; Co" width="44" height="44"')
+    home_name = payload.body.index("&nbsp;Arsenal", home_logo)
+    away_name = payload.body.index("Liverpool&nbsp;", home_name)
+    away_logo = payload.body.index('alt="Liverpool" width="44" height="44"')
+    banner = payload.body.index("background:#f3f6fb;border-left:4px solid #2563eb")
+    title_end = payload.body.index(
+        '</div><div style="color:#5f6368;font-size:13px;">',
+        banner,
     )
+    assert banner < home_logo < home_name < away_name < away_logo < title_end
     assert 'alt="Arsenal &amp; Co" width="30" height="30"' in payload.body
     assert 'alt="Liverpool" width="30" height="30"' in payload.body
-    assert (
-        '<table role="presentation" style="border-collapse:collapse;margin:0;">'
-        in payload.body
-    )
-    assert "line-height:0;padding:0 8px 0 0;vertical-align:middle;" in payload.body
-    assert 'padding:0;vertical-align:middle;">Arsenal</td>' in payload.body
 
 
-def test_build_centers_only_participant_rows_that_contain_a_logo() -> None:
+def test_build_uses_two_renderings_for_one_participant_attachment() -> None:
     payload = OutlookEventPayloadBuilder().build(
         make_aggregate(),
         inline_images=(OutlookInlineImage("home", "home@example", "Arsenal"),),
     )
 
-    middle_label_style = (
-        "border-bottom:1px solid #e5e7eb;font-weight:600;"
-        "padding:4px 12px 4px 0;vertical-align:middle;width:120px;"
-    )
     top_label_style = (
         "border-bottom:1px solid #e5e7eb;font-weight:600;"
         "padding:4px 12px 4px 0;vertical-align:top;width:120px;"
     )
 
+    logo = payload.body.index('alt="Arsenal" width="44" height="44"')
+    name = payload.body.index("&nbsp;Arsenal", logo)
+    assert logo < name
+    middle_label_style = (
+        "border-bottom:1px solid #e5e7eb;font-weight:600;"
+        "padding:4px 12px 4px 0;vertical-align:middle;width:120px;"
+    )
     assert f'<td style="{middle_label_style}">home:</td>' in payload.body
     assert f'<td style="{top_label_style}">away:</td>' in payload.body
     assert payload.body.count('src="cid:home@example"') == 2
+    assert payload.body.count('alt="Arsenal" width="44" height="44"') == 1
+    assert payload.body.count('alt="Arsenal" width="30" height="30"') == 1
 
 
 def test_payload_is_immutable() -> None:
