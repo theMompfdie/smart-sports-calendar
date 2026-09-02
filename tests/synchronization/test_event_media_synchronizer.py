@@ -35,6 +35,7 @@ class RecordingGraph:
         self.uploads: list[str] = []
         self.updates: list[object] = []
         self.deletions: list[str] = []
+        self.list_error: Exception | None = None
         self.upload_error: Exception | None = None
         self.update_error: Exception | None = None
 
@@ -43,6 +44,8 @@ class RecordingGraph:
         calendar_id: str,
         event_id: str,
     ) -> tuple[OutlookAttachmentReference, ...]:
+        if self.list_error is not None:
+            raise self.list_error
         return tuple(self.attachments)
 
     def create_inline_attachment(
@@ -217,6 +220,82 @@ def test_core_write_without_selected_media_does_not_add_redundant_patch(
 
     assert harness.graph.uploads == []
     assert harness.graph.updates == []
+
+
+def test_core_write_reuploads_synchronized_attachment_missing_from_outlook(
+    tmp_path: Path,
+) -> None:
+    harness = _harness(tmp_path)
+    _import_home_asset(harness, tmp_path / "first.png", "red")
+    harness.synchronizer.reconcile(harness.event, harness.mapping)
+    first = harness.attachments.list_for_mapping(harness.mapping.id)[0]
+    assert first.outlook_attachment_id == "attachment-1"
+
+    harness.graph.attachments.clear()
+    harness.synchronizer.reconcile(
+        harness.event,
+        harness.mapping,
+        core_event_written=True,
+    )
+
+    recovered = harness.attachments.list_for_mapping(harness.mapping.id)[0]
+    assert recovered.status == "synced"
+    assert recovered.outlook_attachment_id == "attachment-2"
+    assert len(harness.graph.uploads) == 2
+    assert len(harness.graph.attachments) == 1
+    assert len(harness.graph.updates) == 2
+
+
+def test_core_write_replaces_attachment_with_mismatched_remote_content_id(
+    tmp_path: Path,
+) -> None:
+    harness = _harness(tmp_path)
+    _import_home_asset(harness, tmp_path / "first.png", "red")
+    harness.synchronizer.reconcile(harness.event, harness.mapping)
+    harness.graph.attachments[0] = OutlookAttachmentReference(
+        "attachment-1",
+        "unexpected-content-id@example",
+        "unexpected.png",
+    )
+
+    harness.synchronizer.reconcile(
+        harness.event,
+        harness.mapping,
+        core_event_written=True,
+    )
+
+    recovered = harness.attachments.list_for_mapping(harness.mapping.id)[0]
+    assert recovered.status == "synced"
+    assert recovered.outlook_attachment_id == "attachment-2"
+    assert harness.graph.deletions == ["attachment-1"]
+    assert [item.id for item in harness.graph.attachments] == ["attachment-2"]
+
+
+def test_remote_attachment_audit_failure_remains_retryable(tmp_path: Path) -> None:
+    harness = _harness(tmp_path)
+    _import_home_asset(harness, tmp_path / "first.png", "red")
+    harness.synchronizer.reconcile(harness.event, harness.mapping)
+    harness.graph.list_error = RuntimeError("temporary attachment list failure")
+
+    with pytest.raises(RuntimeError, match="temporary attachment list failure"):
+        harness.synchronizer.reconcile(
+            harness.event,
+            harness.mapping,
+            core_event_written=True,
+        )
+
+    failed = harness.attachments.list_for_mapping(harness.mapping.id)[0]
+    assert failed.status == "failed"
+    assert failed.outlook_attachment_id == "attachment-1"
+    harness.graph.list_error = None
+
+    harness.synchronizer.reconcile(harness.event, harness.mapping)
+
+    recovered = harness.attachments.list_for_mapping(harness.mapping.id)[0]
+    assert recovered.status == "synced"
+    assert recovered.outlook_attachment_id == "attachment-1"
+    assert len(harness.graph.uploads) == 1
+    assert len(harness.graph.updates) == 2
 
 
 def test_upload_failure_keeps_text_event_and_persists_retryable_state(

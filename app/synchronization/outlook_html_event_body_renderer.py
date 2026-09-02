@@ -82,9 +82,18 @@ class OutlookHtmlEventBodyRenderer:
         images = {image.slot: image for image in inline_images}
         if len(images) != len(inline_images):
             raise ValueError("Inline image slots must be unique.")
+        participants = sorted(
+            synchronization_event.participants,
+            key=self._participant_sort_key,
+        )
+        header = self._render_header(
+            synchronization_event,
+            participants,
+            images,
+        )
         sections = [
             f'<div style="{_CONTAINER_STYLE}">',
-            self._render_header(synchronization_event, images),
+            header,
             self._render_event_details(
                 synchronization_event,
                 is_cancelled=is_cancelled,
@@ -92,10 +101,6 @@ class OutlookHtmlEventBodyRenderer:
             ),
         ]
 
-        participants = sorted(
-            synchronization_event.participants,
-            key=self._participant_sort_key,
-        )
         if participants:
             sections.append(self._render_participants(participants, images))
 
@@ -135,6 +140,7 @@ class OutlookHtmlEventBodyRenderer:
     def _render_header(
         self,
         synchronization_event: SynchronizationEvent,
+        participants: list[SynchronizationParticipant],
         images: dict[str, OutlookInlineImage],
     ) -> str:
         event = synchronization_event.event
@@ -146,21 +152,58 @@ class OutlookHtmlEventBodyRenderer:
         header_slots = tuple(
             slot for slot in ("competition", "final") if slot in images
         )
-        if not header_slots:
-            header_slots = tuple(slot for slot in ("home", "away") if slot in images)
         image_cells = "".join(
             self._render_image_cell(images[slot]) for slot in header_slots
+        )
+        title = self._render_title(
+            event.title,
+            participants,
+            images,
         )
         return (
             f'<table role="presentation" style="{_HEADER_TABLE_STYLE}"><tbody><tr>'
             f"{image_cells}"
             f'<td style="{_HEADER_CELL_STYLE}">'
             '<div style="font-size:20px;font-weight:600;margin:0 0 2px;">'
-            f"{self._text(event.title)}</div>"
+            f"{title}</div>"
             '<div style="color:#5f6368;font-size:13px;">'
             f"{self._text(context)}</div>"
             "</td></tr></tbody></table>"
         )
+
+    @classmethod
+    def _render_title(
+        cls,
+        event_title: str,
+        participants: list[SynchronizationParticipant],
+        images: dict[str, OutlookInlineImage],
+    ) -> str:
+        participant_names = {
+            participant.role: participant.participant.name
+            for participant in participants
+            if participant.role in {"home", "away"}
+        }
+        home = participant_names.get("home")
+        away = participant_names.get("away")
+        if home is None or away is None or event_title != f"{home} vs {away}":
+            return cls._text(event_title)
+
+        home_title = cls._text(home)
+        home_image = images.get("home")
+        if home_image is not None:
+            home_title = (
+                f"{cls._render_image(home_image, size=_COMPETITION_HEADER_IMAGE_SIZE)}"
+                f"&nbsp;{home_title}"
+            )
+
+        away_title = cls._text(away)
+        away_image = images.get("away")
+        if away_image is not None:
+            away_title = (
+                f"{away_title}&nbsp;"
+                f"{cls._render_image(away_image, size=_COMPETITION_HEADER_IMAGE_SIZE)}"
+            )
+        return f"{home_title} vs {away_title}"
 
     def _render_event_details(
         self,
