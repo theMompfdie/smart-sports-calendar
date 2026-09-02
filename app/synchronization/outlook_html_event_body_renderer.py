@@ -212,11 +212,16 @@ class OutlookHtmlEventBodyRenderer:
             )
             for participant in participants
         ]
+        middle_aligned_rows = frozenset(
+            index
+            for index, participant in enumerate(participants)
+            if participant.role in images
+        )
         return self._render_table(
             "Participants",
             rows,
             values_are_html=True,
-            align_cells_middle=True,
+            middle_aligned_rows=middle_aligned_rows,
         )
 
     def _render_results(
@@ -269,22 +274,25 @@ class OutlookHtmlEventBodyRenderer:
         rows: list[tuple[str, str]],
         *,
         values_are_html: bool = False,
-        align_cells_middle: bool = False,
+        middle_aligned_rows: frozenset[int] = frozenset(),
     ) -> str:
-        label_cell_style = (
-            _MIDDLE_LABEL_CELL_STYLE if align_cells_middle else _LABEL_CELL_STYLE
-        )
-        value_cell_style = (
-            _MIDDLE_VALUE_CELL_STYLE if align_cells_middle else _VALUE_CELL_STYLE
-        )
-        rendered_rows = "".join(
-            "<tr>"
-            f'<td style="{label_cell_style}">{cls._text(label)}:</td>'
-            f'<td style="{value_cell_style}">'
-            f"{value if values_are_html else cls._text(value)}</td>"
-            "</tr>"
-            for label, value in rows
-        )
+        rendered_row_values: list[str] = []
+        for index, (label, value) in enumerate(rows):
+            align_middle = index in middle_aligned_rows
+            label_cell_style = (
+                _MIDDLE_LABEL_CELL_STYLE if align_middle else _LABEL_CELL_STYLE
+            )
+            value_cell_style = (
+                _MIDDLE_VALUE_CELL_STYLE if align_middle else _VALUE_CELL_STYLE
+            )
+            rendered_row_values.append(
+                "<tr>"
+                f'<td style="{label_cell_style}">{cls._text(label)}:</td>'
+                f'<td style="{value_cell_style}">'
+                f"{value if values_are_html else cls._text(value)}</td>"
+                "</tr>"
+            )
+        rendered_rows = "".join(rendered_row_values)
         return (
             f'<h3 style="{_SECTION_HEADING_STYLE}">{cls._text(heading)}</h3>'
             f'<table role="presentation" style="{_TABLE_STYLE}"><tbody>'

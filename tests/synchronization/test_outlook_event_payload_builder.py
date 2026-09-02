@@ -639,6 +639,7 @@ def test_build_renders_bounded_cid_images_without_changing_text_fallback() -> No
     )
 
     assert "cid:" not in text_only.body
+    assert "vertical-align:middle" not in text_only.body
     assert with_images.body.count("<img ") == 4
     assert 'src="cid:competition@example"' in with_images.body
     assert 'src="cid:home@example"' in with_images.body
@@ -673,6 +674,26 @@ def test_build_centers_participant_logo_and_uses_it_as_header_fallback() -> None
     )
     assert "line-height:0;padding:0 8px 0 0;vertical-align:middle;" in payload.body
     assert 'padding:0;vertical-align:middle;">Arsenal</td>' in payload.body
+
+
+def test_build_centers_only_participant_rows_that_contain_a_logo() -> None:
+    payload = OutlookEventPayloadBuilder().build(
+        make_aggregate(),
+        inline_images=(OutlookInlineImage("home", "home@example", "Arsenal"),),
+    )
+
+    middle_label_style = (
+        "border-bottom:1px solid #e5e7eb;font-weight:600;"
+        "padding:4px 12px 4px 0;vertical-align:middle;width:120px;"
+    )
+    top_label_style = (
+        "border-bottom:1px solid #e5e7eb;font-weight:600;"
+        "padding:4px 12px 4px 0;vertical-align:top;width:120px;"
+    )
+
+    assert f'<td style="{middle_label_style}">home:</td>' in payload.body
+    assert f'<td style="{top_label_style}">away:</td>' in payload.body
+    assert payload.body.count('src="cid:home@example"') == 2
 
 
 def test_payload_is_immutable() -> None:
