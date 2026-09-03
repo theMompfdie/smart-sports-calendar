@@ -86,6 +86,19 @@ Follow the scoped procedure in [deployment.md](deployment.md). Never use
 
    Record the aggregate `affected_mappings` count. Do not repeat the command
    while that candidate is converging.
+
+   A pending presentation revision also queues a durable media-body refresh
+   before an equal core payload hash is acknowledged. Existing matching CID
+   attachments are audited and reused; missing attachments are recovered.
+   A failed optional Graph operation remains retryable after a restart without
+   another invalidation. Events without media keep the equal-hash no-write path.
+
+   Recovery from candidate `fe50c45`: that candidate could acknowledge a
+   media-only presentation change without refreshing the media body. Its zero
+   pending-revision count is not visual acceptance evidence. After deploying a
+   verified candidate containing the revision-aware media-refresh fix and taking
+   a fresh backup, invalidate once for the new candidate. Do not re-import the
+   same image assets or repeat invalidation on the old candidate.
 6. Run the read-only baseline:
 
    ```bash
@@ -104,6 +117,12 @@ Follow the scoped procedure in [deployment.md](deployment.md). Never use
 Record only aggregate before/after counts. Existing mapping and transaction
 identities must remain stable, but their private values must not be copied into
 GitHub evidence.
+
+The calendar run's `unchanged` counter describes the core payload, not optional
+media writes. Zero mapping revisions and an unchanged core run alone do not
+prove that the media HTML or remote attachments are correct. Also require zero
+pending media convergence, a scoped remote attachment/CID check, and fresh
+Outlook visual inspection before accepting presentation changes.
 
 ## Outlook presentation inspection
 

@@ -320,7 +320,7 @@ class EventAssetAttachmentsRepository:
                 """
                 UPDATE calendar_event_asset_attachments
                 SET status = 'failed',
-                    last_error = 'Core event body requires media refresh.',
+                    last_error = 'Event body requires media refresh.',
                     updated_at = ?
                 WHERE calendar_event_mapping_id = ?
                   AND status != 'event_deleted'

@@ -173,6 +173,10 @@ class EventMediaSynchronizer:
             synchronized[0].calendar_event_mapping_id
         )
 
+    def request_presentation_refresh(self, mapping_id: int) -> None:
+        """Durably queue an audit and body refresh before core acknowledgement."""
+        self._attachments.mark_body_refresh_required(mapping_id)
+
     def mark_event_deleted(self, mapping_id: int) -> None:
         self._attachments.mark_event_deleted(mapping_id)
 
