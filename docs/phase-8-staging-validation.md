@@ -74,7 +74,19 @@ Follow the scoped procedure in [deployment.md](deployment.md). Never use
 3. Require the container to become healthy and startup validation to resolve
    only the dedicated staging calendar.
 4. Inspect sanitized startup logs for migration or initialization failures.
-5. Run the read-only baseline:
+5. When the candidate changes the global Outlook HTML template or presentation
+   policy, queue every live mapping exactly once after the verified backup:
+
+   ```bash
+   docker compose exec -T calendar-sync \
+     python -m app.operations.presentation_revisions \
+     --database /data/sports.db \
+     --invalidate-all
+   ```
+
+   Record the aggregate `affected_mappings` count. Do not repeat the command
+   while that candidate is converging.
+6. Run the read-only baseline:
 
    ```bash
    docker compose exec -T calendar-sync \
@@ -83,10 +95,10 @@ Follow the scoped procedure in [deployment.md](deployment.md). Never use
      --limit 120
    ```
 
-6. Require `database_quick_check=ok`, schema 012, exactly nine authoritative
+7. Require `database_quick_check=ok`, schema 012, exactly nine authoritative
    jobs, preserved fixture and calendar mapping counts, and no duplicate
    Outlook appointments.
-7. Allow bounded synchronization cycles to drain the one-time presentation
+8. Allow bounded synchronization cycles to drain the one-time presentation
    backlog created by the Phase 8 migrations.
 
 Record only aggregate before/after counts. Existing mapping and transaction
@@ -189,8 +201,11 @@ logo merely because it is publicly visible.
 
 After convergence, confirm:
 
-- competition, home, and away images render through `cid:` attachments at
-  approximately 30 x 30 display size;
+- competition artwork renders through one `cid:` attachment at approximately
+  44 x 44 in the outer header cell and 24 x 24 beside the Competition detail;
+- participant artwork renders through one reusable `cid:` attachment at
+  approximately 44 x 44 beside the correct team name in the title and 30 x 30
+  beside the same team in the Participants section;
 - the event remains readable when one or all optional images are absent;
 - no source URL or filesystem path appears in Outlook;
 - the same local asset is not duplicated in SQLite;
