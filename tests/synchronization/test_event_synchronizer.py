@@ -222,6 +222,35 @@ def test_optional_media_failure_does_not_change_core_result() -> None:
     logger.warning.assert_called_once()
 
 
+def test_failed_media_refresh_queue_does_not_acknowledge_presentation() -> None:
+    _, _, builder, graph, mappings = create_synchronizer()
+    media = Mock(spec=EventMediaSynchronizer)
+    media.request_presentation_refresh.side_effect = RuntimeError(
+        "database unavailable"
+    )
+    synchronizer = EventSynchronizer(builder, graph, mappings, media_synchronizer=media)
+    mapping = create_mapping(
+        content_hash="same-hash",
+        presentation_revision=7,
+        last_synced_presentation_revision=6,
+    )
+    with (
+        patch(
+            "app.synchronization.event_synchronizer.calculate_content_hash",
+            return_value="same-hash",
+        ),
+        pytest.raises(EventSynchronizationError, match="could not be queued"),
+    ):
+        synchronizer.synchronize_event(
+            create_synchronization_event(mapping=mapping), "calendar-1"
+        )
+    media.request_presentation_refresh.assert_called_once_with(mapping.id)
+    mappings.mark_checked.assert_not_called()
+    mappings.mark_synced.assert_not_called()
+    graph.update_event.assert_not_called()
+    media.reconcile.assert_not_called()
+
+
 def test_synchronize_event_creates_event_without_existing_mapping() -> None:
     (
         synchronizer,

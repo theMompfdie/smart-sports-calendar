@@ -223,6 +223,21 @@ class EventSynchronizer:
             )
 
         if mapping.content_hash == content_hash:
+            if (
+                self._media_synchronizer is not None
+                and mapping.presentation_revision
+                > mapping.last_synced_presentation_revision
+            ):
+                # Persist optional work before acknowledging the core revision.
+                # Media-only template changes do not affect the core payload hash.
+                try:
+                    self._media_synchronizer.request_presentation_refresh(mapping.id)
+                except Exception as error:
+                    self._record_failure(mapping, error)
+                    raise EventSynchronizationError(
+                        "Media presentation refresh could not be queued for "
+                        f"mapping {mapping.id}."
+                    ) from error
             checked_mapping = self._mappings_repository.mark_checked(
                 mapping.id,
                 event_revision=event.sync_revision,
