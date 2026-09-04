@@ -46,7 +46,7 @@ updates use an immediate SQLite transaction and a five-second busy timeout, so
 readers continue to see a committed state and concurrent writers fail cleanly
 rather than partially applying a rule.
 
-The intended selected-team policy can be configured as follows:
+A minimal selected-team policy can be configured as follows:
 
 ```console
 python -m app.operations.reminder_rules --database /data/sports.db set --scope global --action suppress --note "Selected teams only"
@@ -124,6 +124,20 @@ notification is never silently moved later. For a nonexistent boundary during
 the spring transition, the resolver selects the latest valid local minute
 before it. Canonical kickoff changes and committed rule changes are recalculated
 on the next payload build without restarting the process.
+
+## Phase 8 qualification profile
+
+The current staging profile expands the minimal example above to six active
+rules: a global suppression rule with shared 60-minute preferred/minimum lead,
+480-minute maximum, Vienna timezone and 22:00–08:00 quiet period; three
+competition enable rules; and the two participant enable rules. Action-only
+enable rules inherit all timing fields. Confirm the competition keys from
+private operator readback before applying changes.
+
+Follow [the staging runbook](phase-8-staging-validation.md) for this profile.
+Disabling or deleting a participant rule falls back to a competition rule if
+one applies; it does not necessarily suppress reminders. Restore action-only
+enable rules after mutation tests instead of retaining temporary lead overrides.
 
 ## Backup, restore, and rollback
 

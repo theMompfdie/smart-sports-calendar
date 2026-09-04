@@ -2,7 +2,7 @@
 
 ## Status and release boundary
 
-Status: **planned; not yet accepted**
+Status: **partially accepted; final qualification and publication pending**
 
 This runbook owns the isolated live qualification gate in issue #214 for the
 `v0.8.0-beta.1` release candidate. It validates the Phase 8 presentation,
@@ -148,59 +148,83 @@ unless every tenant- and fixture-specific value has been reviewed and redacted.
 
 ## Runtime reminder qualification
 
-Use the local operator CLI inside the staging container. The intended final
-private profile is:
+The confirmed profile contains six active rules: one global rule, three
+competition rules, and two participant rules. The global rule suppresses
+reminders by default and supplies shared timing: preferred/minimum lead
+60 minutes, maximum 480 minutes, quiet period `22:00`–`08:00`, and
+`Europe/Vienna`. The narrower rules enable reminders and inherit these fields.
 
-- global suppression;
-- Manchester United enabled at 60 minutes; and
-- New England Patriots enabled at 60 minutes with an inclusive 60–480 minute
-  lead range, quiet period `22:00`–`08:00`, and
-  `Europe/Vienna`.
+Before changing an existing profile, privately read it back with `list` and
+`show`. Confirm the three exact canonical competition keys with the operator;
+#214 names DFB-Pokal (`dfb_pokal`) but does not identify the other two.
+Do not overwrite the already accepted profile merely to reproduce examples.
+
+For a fresh profile, run inside the staging container:
 
 ```bash
-python -m app.operations.reminder_rules --database /data/sports.db set \
-  --scope global \
-  --action suppress \
-  --note "Phase 8 staging default"
+# Set these shell variables privately to the three reviewed catalog keys first.
+: "${COMPETITION_ONE:?Set the first reviewed competition key}"
+: "${COMPETITION_TWO:?Set the second reviewed competition key}"
+: "${COMPETITION_THREE:?Set the third reviewed competition key}"
 
 python -m app.operations.reminder_rules --database /data/sports.db set \
-  --scope participant \
-  --participant manchester_united \
-  --action enable \
-  --preferred-lead-minutes 60 \
-  --note "Phase 8 staging Manchester United"
+  --scope global --action suppress \
+  --preferred-lead-minutes 60 --minimum-lead-minutes 60 \
+  --maximum-lead-minutes 480 --quiet-start 22:00 --quiet-end 08:00 \
+  --timezone Europe/Vienna --note "Phase 8 shared reminder policy"
+
+for competition in "$COMPETITION_ONE" "$COMPETITION_TWO" "$COMPETITION_THREE"; do
+  python -m app.operations.reminder_rules --database /data/sports.db set \
+    --scope competition --competition "$competition" --action enable
+done
 
 python -m app.operations.reminder_rules --database /data/sports.db set \
-  --scope participant \
-  --participant new_england_patriots \
-  --action enable \
-  --preferred-lead-minutes 60 \
-  --minimum-lead-minutes 60 \
-  --maximum-lead-minutes 480 \
-  --quiet-start 22:00 \
-  --quiet-end 08:00 \
-  --timezone Europe/Vienna \
-  --note "Phase 8 staging New England Patriots"
+  --scope participant --participant manchester_united --action enable
+python -m app.operations.reminder_rules --database /data/sports.db set \
+  --scope participant --participant new_england_patriots --action enable
 ```
 
-Use `effective-preview --event <private-canonical-event-key>` for at least one
-Manchester United event, one daytime Patriots event, and one late-night
-Patriots event. Keep the event keys and returned instants private.
+`set` replaces the whole rule. Omitted timing fields inherit from broader
+rules; they do not retain old overrides. Keep CLI output and effective-preview
+event keys private.
+
+Use `effective-preview --event <private-canonical-event-key>` and compare
+Outlook for a competition-only enable, a participant-only enable where
+available, a default-suppressed fixture, and daytime/nighttime cases. An event
+matching both competition and participant enable rules does not independently
+prove participant-only behavior.
 
 Exercise all mutation paths without restarting:
 
-1. set the Manchester United lead to 75 minutes and confirm only affected
-   mappings become presentation-pending;
-2. restore 60 minutes and require targeted convergence;
-3. disable the Manchester United rule and verify global suppression;
-4. set it again and verify 60 minutes;
-5. delete the Patriots rule and verify global suppression;
-6. recreate the final Patriots rule above; and
-7. restart the application and require the final rules to survive.
+1. Set a selected participant's preferred lead to 75 minutes and action to
+   enable; confirm only its affected mappings become presentation-pending.
+2. Restore the action-only enable rule and verify inherited 60-minute behavior.
+3. Disable that rule, preview the result, and compare Outlook. Suppression is
+   expected only for a sample without an applicable competition enable rule.
+4. Set the participant rule again and verify the inherited policy.
+5. Delete the other participant rule and verify its inherited result; an
+   applicable competition rule may still enable reminders.
+6. Recreate that participant rule with action enable, retaining deleted audit
+   history.
+7. Restart staging and confirm the six final active rules and effective
+   policy survive. Keep identifiers and raw CLI readback private.
 
 The late-night case must never schedule a notification inside the Vienna quiet
 period. A shift to the previous allowed boundary is valid only when the actual
-lead remains between 60 and 480 minutes.
+lead remains between 60 and 480 minutes. Actual notification delivery is a
+separate observation from the stored Outlook reminder setting.
+
+## Synthetic-final cleanup
+
+After accepted trophy/media samples, retire the temporary synthetic fixture
+through the existing synchronized deletion lifecycle for that exact local
+test event. Retire only its temporary event-scoped reminder rule. Do not delete
+database rows, clear the calendar, or alter real provider fixtures.
+
+Verify normal synchronization removed the exact remote event and attachments,
+retained intended audit history, and restored six active profile rules.
+Take a fresh final baseline afterward; the temporary synthetic event/rule must
+not inflate final acceptance counts.
 
 ## Rights-controlled media qualification
 
@@ -262,6 +286,7 @@ The gate requires:
 - zero pending canonical or presentation revisions;
 - a recent unchanged NFL run and write-free calendar run;
 - at least one active global and two active participant reminder rules;
+  this is a minimum-count guard, not proof of the exact six-rule profile;
 - active project, competition, and two participant media assets;
 - at least one synchronized competition, home, and away attachment; and
 - no failed, pending, uploaded-only, cleanup-pending, obsolete, or otherwise
@@ -291,6 +316,26 @@ Privately require:
 
 Destroying the temporary recovery volume is a separate explicit operator
 decision and is not part of this runbook.
+
+## Accepted checkpoint and outstanding evidence — 2026-09-04
+
+The source of acceptance is [issue #214](https://github.com/theMompfdie/smart-sports-calendar/issues/214).
+The current release-branch checkpoint is `a5496c3`; later preparation changes
+require their own committed-candidate checks.
+
+Accepted partial observations include competition/home/away/NFL/trophy visual
+samples, six remote attachment/CID checks, displayed 60-minute and Vienna
+quiet-hour-shifted reminders, default suppression and competition-only enable
+samples, and zero revision/media backlog followed by run 8278 with 208
+unchanged attachment rows.
+
+Remaining gates are effective rule previews and mutations, restart persistence,
+synthetic-final cleanup, media replacement/fallback/interrupted recovery,
+full backup/isolated restore, final provider/canonical/Outlook integrity,
+duplicate auditing, and fresh unchanged-cycle evidence after all exercises.
+Existing accepted evidence may be referenced instead of repeated, but a
+screenshot is not recovery evidence and a core unchanged counter is not proof
+of zero media writes. #232 and #233 remain open.
 
 ## Evidence record
 

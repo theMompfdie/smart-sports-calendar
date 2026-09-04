@@ -149,18 +149,22 @@ jobs:
         run: |
           docker compose up --detach
 
-      - name: Wait for healthy container
+      - name: Wait for healthy container and completed startup
+        timeout-minutes: 5
         shell: bash
         run: |
           for attempt in {1..12}; do
-            container_id="$(docker compose ps -q calendar-sync)"
-            status="$(docker inspect \
-              --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' \
+            container_id="$(timeout 10s docker compose ps --all -q calendar-sync)"
+            state="$(timeout 10s docker inspect \
+              --format='{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}} {{.State.StartedAt}}' \
               "$container_id" 2>/dev/null || true)"
 
-            echo "Container status: ${status:-not available}"
+            read -r status health started_at <<< "$state"
+            echo "Container status: ${status:-not available}; health: ${health:-not available}"
 
-            if [ "$status" = "healthy" ]; then
+            if [ "$status" = "running" ] && [ "$health" = "healthy" ] && \
+              timeout 10s docker compose exec -T calendar-sync \
+                python - "$started_at" < scripts/check_startup_ready.py; then
               exit 0
             fi
 
@@ -172,7 +176,7 @@ jobs:
             sleep 10
           done
 
-          echo "Container did not become healthy in time."
+          echo "Container did not become healthy with a current startup record in time."
           docker compose ps
           docker compose logs
           exit 1
