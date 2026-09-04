@@ -110,6 +110,10 @@ Normal flow:
 
 Use focused branches and include an issue number when available.
 
+Branch names must not contain `codex`, including the `codex/` prefix.
+Use project prefixes such as `feature/`, `fix/`, `test/`, `docs/`, and
+`release/`, even when a tool suggests a different default.
+
 Examples:
 
 * `feature/42-provider-integration`
