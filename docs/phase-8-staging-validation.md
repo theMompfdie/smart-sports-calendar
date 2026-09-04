@@ -2,7 +2,7 @@
 
 ## Status and release boundary
 
-Status: **partially accepted; final qualification and publication pending**
+Status: **accepted for beta publication with one documented provider limitation**
 
 This runbook owns the isolated live qualification gate in issue #214 for the
 `v0.8.0-beta.1` release candidate. It validates the Phase 8 presentation,
@@ -156,7 +156,7 @@ reminders by default and supplies shared timing: preferred/minimum lead
 
 Before changing an existing profile, privately read it back with `list` and
 `show`. Confirm the three exact canonical competition keys with the operator;
-#214 names DFB-Pokal (`dfb_pokal`) but does not identify the other two.
+Issue #214 names DFB-Pokal (`dfb_pokal`) but does not identify the other two.
 Do not overwrite the already accepted profile merely to reproduce examples.
 
 For a fresh profile, run inside the staging container:
@@ -242,7 +242,6 @@ is reported separately and is not unfinished media work. Do not delete those
 rows to force the raw totals to match. Live extra events, incomplete deletion,
 residual media state, current event rules, and provider failures still block the
 gate. Earlier phase validators retain their original strict totals.
-
 
 ## Rights-controlled media qualification
 
@@ -335,44 +334,67 @@ Privately require:
 Destroying the temporary recovery volume is a separate explicit operator
 decision and is not part of this runbook.
 
-## Accepted checkpoint and outstanding evidence — 2026-09-04
+## Final accepted checkpoint — 2026-09-04
 
 The source of acceptance is [issue #214](https://github.com/theMompfdie/smart-sports-calendar/issues/214).
-The current release-branch checkpoint is `a5496c3`; later preparation changes
-require their own committed-candidate checks.
+The accepted candidate is signed release head `530ff59546fa8ac32d2a39bd9960e3a739ce233a`.
+All 141 runtime Python, SQL, and dependency-manifest files matched that head on
+staging. Integrated-head CI run 33888859769 passed all five jobs and 1,249
+tests on its first attempt.
 
-Accepted partial observations include competition/home/away/NFL/trophy visual
-samples, six remote attachment/CID checks, displayed 60-minute and Vienna
-quiet-hour-shifted reminders, default suppression and competition-only enable
-samples, and zero revision/media backlog followed by run 8278 with 208
-unchanged attachment rows.
+The accepted private staging record covers the exact six-rule reminder profile,
+runtime update/restore/disable/delete/recreate behavior, restart persistence,
+Vienna quiet-hour shifting, suppression, and final canonical/Graph agreement.
+Competition, home, away, NFL, and trophy client samples and six remote
+attachment/CID samples passed. A complete 21-page inventory matched all 2,088
+live mappings without missing, additional, or repeated remote event IDs.
 
-Remaining gates are effective rule previews and mutations, restart persistence,
-synthetic-final cleanup, media replacement/fallback/interrupted recovery,
-full backup/isolated restore, final provider/canonical/Outlook integrity,
-duplicate auditing, and fresh unchanged-cycle evidence after all exercises.
-Existing accepted evidence may be referenced instead of repeated, but a
-screenshot is not recovery evidence and a core unchanged counter is not proof
-of zero media writes. #232 and #233 remain open.
+The synthetic event was removed through normal synchronization while its local
+event, mapping, rule, and terminal attachment audit history was retained. A
+stopped full-data backup restored byte-identically into an isolated volume with
+network disabled; SQLite, schema 012, foreign keys, aggregate counts, and active
+media files passed.
+
+A distinct synthetic replacement exercised 17 participant-image mappings. With
+only the replacement file held, 17 upload attempts failed closed while all
+previous remote attachments and core mappings remained available. Restoring the
+file and restarting recovered all 17 replacements. The original approved
+version was then restored and confirmed in Outlook with its reminder unchanged.
+Two later calendar cycles, 8584 and 8585, each processed 100 unchanged events;
+all 208 attachment rows, five media-version rows, and upload-attempt counters
+remained exactly stable with no pending or obsolete state.
+
+A read-only comparison with the immediate pre-exercise backup found identical
+2,089-row canonical event membership. Three post-arm provider status changes
+were attributable to one Bundesliga and two 2. Bundesliga fixtures; no Patriots
+event changed. The comparison made no writes or network calls.
+
+Issue #233 records a continuing football-data.org response-contract violation:
+the Championship endpoint sometimes returns timestamp-shaped strings in the
+documented match-status field. The final controlled run failed before canonical
+import, independent jobs and calendar synchronization continued, and the last
+known good 552-fixture Championship state remained intact. The strict parser is
+unchanged. This is accepted as a beta-only external-provider limitation and
+remains open for a later successful observation. It does not authorize
+production promotion.
 
 ## Evidence record
 
-Complete only after every operation has actually passed:
+- Candidate commit: `530ff59546fa8ac32d2a39bd9960e3a739ce233a`
+- Staging isolation: pass
+- Full stopped-instance backup: pass
+- Upgrade and schema 012: pass
+- Existing mapping convergence/no duplicates: pass
+- Outlook Web presentation: pass
+- Outlook desktop presentation: pass
+- Reminder mutation and Vienna quiet-hours: pass
+- Media upload/replacement/fallback: pass
+- Optional-media failure and recovery: pass
+- Restart persistence: pass
+- Write-free unchanged rerun: pass
+- Backup and isolated restore: pass
+- Strict Phase 8 projection: pass except the declared current-run provider
+  requirement tracked in #233
 
-- Candidate commit: `<verified commit>`
-- Staging isolation: `<pass/fail>`
-- Full stopped-instance backup: `<pass/fail>`
-- Upgrade and schema 012: `<pass/fail>`
-- Existing mapping convergence/no duplicates: `<pass/fail>`
-- Outlook Web presentation: `<pass/fail>`
-- Outlook desktop presentation: `<pass/fail>`
-- Reminder mutation and Vienna quiet-hours: `<pass/fail>`
-- Media upload/replacement/fallback: `<pass/fail>`
-- Optional-media failure and recovery: `<pass/fail>`
-- Restart persistence: `<pass/fail>`
-- Write-free unchanged rerun: `<pass/fail>`
-- Backup and isolated restore: `<pass/fail>`
-- Strict Phase 8 evidence exit code: `<pass/fail>`
-
-Until every required result is recorded and reviewed, issue #214 and the
-`v0.8.0-beta.1` release gate remain open.
+Issue #214 remains open only for the operator-controlled Git and GitHub release
+sequence. The GitHub pre-release does not promote production.

@@ -89,26 +89,29 @@ presentation convergence, media reconciliation, failure/recovery, and
 SQLite-to-mocked-Graph behavior. Local results and final CI evidence belong
 in the release checklist and must be rechecked on the committed candidate.
 
-Partial live acceptance in #214 includes competition/home/away/NFL/trophy
-visual samples, six remote attachment/CID samples, displayed 60-minute and
-quiet-hour reminders, suppression and competition-only enable samples, and
-a zero-backlog/unchanged-attachment checkpoint. These observations do not
-replace the outstanding mutation/restart, synthetic-test cleanup,
-media replacement/fallback/recovery, backup/restore, full duplicate audit,
-or final provider-state checks.
+Live acceptance in #214 includes competition/home/away/NFL/trophy visual
+samples, six remote attachment/CID samples, the exact six-rule runtime mutation
+lifecycle, Vienna quiet-hour reminders, suppression, restart persistence,
+synthetic-test cleanup, full-calendar inventory, byte-identical isolated
+restore, and different-content media replacement and recovery. After restoring
+the original artwork, two complete unchanged cycles preserved all 208 attachment
+rows, all five media-version rows, and every upload-attempt counter.
 
-Recurring malformed football-data.org status values are tracked in #233.
-Later Premier League and Bundesliga observations succeeded, but final
-canonical/Outlook integrity and current provider-state evidence are still
-required. Strict parsing remains fail-closed; no timestamp-to-status
-heuristic or failover was added.
+Recurring malformed football-data.org status values are tracked in #233. The
+latest Championship observation still returned a timestamp-shaped value in the
+documented status field. It failed before canonical import; the last known good
+552-fixture state was retained, independent provider jobs and calendar sync
+continued, and a read-only backup comparison found no Championship canonical
+change. Strict parsing remains fail-closed; no timestamp-to-status heuristic or
+failover was added. Until the provider returns a valid snapshot, Championship
+schedule changes may remain stale. This limitation is accepted for this beta
+pre-release only and blocks production promotion, while #233 remains open.
 
 Actual reminder delivery and rendering in every Outlook client are not
 guaranteed by sample-level UI checks. The aggregate staging gate cannot
 independently prove the exact six-rule policy, remote attachment uniqueness
 across the whole calendar, or absence of optional media writes. Those remain
 explicit operator acceptance checks. No production promotion is implied.
-
 
 ### Retained deletion history in staging validation
 
