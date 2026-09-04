@@ -226,6 +226,24 @@ retained intended audit history, and restored six active profile rules.
 Take a fresh final baseline afterward; the temporary synthetic event/rule must
 not inflate final acceptance counts.
 
+The evidence collector retains raw global event, mapping, and attachment-status
+counts, and reports the completed subset separately in `retired_local_audit`.
+Phase 8 may discount this subset only when the local event is tombstoned, has no
+competition, season, parent/child, or provider mapping, has at least one calendar
+mapping, all its calendar mappings are successfully `deleted`, and all event
+rules are retired. Every remaining attachment audit row must be `event_deleted`
+with cleared desired, synchronized, pending, obsolete, remote, and error fields.
+The media pending-convergence count excludes only this verified terminal subset.
+
+For example, 2,088 live source fixtures plus one fully retired local test may
+produce 2,089 raw event rows, 2,088 `synced` mappings and one `deleted` mapping.
+The retired event and mapping counts are each one; a retained terminal attachment
+is reported separately and is not unfinished media work. Do not delete those
+rows to force the raw totals to match. Live extra events, incomplete deletion,
+residual media state, current event rules, and provider failures still block the
+gate. Earlier phase validators retain their original strict totals.
+
+
 ## Rights-controlled media qualification
 
 Use only project-owned synthetic artwork or assets with reviewed permission.

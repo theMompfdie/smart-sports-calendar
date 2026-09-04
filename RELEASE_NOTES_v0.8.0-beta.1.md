@@ -108,3 +108,12 @@ guaranteed by sample-level UI checks. The aggregate staging gate cannot
 independently prove the exact six-rule policy, remote attachment uniqueness
 across the whole calendar, or absence of optional media writes. Those remain
 explicit operator acceptance checks. No production promotion is implied.
+
+
+### Retained deletion history in staging validation
+
+The strict Phase 8 staging gate distinguishes fully retired local test-event
+history from live fixture and media work. Raw counts and terminal audit counts
+remain visible. Only verified completed deletion is discounted; live extra
+events, pending or failed cleanup, residual attachment state, and provider
+failures remain blocking. No database migration or audit-data deletion is needed.
