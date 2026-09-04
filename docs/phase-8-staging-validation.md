@@ -396,5 +396,7 @@ production promotion.
 - Strict Phase 8 projection: pass except the declared current-run provider
   requirement tracked in #233
 
-Issue #214 remains open only for the operator-controlled Git and GitHub release
-sequence. The GitHub pre-release does not promote production.
+The [GitHub pre-release](https://github.com/theMompfdie/smart-sports-calendar/releases/tag/v0.8.0-beta.1) was published on 2026-09-04
+from signed tag `v0.8.0-beta.1` at main commit
+`c2b46159b8df876694c509225231fe87bb03a207`. Issue #214 records qualification
+and publication evidence. Production promotion remains blocked by #233.

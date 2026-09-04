@@ -4,9 +4,9 @@
 
 ## Current Status
 
-**Current release:** `v0.7.0-beta.1`
+**Current release:** [v0.8.0-beta.1](https://github.com/theMompfdie/smart-sports-calendar/releases/tag/v0.8.0-beta.1) (GitHub pre-release)
 
-**Release candidate:** `v0.8.0-beta.1` (staging accepted; publication pending)
+**Production promotion:** blocked by [#233](https://github.com/theMompfdie/smart-sports-calendar/issues/233).
 
 **Development stage:** Beta
 
@@ -15,13 +15,13 @@
 **Latest delivery track:** Phase 8 Outlook presentation, runtime reminders,
 and rights-controlled media for `v0.8.0-beta.1`
 ([tracker #199](https://github.com/theMompfdie/smart-sports-calendar/issues/199)).
-Functional children and isolated staging acceptance are complete; operator-led
-publication remains open in
+Implementation, isolated staging acceptance, and beta publication are complete.
+The publication and qualification record is tracked in
 [#214](https://github.com/theMompfdie/smart-sports-calendar/issues/214).
 
 **Automated tests:** 1,249 passed for the accepted Phase 8 candidate tree. See
 the [Phase 8 release checklist](docs/v0.8.0-beta.1-release-checklist.md) for
-candidate validation and the remaining publication steps.
+validation, signed tag, and publication evidence.
 
 The application foundation, persistent domain model, repository layer,
 Microsoft Graph integration, Outlook synchronization engine, and scheduled
@@ -30,7 +30,7 @@ Championship regular season, DFB-Pokal, 2. Bundesliga, ÖFB-Cup, UEFA Nations
 League A group phase, UEFA Champions League league phase, and NFL 2026 regular
 season are implemented and have passed isolated live staging.
 
-The release candidate includes provider-neutral source selection, eight
+The beta release includes provider-neutral source selection, eight
 approved 2026/27 association-football authorities, one approved NFL 2026
 regular-season authority, hybrid UEFA and bounded NFL lifecycle models, isolated
 multi-instance deployment, and secret-safe live staging validation through
@@ -699,7 +699,7 @@ Qualification records:
 
 ### Phase 8 – Outlook presentation, reminders, and media
 
-**Status:** _Implemented and accepted in isolated staging; publication pending_
+**Status:** _Published as `v0.8.0-beta.1`_
 under [#199](https://github.com/theMompfdie/smart-sports-calendar/issues/199)
 and [#214](https://github.com/theMompfdie/smart-sports-calendar/issues/214).
 
