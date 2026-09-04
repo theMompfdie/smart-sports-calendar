@@ -6,7 +6,7 @@
 
 **Current release:** `v0.7.0-beta.1`
 
-**Release candidate:** `v0.8.0-beta.1` (qualification and publication pending)
+**Release candidate:** `v0.8.0-beta.1` (staging accepted; publication pending)
 
 **Development stage:** Beta
 
@@ -15,12 +15,13 @@
 **Latest delivery track:** Phase 8 Outlook presentation, runtime reminders,
 and rights-controlled media for `v0.8.0-beta.1`
 ([tracker #199](https://github.com/theMompfdie/smart-sports-calendar/issues/199)).
-Functional children are complete; staging and release gates remain open in
+Functional children and isolated staging acceptance are complete; operator-led
+publication remains open in
 [#214](https://github.com/theMompfdie/smart-sports-calendar/issues/214).
 
-**Automated tests:** 1,223 passed for the prepared Phase 8 tree. See the
-[Phase 8 release checklist](docs/v0.8.0-beta.1-release-checklist.md)
-for candidate validation and remaining gates.
+**Automated tests:** 1,249 passed for the accepted Phase 8 candidate tree. See
+the [Phase 8 release checklist](docs/v0.8.0-beta.1-release-checklist.md) for
+candidate validation and the remaining publication steps.
 
 The application foundation, persistent domain model, repository layer,
 Microsoft Graph integration, Outlook synchronization engine, and scheduled
@@ -227,8 +228,8 @@ Phase 8 design and implementation documentation:
   PNG/JPEG normalization, content-addressed operator storage, and restart-safe
   Outlook inline-attachment reconciliation are implemented
 - [Phase 8 isolated staging validation](docs/phase-8-staging-validation.md) —
-  partial live acceptance with remaining upgrade, reminder-mutation, media-recovery,
-  unchanged-cycle, backup/restore, and release qualification for issue #214
+  accepted live upgrade, reminder mutation, media recovery, unchanged-cycle,
+  backup/restore, and canonical-isolation evidence for issue #214
 - [Phase 8 release checklist](docs/v0.8.0-beta.1-release-checklist.md)
 - [Phase 8 candidate release notes](RELEASE_NOTES_v0.8.0-beta.1.md)
 
@@ -698,9 +699,9 @@ Qualification records:
 
 ### Phase 8 – Outlook presentation, reminders, and media
 
-**Status:** _Implemented; live qualification and publication pending_ under
-[#199](https://github.com/theMompfdie/smart-sports-calendar/issues/199) and
-[#214](https://github.com/theMompfdie/smart-sports-calendar/issues/214).
+**Status:** _Implemented and accepted in isolated staging; publication pending_
+under [#199](https://github.com/theMompfdie/smart-sports-calendar/issues/199)
+and [#214](https://github.com/theMompfdie/smart-sports-calendar/issues/214).
 
 The candidate adds competition-only categories, sport icons, deterministic
 HTML, Vienna event timezone projection, persistent runtime reminder rules,
@@ -708,10 +709,12 @@ quiet-hour resolution, targeted presentation convergence, and optional
 rights-controlled inline artwork. Migrations 009–012 preserve existing data.
 The nine qualified authorities and provider lifecycle boundaries are unchanged.
 
-Visual and reminder UI samples have partial acceptance. Mutation/restart,
-synthetic cleanup, media recovery, backup/restore, final provider integrity,
-and write-free convergence still require final evidence. Phase 9 remains
-blocked until the signed Phase 8 beta has been verified and published.
+Visual presentation, runtime reminder mutation/restart, synthetic cleanup,
+media replacement/recovery, backup/restore, full-calendar inventory, and
+write-free convergence are accepted. The recurring Championship provider
+response-contract violation remains open in #233 as a documented beta-only
+limitation; strict parsing and last-known-good data retention remain active.
+Phase 9 stays blocked until the signed Phase 8 beta is verified and published.
 
 ## Release History
 
