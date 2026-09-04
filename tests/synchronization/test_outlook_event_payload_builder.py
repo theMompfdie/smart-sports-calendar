@@ -1,6 +1,10 @@
 from dataclasses import FrozenInstanceError, replace
 
 import pytest
+from app.database.competitions_catalog import (
+    COMPETITION_CATALOG,
+    CompetitionCatalogEntry,
+)
 from app.database.competitions_repository import Competition
 from app.database.event_results_repository import EventResult
 from app.database.event_statistics_repository import EventStatistic
@@ -12,10 +16,16 @@ from app.database.synchronization_query_repository import (
     SynchronizationEvent,
     SynchronizationParticipant,
 )
+from app.domain.competition_lifecycle import CompetitionFormat
 from app.domain.operator_notice import OperatorNotice
 from app.synchronization.outlook_event_payload_builder import (
+    DEFAULT_OUTLOOK_GRAPH_TIME_ZONE,
     OutlookEventPayloadBuilder,
     OutlookEventPresentation,
+)
+from app.synchronization.outlook_html_event_body_renderer import (
+    OutlookHtmlEventBodyRenderer,
+    OutlookInlineImage,
 )
 
 TIMESTAMP = "2026-08-01T10:00:00+00:00"
@@ -60,10 +70,11 @@ def make_aggregate(
     complete: bool = True,
     sport_key: str = "football",
     sport_name: str = "Football",
+    sport_icon: str | None = "⚽",
     source_attribution: str | None = None,
     operator_notice: OperatorNotice | None = None,
 ) -> SynchronizationEvent:
-    sport = Sport(1, sport_key, sport_name, None, None, TIMESTAMP, TIMESTAMP)
+    sport = Sport(1, sport_key, sport_name, sport_icon, None, TIMESTAMP, TIMESTAMP)
 
     if not complete:
         return SynchronizationEvent(
@@ -98,7 +109,7 @@ def make_aggregate(
         "Premier League",
         "PL",
         "GB",
-        "league",
+        CompetitionFormat.LEAGUE,
         None,
         TIMESTAMP,
         TIMESTAMP,
@@ -190,23 +201,20 @@ def make_aggregate(
 def test_build_maps_complete_event() -> None:
     payload = OutlookEventPayloadBuilder().build(make_aggregate())
 
-    assert payload.subject == "Arsenal vs Liverpool"
-    assert payload.start.date_time == "2026-08-21T19:00:00"
+    assert payload.subject == "⚽ Arsenal vs Liverpool"
+    assert payload.start.date_time == "2026-08-21T20:00:00"
     assert payload.end is not None
-    assert payload.end.date_time == "2026-08-21T21:00:00"
-    assert payload.start.time_zone == "Europe/London"
+    assert payload.end.date_time == "2026-08-21T22:00:00"
+    assert payload.start.time_zone == DEFAULT_OUTLOOK_GRAPH_TIME_ZONE
     assert payload.location == "Emirates Stadium, London, GB"
-    assert payload.categories == (
-        "Football",
-        "Premier League",
-        "SMART Sports Calendar",
-    )
-    assert "- home: Arsenal" in payload.body
-    assert payload.body.index("- home: Arsenal") < payload.body.index(
-        "- away: Liverpool"
-    )
-    assert "- Arsenal: 2 (final)" in payload.body
-    assert "- Arsenal – Possession: 54 percent (full time)" in payload.body
+    assert payload.categories == ("Premier League",)
+    assert ">home:</td>" in payload.body
+    assert payload.body.index(">home:</td>") < payload.body.index(">away:</td>")
+    assert ">Arsenal:</td>" in payload.body
+    assert ">2 (final)</td>" in payload.body
+    assert ">Arsenal – Possession:</td>" in payload.body
+    assert ">54 percent (full time)</td>" in payload.body
+    assert "2026-08-21T20:00+02:00 (Europe/Vienna)" in payload.body
 
 
 def test_build_adds_fallback_end_to_minimal_event() -> None:
@@ -214,16 +222,62 @@ def test_build_adds_fallback_end_to_minimal_event() -> None:
     graph_payload = payload.to_graph_dict()
 
     assert payload.end is not None
-    assert payload.end.date_time == "2026-08-21T21:00:00"
-    assert payload.end.time_zone == "Europe/London"
+    assert payload.end.date_time == "2026-08-21T22:00:00"
+    assert payload.end.time_zone == DEFAULT_OUTLOOK_GRAPH_TIME_ZONE
     assert payload.location is None
     assert graph_payload["end"] == {
-        "dateTime": "2026-08-21T21:00:00",
-        "timeZone": "Europe/London",
+        "dateTime": "2026-08-21T22:00:00",
+        "timeZone": DEFAULT_OUTLOOK_GRAPH_TIME_ZONE,
     }
     assert "location" not in graph_payload
-    assert "Competition:" not in payload.body
-    assert "Participants:" not in payload.body
+    assert ">Competition:</td>" not in payload.body
+    assert ">Participants</h3>" not in payload.body
+    assert ">Results</h3>" not in payload.body
+    assert ">Statistics</h3>" not in payload.body
+    assert payload.categories == ("SMART Sports Calendar",)
+
+
+def test_body_renderer_rejects_unknown_display_time_zone() -> None:
+    with pytest.raises(ValueError, match="Unknown body display time zone"):
+        OutlookHtmlEventBodyRenderer("Invalid/Zone")
+
+
+@pytest.mark.parametrize(
+    "catalog_entry",
+    COMPETITION_CATALOG,
+    ids=lambda entry: entry.competition_key,
+)
+def test_build_uses_exact_competition_name_as_sole_category(
+    catalog_entry: CompetitionCatalogEntry,
+) -> None:
+    aggregate = make_aggregate(
+        sport_key=catalog_entry.sport_key,
+        sport_name=(
+            "American Football"
+            if catalog_entry.sport_key == "american_football"
+            else "Football"
+        ),
+        sport_icon=("🏈" if catalog_entry.sport_key == "american_football" else "⚽"),
+    )
+    assert aggregate.competition is not None
+    competition = replace(
+        aggregate.competition,
+        competition_key=catalog_entry.competition_key,
+        name=catalog_entry.name,
+    )
+
+    payload = OutlookEventPayloadBuilder().build(
+        replace(aggregate, competition=competition)
+    )
+
+    assert payload.categories == (catalog_entry.name,)
+
+
+def test_build_omits_subject_prefix_when_sport_icon_is_missing() -> None:
+    payload = OutlookEventPayloadBuilder().build(make_aggregate(sport_icon=None))
+
+    assert payload.subject == "Arsenal vs Liverpool"
+    assert payload.categories == ("Premier League",)
 
 
 def test_build_uses_three_hour_fallback_for_american_football() -> None:
@@ -238,12 +292,14 @@ def test_build_uses_three_hour_fallback_for_american_football() -> None:
             event=event,
             sport_key="american_football",
             sport_name="American Football",
+            sport_icon="🏈",
         )
     )
 
+    assert payload.subject == "🏈 Arsenal vs Liverpool"
     assert payload.end is not None
-    assert payload.end.date_time == "2026-09-10T03:20:00"
-    assert payload.end.time_zone == "UTC"
+    assert payload.end.date_time == "2026-09-10T05:20:00"
+    assert payload.end.time_zone == DEFAULT_OUTLOOK_GRAPH_TIME_ZONE
 
 
 def test_build_prefers_explicit_end_for_american_football() -> None:
@@ -258,11 +314,13 @@ def test_build_prefers_explicit_end_for_american_football() -> None:
             event=event,
             sport_key="american_football",
             sport_name="American Football",
+            sport_icon="🏈",
         )
     )
 
     assert payload.end is not None
-    assert payload.end.date_time == "2026-09-10T02:50:00"
+    assert payload.end.date_time == "2026-09-10T04:50:00"
+    assert payload.end.time_zone == DEFAULT_OUTLOOK_GRAPH_TIME_ZONE
 
 
 def test_build_appends_authoritative_source_attribution() -> None:
@@ -272,7 +330,8 @@ def test_build_appends_authoritative_source_attribution() -> None:
         make_aggregate(source_attribution=attribution)
     )
 
-    assert payload.body.endswith(f"\n\nSource: {attribution}")
+    assert f"<strong>Source:</strong> {attribution}</p>" in payload.body
+    assert payload.body.endswith("</div>")
 
 
 def test_build_omits_missing_source_attribution() -> None:
@@ -290,7 +349,7 @@ def test_build_renders_operator_notice_before_source_attribution() -> None:
         )
     )
 
-    assert "\n\nNotice: Subject to schedule changes." in payload.body
+    assert "<strong>Notice:</strong> Subject to schedule changes.</p>" in payload.body
     assert payload.body.index("Notice:") < payload.body.index("Source:")
 
 
@@ -311,6 +370,58 @@ def test_build_does_not_render_raw_provider_metadata_as_operator_notice() -> Non
     assert "Notice:" not in payload.body
 
 
+def test_build_escapes_all_dynamic_html_values() -> None:
+    aggregate = make_aggregate(
+        event=make_sports_event(
+            title='<script>alert("title")</script>',
+            venue_name="<b>Unsafe stadium</b>",
+        ),
+        operator_notice=OperatorNotice("<em>Reviewed notice</em>"),
+        source_attribution='<a href="https://invalid.example">Source</a>',
+    )
+    assert aggregate.competition is not None
+    malicious_participant = replace(
+        aggregate.participants[0],
+        role="<away>",
+        participant=replace(
+            aggregate.participants[0].participant,
+            name='<img src="invalid">',
+        ),
+    )
+    malicious_result = replace(
+        aggregate.results[0],
+        value_number=None,
+        value_text="<strong>one</strong>",
+    )
+    malicious_statistic = replace(
+        aggregate.statistics[0],
+        statistic_name='<img src="statistic">',
+        value_number=None,
+        value_text="<a>forty-six</a>",
+    )
+    aggregate = replace(
+        aggregate,
+        competition=replace(aggregate.competition, name="League & <Cup>"),
+        participants=(malicious_participant, aggregate.participants[1]),
+        results=(malicious_result, aggregate.results[1]),
+        statistics=(malicious_statistic, aggregate.statistics[1]),
+    )
+
+    body = OutlookEventPayloadBuilder().build(aggregate).body
+
+    assert "&lt;script&gt;alert(&quot;" in body
+    assert "League &amp; &lt;Cup&gt;" in body
+    assert "&lt;img src=&quot;" in body
+    assert "&lt;strong&gt;one&lt;/strong&gt;" in body
+    assert "&lt;a&gt;forty-six&lt;/a&gt;" in body
+    assert "&lt;em&gt;Reviewed notice&lt;/em&gt;" in body
+    assert "&lt;a href=&quot;" in body
+    assert "<script" not in body
+    assert "<img" not in body
+    assert "<a href" not in body
+    assert "<em>Reviewed" not in body
+
+
 def test_build_fallback_end_uses_absolute_duration_across_dst_change() -> None:
     event = make_sports_event(
         start_time="2026-10-25T00:30:00+00:00",
@@ -320,9 +431,9 @@ def test_build_fallback_end_uses_absolute_duration_across_dst_change() -> None:
 
     payload = OutlookEventPayloadBuilder().build(make_aggregate(event=event))
 
-    assert payload.start.date_time == "2026-10-25T01:30:00"
+    assert payload.start.date_time == "2026-10-25T02:30:00"
     assert payload.end is not None
-    assert payload.end.date_time == "2026-10-25T02:30:00"
+    assert payload.end.date_time == "2026-10-25T03:30:00"
 
 
 def test_american_football_fallback_uses_absolute_duration_across_dst() -> None:
@@ -337,17 +448,77 @@ def test_american_football_fallback_uses_absolute_duration_across_dst() -> None:
             event=event,
             sport_key="american_football",
             sport_name="American Football",
+            sport_icon="🏈",
         )
     )
 
-    assert payload.start.date_time == "2026-10-25T01:30:00"
+    assert payload.start.date_time == "2026-10-25T02:30:00"
     assert payload.end is not None
-    assert payload.end.date_time == "2026-10-25T03:30:00"
+    assert payload.end.date_time == "2026-10-25T04:30:00"
+
+
+def test_build_converts_utc_source_to_vienna_in_summer_and_winter() -> None:
+    builder = OutlookEventPayloadBuilder()
+
+    summer = builder.build(
+        make_aggregate(
+            event=make_sports_event(
+                start_time="2026-09-08T16:45:00+00:00",
+                end_time="2026-09-08T18:45:00+00:00",
+                timezone="UTC",
+            )
+        )
+    )
+    winter = builder.build(
+        make_aggregate(
+            event=make_sports_event(
+                start_time="2026-11-25T17:45:00+00:00",
+                end_time="2026-11-25T19:45:00+00:00",
+                timezone="UTC",
+            )
+        )
+    )
+
+    assert summer.start.to_graph_dict() == {
+        "dateTime": "2026-09-08T18:45:00",
+        "timeZone": DEFAULT_OUTLOOK_GRAPH_TIME_ZONE,
+    }
+    assert summer.end is not None
+    assert summer.end.date_time == "2026-09-08T20:45:00"
+    assert winter.start.to_graph_dict() == {
+        "dateTime": "2026-11-25T18:45:00",
+        "timeZone": DEFAULT_OUTLOOK_GRAPH_TIME_ZONE,
+    }
+    assert winter.end is not None
+    assert winter.end.date_time == "2026-11-25T20:45:00"
 
 
 def test_presentation_rejects_non_positive_default_duration() -> None:
     with pytest.raises(ValueError, match="Default duration minutes must be positive"):
         OutlookEventPresentation(default_duration_minutes=0)
+
+
+@pytest.mark.parametrize("time_zone", ["", " Europe/Vienna", "Invalid/Zone"])
+def test_presentation_rejects_invalid_time_zone(time_zone: str) -> None:
+    with pytest.raises(ValueError, match="Outlook presentation time zone"):
+        OutlookEventPresentation(time_zone=time_zone)
+
+
+@pytest.mark.parametrize("graph_time_zone", ["", " UTC", "UTC "])
+def test_presentation_rejects_invalid_graph_time_zone(graph_time_zone: str) -> None:
+    with pytest.raises(ValueError, match="Outlook Graph time zone"):
+        OutlookEventPresentation(graph_time_zone=graph_time_zone)
+
+
+@pytest.mark.parametrize("fallback_category", ["", " Calendar", "Calendar "])
+def test_presentation_rejects_invalid_fallback_category(
+    fallback_category: str,
+) -> None:
+    with pytest.raises(
+        ValueError,
+        match="Fallback category must be normalized and non-empty",
+    ):
+        OutlookEventPresentation(fallback_category=fallback_category)
 
 
 def test_presentation_rejects_non_positive_sport_duration() -> None:
@@ -361,10 +532,11 @@ def test_build_represents_cancelled_event_deterministically() -> None:
     event = make_sports_event(status="cancelled", cancelled_at=TIMESTAMP)
     payload = OutlookEventPayloadBuilder().build(make_aggregate(event=event))
 
-    assert payload.subject == "[CANCELLED] Arsenal vs Liverpool"
+    assert payload.subject == "[CANCELLED] ⚽ Arsenal vs Liverpool"
     assert payload.show_as == "free"
-    assert "Cancelled" in payload.categories
-    assert payload.body.startswith("Status: Cancelled\n")
+    assert payload.categories == ("Premier League",)
+    assert ">Status:</td>" in payload.body
+    assert ">Cancelled</td>" in payload.body
 
 
 def test_build_is_deterministic_for_differently_ordered_collections() -> None:
@@ -424,14 +596,15 @@ def test_build_renders_event_level_result_and_statistic_without_participant() ->
 
     payload = OutlookEventPayloadBuilder().build(aggregate)
 
-    assert "- aggregate_score: 3 (final)" in payload.body
-    assert "- Attendance: 60000" in payload.body
+    assert ">aggregate_score:</td>" in payload.body
+    assert ">3 (final)</td>" in payload.body
+    assert ">Attendance:</td>" in payload.body
+    assert ">60000</td>" in payload.body
 
 
 def test_graph_serialization_uses_expected_microsoft_graph_shape() -> None:
     payload = OutlookEventPayloadBuilder(
         OutlookEventPresentation(
-            categories=("Sports",),
             reminder_minutes_before_start=30,
             show_as="tentative",
         )
@@ -439,16 +612,121 @@ def test_graph_serialization_uses_expected_microsoft_graph_shape() -> None:
 
     graph_payload = payload.to_graph_dict()
 
-    assert graph_payload["body"]["contentType"] == "text"
+    assert graph_payload["body"]["contentType"] == "html"
     assert graph_payload["start"] == {
-        "dateTime": "2026-08-21T19:00:00",
-        "timeZone": "Europe/London",
+        "dateTime": "2026-08-21T20:00:00",
+        "timeZone": DEFAULT_OUTLOOK_GRAPH_TIME_ZONE,
     }
     assert graph_payload["location"] == {"displayName": "Emirates Stadium, London, GB"}
     assert graph_payload["isAllDay"] is False
     assert graph_payload["isReminderOn"] is True
     assert graph_payload["reminderMinutesBeforeStart"] == 30
     assert graph_payload["showAs"] == "tentative"
+
+
+def test_build_renders_bounded_cid_images_without_changing_text_fallback() -> None:
+    aggregate = make_aggregate()
+    builder = OutlookEventPayloadBuilder()
+    text_only = builder.build(aggregate)
+    with_images = builder.build(
+        aggregate,
+        inline_images=(
+            OutlookInlineImage("competition", "competition@example", "League"),
+            OutlookInlineImage("home", "home@example", "Arsenal & Co"),
+            OutlookInlineImage("away", "away@example", "Liverpool"),
+            OutlookInlineImage("final", "final@example", "Final"),
+        ),
+    )
+
+    assert "cid:" not in text_only.body
+    assert "vertical-align:middle" not in text_only.body
+    assert with_images.body.count("<img ") == 7
+    assert 'src="cid:competition@example"' in with_images.body
+    assert 'src="cid:home@example"' in with_images.body
+    assert 'alt="Arsenal &amp; Co"' in with_images.body
+    assert 'alt="League" width="44" height="44"' in with_images.body
+    assert "height:44px;max-height:44px" in with_images.body
+    assert with_images.body.count('width="44" height="44"') == 3
+    assert with_images.body.count("height:44px;max-height:44px") == 3
+    assert with_images.body.count('width="24" height="24"') == 1
+    assert with_images.body.count("height:24px;max-height:24px") == 1
+    assert with_images.body.count('width="30" height="30"') == 3
+    assert with_images.body.count("height:30px;max-height:30px") == 3
+    assert with_images.body.count('src="cid:competition@example"') == 2
+    assert with_images.body.count('src="cid:home@example"') == 2
+    assert with_images.body.count('src="cid:away@example"') == 2
+
+
+def test_build_places_participant_logos_beside_their_title_names() -> None:
+    payload = OutlookEventPayloadBuilder().build(
+        make_aggregate(),
+        inline_images=(
+            OutlookInlineImage("home", "home@example", "Arsenal & Co"),
+            OutlookInlineImage("away", "away@example", "Liverpool"),
+        ),
+    )
+
+    assert payload.body.count('src="cid:home@example"') == 2
+    assert payload.body.count('src="cid:away@example"') == 2
+    home_logo = payload.body.index('alt="Arsenal &amp; Co" width="44" height="44"')
+    title = payload.body.index("Arsenal vs Liverpool", home_logo)
+    away_logo = payload.body.index('alt="Liverpool" width="44" height="44"')
+    banner = payload.body.index("background:#f3f6fb;border-left:4px solid #2563eb")
+    event_details = payload.body.index(">Event details</h3>", banner)
+    assert banner < home_logo < title < away_logo < event_details
+    assert "line-height:0;padding:0 10px 0 0;vertical-align:middle;" in payload.body
+    assert 'padding:0;vertical-align:middle;">' in payload.body
+    assert "line-height:0;padding:0 0 0 10px;vertical-align:middle;" in payload.body
+    assert 'alt="Arsenal &amp; Co" width="30" height="30"' in payload.body
+    assert 'alt="Liverpool" width="30" height="30"' in payload.body
+
+
+def test_build_uses_two_renderings_for_one_participant_attachment() -> None:
+    payload = OutlookEventPayloadBuilder().build(
+        make_aggregate(),
+        inline_images=(OutlookInlineImage("home", "home@example", "Arsenal"),),
+    )
+
+    top_label_style = (
+        "border-bottom:1px solid #e5e7eb;font-weight:600;"
+        "padding:4px 12px 4px 0;vertical-align:top;width:120px;"
+    )
+
+    logo = payload.body.index('alt="Arsenal" width="44" height="44"')
+    name = payload.body.index("Arsenal vs Liverpool", logo)
+    assert logo < name
+    middle_label_style = (
+        "border-bottom:1px solid #e5e7eb;font-weight:600;"
+        "padding:4px 12px 4px 0;vertical-align:middle;width:120px;"
+    )
+    assert f'<td style="{middle_label_style}">home:</td>' in payload.body
+    assert f'<td style="{top_label_style}">away:</td>' in payload.body
+    assert payload.body.count('src="cid:home@example"') == 2
+    assert payload.body.count('alt="Arsenal" width="44" height="44"') == 1
+    assert payload.body.count('alt="Arsenal" width="30" height="30"') == 1
+
+
+def test_build_reuses_competition_attachment_in_event_details() -> None:
+    payload = OutlookEventPayloadBuilder().build(
+        make_aggregate(),
+        inline_images=(
+            OutlookInlineImage("competition", "competition@example", "League"),
+        ),
+    )
+
+    header_logo = payload.body.index('alt="League" width="44" height="44"')
+    event_details = payload.body.index(">Event details</h3>", header_logo)
+    competition_row = payload.body.index(">Competition:</td>", event_details)
+    detail_logo = payload.body.index(
+        'alt="League" width="24" height="24"',
+        competition_row,
+    )
+    competition_name = payload.body.index(">Premier League</td>", detail_logo)
+
+    assert (
+        header_logo < event_details < competition_row < detail_logo < competition_name
+    )
+    assert payload.body.count('src="cid:competition@example"') == 2
 
 
 def test_payload_is_immutable() -> None:

@@ -172,6 +172,7 @@ same calendar. Do not target a general-purpose personal calendar.
 | --- | --- | --- |
 | `TZ` | `Europe/Vienna` in Compose | Operational container timezone; canonical fixture timestamps remain UTC |
 | `DATABASE_PATH` | `/data/sports.db` | SQLite file inside the persistent volume |
+| `MEDIA_ROOT` | `/data/media` | Rights-controlled normalized assets; keep on the same isolated persistent volume as SQLite |
 | `LOG_LEVEL` | `INFO` | Python logging level; never use logs to expose configuration secrets |
 | `HEARTBEAT_INTERVAL` | `300` | Positive interval for the independent Outlook calendar synchronization job |
 | `M365_TENANT_ID` | none | Required deployment secret/reference for Graph authentication |
@@ -228,6 +229,12 @@ The SQLite database is located inside the container at
 /data/sports.db
 ```
 
+Rights-controlled normalized media assets are stored at `/data/media` by
+default. The registry metadata is in SQLite, so `/data/sports.db` and
+`/data/media` form one recoverable state unit. Back up and restore them from the
+same stopped-instance snapshot. See
+[Rights-controlled media asset registry](media-asset-registry.md).
+
 Removing the container does **not** remove the database.
 
 Only the following command removes persistent data:
@@ -240,8 +247,9 @@ This command should only be used when a complete reset is intended.
 
 ### Backup before upgrade
 
-Stop the service before copying SQLite so the backup is transactionally
-consistent:
+Stop the service before copying persistent state so the backup is
+transactionally consistent. Before Phase 8 media assets exist, the following
+legacy example copies only SQLite:
 
 ```bash
 mkdir -p backups
@@ -256,6 +264,13 @@ docker compose start calendar-sync
 
 Store the backup outside the Docker volume and verify that the copied file is
 non-empty. Never use `docker compose down --volumes` during an upgrade.
+
+After migrations `011_create_media_assets` and
+`012_create_calendar_event_asset_attachments`, copy the complete `/data` state
+instead of only the database. Verify the copied database with
+`PRAGMA quick_check` and keep a private SHA-256 manifest for the database and
+all files below `media/`. Restore both from the same snapshot; a database and
+media directory from different points in time are not a valid recovery pair.
 
 ### Upgrade to v0.4.0-alpha.1
 
@@ -371,13 +386,14 @@ If a full rollback is required:
 
 1. stop the application;
 2. preserve a separate copy of the current database for investigation;
-3. restore the verified pre-upgrade database backup into the named volume;
+3. restore the verified pre-upgrade database and, when present, its matching
+   media-directory backup into the named volume;
 4. restore the previously released source tag;
 5. start exactly one instance and verify health, logs, and calendar targeting.
 
 Restoring a backup discards all state recorded after that backup, including
-fixture observations, mappings, and run history. Do not perform it without an
-explicit operational decision.
+fixture observations, mappings, run history, and media-registry changes. Do
+not perform it without an explicit operational decision.
 
 ---
 
@@ -607,6 +623,15 @@ and run the strict read-only profile after convergence:
 
 ```bash
 python -m app.operations.staging_evidence --database /data/sports.db --limit 50 --validate-phase-5-candidate
+```
+
+For the Phase 8 presentation, reminder, and media candidate, follow
+[`phase-8-staging-validation.md`](phase-8-staging-validation.md) and run the
+strict read-only profile only after the private reminder and approved media
+tests have converged:
+
+```bash
+python -m app.operations.staging_evidence --database /data/sports.db --limit 120 --validate-phase-8-candidate
 ```
 
 The command opens SQLite in read-only mode and reports only database integrity,

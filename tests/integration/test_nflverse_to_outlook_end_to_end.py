@@ -50,6 +50,7 @@ from app.providers.nflverse.models import parse_snapshot
 from app.providers.nflverse.profiles import NFL_2026_REGULAR_SEASON_PROFILE
 from app.synchronization.event_synchronizer import EventSynchronizer
 from app.synchronization.outlook_event_payload_builder import (
+    DEFAULT_OUTLOOK_GRAPH_TIME_ZONE,
     OutlookEventPayloadBuilder,
     OutlookEventPresentation,
 )
@@ -233,6 +234,21 @@ def graph_body(operation: CapturedGraphOperation) -> str:
     return content
 
 
+def graph_subject(operation: CapturedGraphOperation) -> str:
+    assert operation.payload is not None
+    subject = operation.payload["subject"]
+    assert isinstance(subject, str)
+    return subject
+
+
+def graph_categories(operation: CapturedGraphOperation) -> tuple[str, ...]:
+    assert operation.payload is not None
+    categories = operation.payload["categories"]
+    assert isinstance(categories, list)
+    assert all(isinstance(category, str) for category in categories)
+    return tuple(categories)
+
+
 def graph_start(operation: CapturedGraphOperation) -> datetime:
     assert operation.payload is not None
     start = operation.payload["start"]
@@ -241,7 +257,8 @@ def graph_start(operation: CapturedGraphOperation) -> datetime:
     time_zone = start["timeZone"]
     assert isinstance(date_time, str)
     assert isinstance(time_zone, str)
-    return datetime.fromisoformat(date_time).replace(tzinfo=ZoneInfo(time_zone))
+    assert time_zone == DEFAULT_OUTLOOK_GRAPH_TIME_ZONE
+    return datetime.fromisoformat(date_time).replace(tzinfo=VIENNA)
 
 
 def graph_end(operation: CapturedGraphOperation) -> datetime:
@@ -252,7 +269,8 @@ def graph_end(operation: CapturedGraphOperation) -> datetime:
     time_zone = end["timeZone"]
     assert isinstance(date_time, str)
     assert isinstance(time_zone, str)
-    return datetime.fromisoformat(date_time).replace(tzinfo=ZoneInfo(time_zone))
+    assert time_zone == DEFAULT_OUTLOOK_GRAPH_TIME_ZONE
+    return datetime.fromisoformat(date_time).replace(tzinfo=VIENNA)
 
 
 def test_nfl_snapshot_synchronizes_272_events_and_is_idempotent(
@@ -273,11 +291,19 @@ def test_nfl_snapshot_synchronizes_272_events_and_is_idempotent(
     assert first_operation_count == 272
     assert {operation.method for operation in harness.graph.operations} == {"POST"}
     assert all(
+        graph_subject(operation).startswith("🏈 ")
+        for operation in harness.graph.operations
+    )
+    assert all(
+        graph_categories(operation) == ("National Football League",)
+        for operation in harness.graph.operations
+    )
+    assert all(
         "Schedule data provided by nflverse under CC BY 4.0" in graph_body(operation)
         for operation in harness.graph.operations
     )
     assert all(
-        "Notice: Subject to NFL flex scheduling." in graph_body(operation)
+        "Subject to NFL flex scheduling." in graph_body(operation)
         for operation in harness.graph.operations
     )
     assert all(
@@ -379,7 +405,7 @@ def test_changed_operator_notice_updates_one_stable_outlook_event(
     operation = harness.graph.operations[-1]
     assert operation.method == "PATCH"
     assert operation.event_id == before.outlook_event_id
-    assert "Notice: Schedule time confirmed." in graph_body(operation)
+    assert "Schedule time confirmed." in graph_body(operation)
     assert after.outlook_event_id == before.outlook_event_id
     assert after.transaction_id == before.transaction_id
 

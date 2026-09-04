@@ -65,12 +65,17 @@ from app.database.competitions_catalog import initialize_competitions_catalog
 from app.database.competitions_repository import CompetitionsRepository
 from app.database.data_sources_repository import DataSourcesRepository
 from app.database.database import Database
+from app.database.event_asset_attachments_repository import (
+    EventAssetAttachmentsRepository,
+)
 from app.database.event_participants_repository import EventParticipantsRepository
 from app.database.event_results_repository import EventResultsRepository
 from app.database.event_statistics_repository import EventStatisticsRepository
 from app.database.fixture_import_repository import FixtureImportRepository
+from app.database.media_assets_repository import MediaAssetsRepository
 from app.database.participants_catalog import initialize_participants_catalog
 from app.database.participants_repository import ParticipantsRepository
+from app.database.reminder_rules_repository import ReminderRulesRepository
 from app.database.season_participants_repository import SeasonParticipantsRepository
 from app.database.seasons_catalog import initialize_seasons_catalog
 from app.database.seasons_repository import SeasonsRepository
@@ -89,6 +94,8 @@ from app.database.synchronization_query_repository import (
 from app.graph.authentication import GraphTokenProvider
 from app.graph.client import GraphClient
 from app.logging.logger import configure_logging
+from app.media.asset_service import MediaAssetService
+from app.media.event_asset_selector import EventAssetSelector
 from app.providers.api_football.catalog_adapter import ApiFootballCatalogAdapter
 from app.providers.api_football.client import ApiFootballClient
 from app.providers.api_football.fixture_adapter import ApiFootballFixtureAdapter
@@ -117,6 +124,8 @@ from app.providers.openligadb.profiles import (
     get_competition_profile as get_openligadb_competition_profile,
 )
 from app.scheduler.scheduler import ScheduledJob, Scheduler
+from app.synchronization.event_media_synchronizer import EventMediaSynchronizer
+from app.synchronization.event_reminder_resolver import EventReminderResolver
 from app.synchronization.event_synchronizer import EventSynchronizer
 from app.synchronization.outlook_event_payload_builder import (
     OutlookEventPayloadBuilder,
@@ -289,6 +298,20 @@ class ApplicationContainer:
         self.participants_repository = ParticipantsRepository(
             self.settings.database_path
         )
+        self.reminder_rules_repository = ReminderRulesRepository(
+            self.settings.database_path
+        )
+        self.media_assets_repository = MediaAssetsRepository(
+            self.settings.database_path
+        )
+        self.media_asset_service = MediaAssetService(
+            self.media_assets_repository,
+            self.settings.media_root,
+        )
+        self.event_asset_attachments_repository = EventAssetAttachmentsRepository(
+            self.settings.database_path
+        )
+        self.event_asset_selector = EventAssetSelector(self.media_assets_repository)
         self.synchronization_query_repository = SynchronizationQueryRepository(
             self.settings.database_path
         )
@@ -651,11 +674,27 @@ class ApplicationContainer:
             if self.nflverse_import_orchestrator is not None
             else None
         )
-        self.outlook_event_payload_builder = OutlookEventPayloadBuilder()
+        self.event_reminder_resolver = EventReminderResolver(
+            self.reminder_rules_repository,
+            logger=self.logger,
+        )
+        self.outlook_event_payload_builder = OutlookEventPayloadBuilder(
+            reminder_resolver=self.event_reminder_resolver,
+        )
+        self.event_media_synchronizer = EventMediaSynchronizer(
+            selector=self.event_asset_selector,
+            asset_service=self.media_asset_service,
+            attachments_repository=self.event_asset_attachments_repository,
+            payload_builder=self.outlook_event_payload_builder,
+            graph_client=self.graph_client,
+            logger=self.logger,
+        )
         self.event_synchronizer = EventSynchronizer(
             payload_builder=self.outlook_event_payload_builder,
             graph_client=self.graph_client,
             mappings_repository=self.calendar_event_mappings_repository,
+            media_synchronizer=self.event_media_synchronizer,
+            logger=self.logger,
         )
         self.synchronization_orchestrator = SynchronizationOrchestrator(
             query_repository=self.synchronization_query_repository,

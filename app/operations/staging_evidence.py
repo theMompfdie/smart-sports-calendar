@@ -73,6 +73,24 @@ class SafeFixtureScopeSummary:
 
 
 @dataclass(frozen=True)
+class SafePhase8ProjectionSummary:
+    current_reminder_rules_by_scope: dict[str, int]
+    active_reminder_rules_by_scope: dict[str, int]
+    media_assets_by_state: dict[str, int]
+    active_media_assets_by_owner_type: dict[str, int]
+    event_attachments_by_status: dict[str, int]
+    synced_event_attachments_by_slot: dict[str, int]
+    event_attachments_pending_convergence: int
+
+
+@dataclass(frozen=True)
+class SafeRetiredLocalAuditSummary:
+    sports_events: int = 0
+    calendar_mappings: int = 0
+    event_attachments: int = 0
+
+
+@dataclass(frozen=True)
 class StagingEvidence:
     database_quick_check: str
     schema_version: str | None
@@ -83,6 +101,8 @@ class StagingEvidence:
     calendar_mappings_by_status: dict[str, int]
     recent_runs: tuple[SafeRunSummary, ...]
     calendar_mappings_revision_pending: int = 0
+    phase_8_projection: SafePhase8ProjectionSummary | None = None
+    retired_local_audit: SafeRetiredLocalAuditSummary | None = None
 
 
 class StagingEvidenceValidationError(RuntimeError):
@@ -262,7 +282,11 @@ def collect_staging_evidence(
             FROM calendar_event_mappings AS mapping
             JOIN sports_events AS event ON event.id = mapping.event_id
             WHERE event.deleted_at IS NULL
-              AND mapping.last_synced_revision < event.sync_revision
+              AND (
+                  mapping.last_synced_revision < event.sync_revision
+                  OR mapping.last_synced_presentation_revision <
+                      mapping.presentation_revision
+              )
             """
         ).fetchone()
         authority_rows = connection.execute(
@@ -317,6 +341,10 @@ def collect_staging_evidence(
             """,
             (limit,),
         ).fetchall()
+        retired_local_audit = _retired_local_audit_summary(connection)
+        phase_8_projection = _phase_8_projection_summary(
+            connection, retired_event_attachments=retired_local_audit.event_attachments
+        )
 
     if quick_check is None:
         raise RuntimeError("SQLite quick check returned no result.")
@@ -348,6 +376,75 @@ def collect_staging_evidence(
             int(revision_pending_row[0]) if revision_pending_row is not None else 0
         ),
         recent_runs=tuple(_safe_run_summary(row) for row in run_rows),
+        phase_8_projection=phase_8_projection,
+        retired_local_audit=retired_local_audit,
+    )
+
+
+def _retired_local_audit_summary(
+    connection: sqlite3.Connection,
+) -> SafeRetiredLocalAuditSummary:
+    # Keep raw totals intact. Only Phase 8 discounts this fully terminal subset.
+    row = connection.execute(
+        """
+        WITH retired_events AS (
+            SELECT e.id FROM sports_events e
+            WHERE e.deleted_at IS NOT NULL
+              AND e.competition_id IS NULL AND e.season_id IS NULL
+              AND e.parent_event_id IS NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM sports_events child WHERE child.parent_event_id = e.id
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM source_mappings s
+                  WHERE s.object_type = 'event' AND s.internal_id = e.id
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM reminder_rules r
+                  WHERE r.event_id = e.id AND r.deleted_at IS NULL
+              )
+              AND EXISTS (
+                  SELECT 1 FROM calendar_event_mappings m WHERE m.event_id = e.id
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM calendar_event_mappings m
+                  WHERE m.event_id = e.id
+                    AND (m.sync_status != 'deleted' OR m.last_sync_error IS NOT NULL)
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM calendar_event_asset_attachments a
+                  JOIN calendar_event_mappings m ON m.id = a.calendar_event_mapping_id
+                  WHERE m.event_id = e.id AND (
+                      a.status != 'event_deleted'
+                      OR a.desired_asset_id IS NOT NULL
+                      OR a.desired_sha256 IS NOT NULL
+                      OR a.synchronized_asset_id IS NOT NULL
+                      OR a.synchronized_sha256 IS NOT NULL
+                      OR a.content_id IS NOT NULL
+                      OR a.outlook_attachment_id IS NOT NULL
+                      OR a.pending_asset_id IS NOT NULL
+                      OR a.pending_sha256 IS NOT NULL
+                      OR a.pending_content_id IS NOT NULL
+                      OR a.pending_outlook_attachment_id IS NOT NULL
+                      OR a.obsolete_outlook_attachment_id IS NOT NULL
+                      OR a.last_error IS NOT NULL
+                  )
+              )
+        ), retired_mappings AS (
+            SELECT m.id FROM calendar_event_mappings m
+            JOIN retired_events e ON e.id = m.event_id
+        )
+        SELECT
+            (SELECT COUNT(*) FROM retired_events),
+            (SELECT COUNT(*) FROM retired_mappings),
+            (SELECT COUNT(*) FROM calendar_event_asset_attachments a
+             JOIN retired_mappings m ON m.id = a.calendar_event_mapping_id)
+        """
+    ).fetchone()
+    return SafeRetiredLocalAuditSummary(
+        sports_events=int(row[0]),
+        calendar_mappings=int(row[1]),
+        event_attachments=int(row[2]),
     )
 
 
@@ -473,7 +570,11 @@ def _fixture_scope_summary(
         WHERE event.competition_id = ?
           AND event.season_id = ?
           AND event.deleted_at IS NULL
-          AND mapping.last_synced_revision < event.sync_revision
+          AND (
+              mapping.last_synced_revision < event.sync_revision
+              OR mapping.last_synced_presentation_revision <
+                  mapping.presentation_revision
+          )
         """,
         (authority["competition_id"], authority["season_id"]),
     ).fetchone()
@@ -586,6 +687,118 @@ def _safe_count_map(rows: Sequence[sqlite3.Row], key: str) -> dict[str, int]:
     return result
 
 
+def _phase_8_projection_summary(
+    connection: sqlite3.Connection,
+    *,
+    retired_event_attachments: int = 0,
+) -> SafePhase8ProjectionSummary:
+    current_reminder_rows = connection.execute(
+        """
+        SELECT scope, COUNT(*) AS item_count
+        FROM reminder_rules
+        WHERE deleted_at IS NULL
+        GROUP BY scope
+        ORDER BY scope
+        """
+    ).fetchall()
+    active_reminder_rows = connection.execute(
+        """
+        SELECT scope, COUNT(*) AS item_count
+        FROM reminder_rules
+        WHERE deleted_at IS NULL AND is_active = 1
+        GROUP BY scope
+        ORDER BY scope
+        """
+    ).fetchall()
+    media_state_rows = connection.execute(
+        """
+        SELECT
+            CASE
+                WHEN is_active = 1 THEN 'active'
+                WHEN is_approved = 1 THEN 'approved_inactive'
+                ELSE 'pending'
+            END AS asset_state,
+            COUNT(*) AS item_count
+        FROM media_assets
+        GROUP BY asset_state
+        ORDER BY asset_state
+        """
+    ).fetchall()
+    active_media_owner_rows = connection.execute(
+        """
+        SELECT owner_type, COUNT(*) AS item_count
+        FROM media_assets
+        WHERE is_active = 1 AND is_approved = 1
+        GROUP BY owner_type
+        ORDER BY owner_type
+        """
+    ).fetchall()
+    attachment_status_rows = connection.execute(
+        """
+        SELECT status, COUNT(*) AS item_count
+        FROM calendar_event_asset_attachments
+        GROUP BY status
+        ORDER BY status
+        """
+    ).fetchall()
+    attachment_slot_rows = connection.execute(
+        """
+        SELECT slot, COUNT(*) AS item_count
+        FROM calendar_event_asset_attachments
+        WHERE status = 'synced'
+          AND desired_asset_id IS NOT NULL
+          AND synchronized_asset_id = desired_asset_id
+          AND desired_sha256 IS NOT NULL
+          AND synchronized_sha256 = desired_sha256
+          AND content_id IS NOT NULL
+          AND outlook_attachment_id IS NOT NULL
+        GROUP BY slot
+        ORDER BY slot
+        """
+    ).fetchall()
+    pending_attachment_row = connection.execute(
+        """
+        SELECT COUNT(*)
+        FROM calendar_event_asset_attachments
+        WHERE status != 'synced'
+           OR desired_asset_id IS NOT synchronized_asset_id
+           OR desired_sha256 IS NOT synchronized_sha256
+           OR pending_asset_id IS NOT NULL
+           OR pending_sha256 IS NOT NULL
+           OR pending_content_id IS NOT NULL
+           OR pending_outlook_attachment_id IS NOT NULL
+           OR obsolete_outlook_attachment_id IS NOT NULL
+        """
+    ).fetchone()
+    return SafePhase8ProjectionSummary(
+        current_reminder_rules_by_scope=_safe_count_map(
+            current_reminder_rows,
+            "scope",
+        ),
+        active_reminder_rules_by_scope=_safe_count_map(
+            active_reminder_rows,
+            "scope",
+        ),
+        media_assets_by_state=_safe_count_map(media_state_rows, "asset_state"),
+        active_media_assets_by_owner_type=_safe_count_map(
+            active_media_owner_rows,
+            "owner_type",
+        ),
+        event_attachments_by_status=_safe_count_map(
+            attachment_status_rows,
+            "status",
+        ),
+        synced_event_attachments_by_slot=_safe_count_map(
+            attachment_slot_rows,
+            "slot",
+        ),
+        event_attachments_pending_convergence=(
+            (0 if pending_attachment_row is None else int(pending_attachment_row[0]))
+            - retired_event_attachments
+        ),
+    )
+
+
 def validate_phase_5_candidate(evidence: StagingEvidence) -> None:
     _validate_candidate(
         evidence,
@@ -619,12 +832,68 @@ def validate_phase_7_nfl_candidate(evidence: StagingEvidence) -> None:
     )
 
 
+def validate_phase_8_candidate(evidence: StagingEvidence) -> None:
+    _validate_candidate(
+        evidence,
+        requirements=PHASE_7_NFL_AUTHORITIES,
+        candidate_name="Phase 8",
+        require_write_free_calendar_run=True,
+        allow_retired_local_audit=True,
+    )
+    errors: list[str] = []
+    if evidence.schema_version != "012_create_calendar_event_asset_attachments":
+        errors.append("database schema is not the Phase 8 candidate schema")
+    projection = evidence.phase_8_projection
+    if projection is None:
+        errors.append("Phase 8 projection evidence is missing")
+    else:
+        active_rules = projection.active_reminder_rules_by_scope
+        if active_rules.get("global", 0) < 1 or active_rules.get("participant", 0) < 2:
+            errors.append("Phase 8 reminder profile is incomplete")
+        active_media = projection.active_media_assets_by_owner_type
+        if (
+            active_media.get("project", 0) < 1
+            or active_media.get("competition", 0) < 1
+            or active_media.get("participant", 0) < 2
+        ):
+            errors.append("Phase 8 active media coverage is incomplete")
+        retired = evidence.retired_local_audit or SafeRetiredLocalAuditSummary()
+        attachment_statuses = _subtract_retired_status(
+            projection.event_attachments_by_status,
+            "event_deleted",
+            retired.event_attachments,
+        )
+        if not attachment_statuses:
+            errors.append("Phase 8 event attachment evidence is missing")
+        elif set(attachment_statuses) != {"synced"}:
+            errors.append("Phase 8 event attachments are not fully synchronized")
+        if projection.event_attachments_pending_convergence != 0:
+            errors.append("Phase 8 event attachments have pending convergence")
+        slots = projection.synced_event_attachments_by_slot
+        if any(slots.get(slot, 0) < 1 for slot in ("competition", "home", "away")):
+            errors.append("Phase 8 required attachment slots are missing")
+    if errors:
+        raise StagingEvidenceValidationError("; ".join(errors))
+
+
+def _subtract_retired_status(
+    statuses: Mapping[str, int], status: str, retired_count: int
+) -> dict[str, int]:
+    remaining = dict(statuses)
+    if retired_count:
+        remaining[status] = remaining.get(status, 0) - retired_count
+        if remaining[status] == 0:
+            del remaining[status]
+    return remaining
+
+
 def _validate_candidate(
     evidence: StagingEvidence,
     *,
     requirements: Mapping[str, CandidateAuthorityRequirement],
     candidate_name: str,
     require_write_free_calendar_run: bool = False,
+    allow_retired_local_audit: bool = False,
 ) -> None:
     errors: list[str] = []
     if evidence.database_quick_check != "ok":
@@ -652,11 +921,28 @@ def _validate_candidate(
     scoped_fixture_total = sum(
         scope.fixtures_total for scope in evidence.fixture_scopes
     )
-    if evidence.sports_events != scoped_fixture_total:
+    retired = (
+        evidence.retired_local_audit
+        if allow_retired_local_audit and evidence.retired_local_audit is not None
+        else SafeRetiredLocalAuditSummary()
+    )
+    if (
+        retired.sports_events < 0
+        or retired.calendar_mappings < retired.sports_events
+        or retired.event_attachments < 0
+        or (
+            retired.sports_events == 0
+            and (retired.calendar_mappings != 0 or retired.event_attachments != 0)
+        )
+    ):
+        errors.append("retired local audit counts are inconsistent")
+    if evidence.sports_events - retired.sports_events != scoped_fixture_total:
         errors.append(
             f"database contains events outside the {candidate_name} candidate scopes"
         )
-    if evidence.calendar_mappings_by_status != {"synced": scoped_fixture_total}:
+    if _subtract_retired_status(
+        evidence.calendar_mappings_by_status, "deleted", retired.calendar_mappings
+    ) != {"synced": scoped_fixture_total}:
         errors.append("calendar mappings are not globally converged")
     if evidence.calendar_mappings_revision_pending != 0:
         errors.append("calendar mapping revisions are not globally converged")
@@ -893,6 +1179,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             "converged."
         ),
     )
+    validation_group.add_argument(
+        "--validate-phase-8-candidate",
+        action="store_true",
+        help=(
+            "Require the released Phase 7 authority set plus the Phase 8 schema, "
+            "runtime reminder profile, approved media coverage, synchronized "
+            "inline attachments, and a write-free calendar cycle."
+        ),
+    )
     arguments = parser.parse_args(argv)
 
     try:
@@ -908,6 +1203,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             validate_champions_league_candidate(evidence)
         elif arguments.validate_phase_7_nfl_candidate:
             validate_phase_7_nfl_candidate(evidence)
+        elif arguments.validate_phase_8_candidate:
+            validate_phase_8_candidate(evidence)
     except (FileNotFoundError, RuntimeError, ValueError, sqlite3.Error) as error:
         parser.exit(status=1, message=f"staging evidence failed: {error}\n")
 

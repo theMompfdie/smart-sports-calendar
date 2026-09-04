@@ -63,7 +63,7 @@ def synchronization_harness(
     sport = sports_repository.upsert(
         sport_key="football",
         name="Football",
-        icon="football",
+        icon="⚽",
     )
 
     competition = competitions_repository.upsert(

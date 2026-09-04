@@ -18,6 +18,7 @@ def write_ignore_files(root: Path) -> None:
                 "exports/",
                 "logs/",
                 "manifests/private/",
+                "/media/",
                 "private/",
                 "provider-data/",
                 "raw-provider-data/",
@@ -38,6 +39,7 @@ def write_ignore_files(root: Path) -> None:
                 "exports",
                 "logs",
                 "manifests",
+                "media/**",
                 "private",
                 "provider-data",
                 "raw-provider-data",
@@ -95,6 +97,27 @@ def test_audit_rejects_private_runtime_files_and_environment(tmp_path: Path) -> 
     assert "private runtime-data file type is tracked" in rendered
     assert "private environment file is tracked" in rendered
     assert "not-for-source-control" not in rendered
+
+
+def test_audit_rejects_root_media_without_rejecting_application_package(
+    tmp_path: Path,
+) -> None:
+    write_ignore_files(tmp_path)
+
+    findings = audit_repository(
+        tmp_path,
+        (
+            PurePosixPath("media/assets/ab/example.png"),
+            PurePosixPath("app/media/asset_service.py"),
+        ),
+    )
+
+    assert any(
+        finding.path == "media/assets/ab/example.png"
+        and finding.reason == "private media directory is tracked"
+        for finding in findings
+    )
+    assert not any(finding.path == "app/media/asset_service.py" for finding in findings)
 
 
 def test_audit_rejects_secret_assignments_without_echoing_values(

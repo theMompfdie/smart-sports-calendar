@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -8,6 +9,7 @@ from app.database.calendar_event_mappings_repository import (
 from app.database.synchronization_query_repository import SynchronizationEvent
 from app.graph.client import GraphClient, OutlookEventNotFoundError
 from app.synchronization.content_hash import calculate_content_hash
+from app.synchronization.event_media_synchronizer import EventMediaSynchronizer
 from app.synchronization.outlook_event_payload_builder import (
     OutlookEventPayload,
     OutlookEventPayloadBuilder,
@@ -30,6 +32,7 @@ class EventSynchronizationResult:
     calendar_id: str
     outlook_event_id: str | None
     content_hash: str | None
+    core_event_written: bool = False
 
 
 class EventSynchronizationError(RuntimeError):
@@ -42,12 +45,48 @@ class EventSynchronizer:
         payload_builder: OutlookEventPayloadBuilder,
         graph_client: GraphClient,
         mappings_repository: CalendarEventMappingsRepository,
+        media_synchronizer: EventMediaSynchronizer | None = None,
+        logger: logging.Logger | None = None,
     ) -> None:
         self._payload_builder = payload_builder
         self._graph_client = graph_client
         self._mappings_repository = mappings_repository
+        self._media_synchronizer = media_synchronizer
+        self._logger = logger or logging.getLogger(__name__)
 
     def synchronize_event(
+        self,
+        synchronization_event: SynchronizationEvent,
+        calendar_id: str,
+    ) -> EventSynchronizationResult:
+        result = self._synchronize_core(synchronization_event, calendar_id)
+        if self._media_synchronizer is None:
+            return result
+        mapping = self._mappings_repository.get_by_event(
+            synchronization_event.event.id,
+            calendar_id,
+        )
+        if mapping is None:
+            return result
+        try:
+            if result.status is EventSynchronizationStatus.DELETED:
+                self._media_synchronizer.mark_event_deleted(mapping.id)
+            elif result.outlook_event_id is not None:
+                self._media_synchronizer.reconcile(
+                    synchronization_event,
+                    mapping,
+                    core_event_written=result.core_event_written,
+                )
+        except Exception as error:
+            self._logger.warning(
+                "Optional Outlook media reconciliation did not complete: "
+                "event_id=%s failure=%s",
+                synchronization_event.event.id,
+                type(error).__name__,
+            )
+        return result
+
+    def _synchronize_core(
         self,
         synchronization_event: SynchronizationEvent,
         calendar_id: str,
@@ -129,31 +168,38 @@ class EventSynchronizer:
                 content_hash=None,
             )
 
+        mapping_was_created = False
+        if mapping is None:
+            try:
+                mapping = self._mappings_repository.create_pending(
+                    event_id=event.id,
+                    calendar_id=calendar_id,
+                )
+            except Exception as error:
+                raise EventSynchronizationError(
+                    f"Pending calendar mapping could not be created for "
+                    f"event {event.id}."
+                ) from error
+            mapping_was_created = True
+
         try:
             payload = self._payload_builder.build(synchronization_event)
             content_hash = calculate_content_hash(payload)
         except Exception as error:
+            self._record_failure(mapping, error)
             raise EventSynchronizationError(
                 f"Outlook payload preparation failed for event {event.id}."
             ) from error
 
-        if mapping_was_revived:
+        if mapping_was_revived or mapping_was_created:
             return self._create_event(
                 event_id=event.id,
                 event_revision=event.sync_revision,
+                presentation_revision=mapping.presentation_revision,
                 calendar_id=calendar_id,
                 payload=payload,
                 content_hash=content_hash,
                 mapping=mapping,
-            )
-
-        if mapping is None:
-            return self._create_event(
-                event_id=event.id,
-                event_revision=event.sync_revision,
-                calendar_id=calendar_id,
-                payload=payload,
-                content_hash=content_hash,
             )
 
         if mapping.outlook_event_id is None:
@@ -169,6 +215,7 @@ class EventSynchronizer:
             return self._create_event(
                 event_id=event.id,
                 event_revision=event.sync_revision,
+                presentation_revision=mapping.presentation_revision,
                 calendar_id=calendar_id,
                 payload=payload,
                 content_hash=content_hash,
@@ -176,9 +223,25 @@ class EventSynchronizer:
             )
 
         if mapping.content_hash == content_hash:
+            if (
+                self._media_synchronizer is not None
+                and mapping.presentation_revision
+                > mapping.last_synced_presentation_revision
+            ):
+                # Persist optional work before acknowledging the core revision.
+                # Media-only template changes do not affect the core payload hash.
+                try:
+                    self._media_synchronizer.request_presentation_refresh(mapping.id)
+                except Exception as error:
+                    self._record_failure(mapping, error)
+                    raise EventSynchronizationError(
+                        "Media presentation refresh could not be queued for "
+                        f"mapping {mapping.id}."
+                    ) from error
             checked_mapping = self._mappings_repository.mark_checked(
                 mapping.id,
                 event_revision=event.sync_revision,
+                presentation_revision=mapping.presentation_revision,
             )
             if checked_mapping is None:
                 raise EventSynchronizationError(
@@ -200,6 +263,7 @@ class EventSynchronizer:
         return self._update_event(
             mapping=mapping,
             event_revision=event.sync_revision,
+            presentation_revision=mapping.presentation_revision,
             calendar_id=calendar_id,
             payload=payload,
             content_hash=content_hash,
@@ -214,23 +278,13 @@ class EventSynchronizer:
         self,
         event_id: int,
         event_revision: int,
+        presentation_revision: int,
         calendar_id: str,
         payload: OutlookEventPayload,
         content_hash: str,
-        mapping: CalendarEventMapping | None = None,
+        mapping: CalendarEventMapping,
     ) -> EventSynchronizationResult:
-        if mapping is None:
-            try:
-                mapping = self._mappings_repository.create_pending(
-                    event_id=event_id,
-                    calendar_id=calendar_id,
-                )
-            except Exception as error:
-                raise EventSynchronizationError(
-                    f"Pending calendar mapping could not be created for "
-                    f"event {event_id}."
-                ) from error
-        elif mapping.sync_status == "failed":
+        if mapping.sync_status == "failed":
             try:
                 pending_mapping = self._mappings_repository.mark_pending(
                     mapping_id=mapping.id,
@@ -260,6 +314,7 @@ class EventSynchronizer:
                 outlook_change_key=None,
                 content_hash=content_hash,
                 event_revision=event_revision,
+                presentation_revision=presentation_revision,
             )
 
             if synchronized_mapping is None:
@@ -282,12 +337,14 @@ class EventSynchronizer:
             calendar_id=calendar_id,
             outlook_event_id=event_reference.id,
             content_hash=content_hash,
+            core_event_written=True,
         )
 
     def _update_event(
         self,
         mapping: CalendarEventMapping,
         event_revision: int,
+        presentation_revision: int,
         calendar_id: str,
         payload: OutlookEventPayload,
         content_hash: str,
@@ -320,6 +377,7 @@ class EventSynchronizer:
                 outlook_change_key=mapping.outlook_change_key,
                 content_hash=content_hash,
                 event_revision=event_revision,
+                presentation_revision=presentation_revision,
             )
 
             if synchronized_mapping is None:
@@ -342,6 +400,7 @@ class EventSynchronizer:
             calendar_id=calendar_id,
             outlook_event_id=event_reference.id,
             content_hash=content_hash,
+            core_event_written=True,
         )
 
     def _delete_event(

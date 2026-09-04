@@ -11,6 +11,7 @@ from app.graph.client import (
     OutlookEventNotFoundError,
     OutlookEventReference,
 )
+from app.synchronization.event_media_synchronizer import EventMediaSynchronizer
 from app.synchronization.event_synchronizer import (
     EventSynchronizationError,
     EventSynchronizationStatus,
@@ -32,6 +33,8 @@ def create_mapping(
     outlook_change_key: str | None = "change-key-1",
     content_hash: str | None = "old-hash",
     sync_status: str = "synced",
+    presentation_revision: int = 1,
+    last_synced_presentation_revision: int = 0,
 ) -> CalendarEventMapping:
     return CalendarEventMapping(
         id=mapping_id,
@@ -47,6 +50,8 @@ def create_mapping(
         last_sync_error=None,
         created_at="2026-08-01T11:00:00+00:00",
         updated_at="2026-08-01T12:00:00+00:00",
+        presentation_revision=presentation_revision,
+        last_synced_presentation_revision=last_synced_presentation_revision,
     )
 
 
@@ -145,6 +150,7 @@ def test_synchronize_event_revives_deleted_mapping_for_reappeared_event() -> Non
         outlook_change_key=None,
         content_hash="new-hash",
         event_revision=1,
+        presentation_revision=1,
     )
 
 
@@ -175,6 +181,74 @@ def create_synchronizer() -> tuple[
         graph_client,
         mappings_repository,
     )
+
+
+def test_optional_media_failure_does_not_change_core_result() -> None:
+    payload = Mock(spec=OutlookEventPayload)
+    payload_builder = Mock(spec=OutlookEventPayloadBuilder)
+    payload_builder.build.return_value = payload
+    graph_client = Mock(spec=GraphClient)
+    mappings_repository = Mock(spec=CalendarEventMappingsRepository)
+    media = Mock(spec=EventMediaSynchronizer)
+    logger = Mock()
+    mapping = create_mapping(content_hash="same-hash")
+    mappings_repository.mark_checked.return_value = mapping
+    mappings_repository.get_by_event.return_value = mapping
+    media.reconcile.side_effect = RuntimeError("optional media unavailable")
+    synchronization_event = create_synchronization_event(mapping=mapping)
+    synchronizer = EventSynchronizer(
+        payload_builder,
+        graph_client,
+        mappings_repository,
+        media_synchronizer=media,
+        logger=logger,
+    )
+
+    with patch(
+        "app.synchronization.event_synchronizer.calculate_content_hash",
+        return_value="same-hash",
+    ):
+        result = synchronizer.synchronize_event(
+            synchronization_event,
+            "calendar-1",
+        )
+
+    assert result.status is EventSynchronizationStatus.UNCHANGED
+    media.reconcile.assert_called_once_with(
+        synchronization_event,
+        mapping,
+        core_event_written=False,
+    )
+    logger.warning.assert_called_once()
+
+
+def test_failed_media_refresh_queue_does_not_acknowledge_presentation() -> None:
+    _, _, builder, graph, mappings = create_synchronizer()
+    media = Mock(spec=EventMediaSynchronizer)
+    media.request_presentation_refresh.side_effect = RuntimeError(
+        "database unavailable"
+    )
+    synchronizer = EventSynchronizer(builder, graph, mappings, media_synchronizer=media)
+    mapping = create_mapping(
+        content_hash="same-hash",
+        presentation_revision=7,
+        last_synced_presentation_revision=6,
+    )
+    with (
+        patch(
+            "app.synchronization.event_synchronizer.calculate_content_hash",
+            return_value="same-hash",
+        ),
+        pytest.raises(EventSynchronizationError, match="could not be queued"),
+    ):
+        synchronizer.synchronize_event(
+            create_synchronization_event(mapping=mapping), "calendar-1"
+        )
+    media.request_presentation_refresh.assert_called_once_with(mapping.id)
+    mappings.mark_checked.assert_not_called()
+    mappings.mark_synced.assert_not_called()
+    graph.update_event.assert_not_called()
+    media.reconcile.assert_not_called()
 
 
 def test_synchronize_event_creates_event_without_existing_mapping() -> None:
@@ -231,6 +305,7 @@ def test_synchronize_event_creates_event_without_existing_mapping() -> None:
         outlook_change_key=None,
         content_hash="new-hash",
         event_revision=1,
+        presentation_revision=1,
     )
     mappings_repository.mark_failed.assert_not_called()
 
@@ -267,10 +342,41 @@ def test_synchronize_event_returns_unchanged_for_equal_content_hash() -> None:
     graph_client.update_event.assert_not_called()
     mappings_repository.create_pending.assert_not_called()
     mappings_repository.mark_checked.assert_called_once_with(
-        mapping.id, event_revision=1
+        mapping.id,
+        event_revision=1,
+        presentation_revision=1,
     )
     mappings_repository.mark_synced.assert_not_called()
     mappings_repository.mark_failed.assert_not_called()
+
+
+def test_presentation_drift_with_equal_hash_is_checked_without_graph_update() -> None:
+    synchronizer, _, _, graph_client, mappings_repository = create_synchronizer()
+    mapping = create_mapping(
+        content_hash="current-hash",
+        presentation_revision=7,
+        last_synced_presentation_revision=6,
+    )
+    synchronization_event = create_synchronization_event(mapping=mapping)
+    mappings_repository.mark_checked.return_value = mapping
+
+    with patch(
+        "app.synchronization.event_synchronizer.calculate_content_hash",
+        return_value="current-hash",
+    ):
+        result = synchronizer.synchronize_event(
+            synchronization_event=synchronization_event,
+            calendar_id="calendar-1",
+        )
+
+    assert result.status is EventSynchronizationStatus.UNCHANGED
+    graph_client.create_event.assert_not_called()
+    graph_client.update_event.assert_not_called()
+    mappings_repository.mark_checked.assert_called_once_with(
+        mapping.id,
+        event_revision=1,
+        presentation_revision=7,
+    )
 
 
 def test_synchronize_event_updates_changed_event() -> None:
@@ -315,6 +421,7 @@ def test_synchronize_event_updates_changed_event() -> None:
         outlook_change_key="change-key-1",
         content_hash="new-hash",
         event_revision=1,
+        presentation_revision=1,
     )
     mappings_repository.mark_failed.assert_not_called()
 
@@ -391,6 +498,7 @@ def test_synchronize_event_updates_cancelled_event() -> None:
         outlook_change_key="change-key-1",
         content_hash="cancelled-hash",
         event_revision=1,
+        presentation_revision=1,
     )
 
 
@@ -424,7 +532,9 @@ def test_synchronize_event_skips_unchanged_cancelled_event() -> None:
 
     graph_client.update_event.assert_not_called()
     mappings_repository.mark_checked.assert_called_once_with(
-        mapping.id, event_revision=1
+        mapping.id,
+        event_revision=1,
+        presentation_revision=1,
     )
     mappings_repository.mark_synced.assert_not_called()
     mappings_repository.mark_failed.assert_not_called()
@@ -609,6 +719,19 @@ def test_synchronize_event_wraps_payload_builder_error() -> None:
         mappings_repository,
     ) = create_synchronizer()
     synchronization_event = create_synchronization_event()
+    pending_mapping = create_mapping(
+        outlook_event_id=None,
+        outlook_change_key=None,
+        content_hash=None,
+        sync_status="pending",
+    )
+    mappings_repository.create_pending.return_value = pending_mapping
+    mappings_repository.mark_failed.return_value = create_mapping(
+        outlook_event_id=None,
+        outlook_change_key=None,
+        content_hash=None,
+        sync_status="failed",
+    )
     payload_builder.build.side_effect = ValueError("invalid event data")
 
     with pytest.raises(
@@ -622,7 +745,14 @@ def test_synchronize_event_wraps_payload_builder_error() -> None:
 
     graph_client.create_event.assert_not_called()
     graph_client.update_event.assert_not_called()
-    mappings_repository.create_pending.assert_not_called()
+    mappings_repository.create_pending.assert_called_once_with(
+        event_id=1,
+        calendar_id="calendar-1",
+    )
+    mappings_repository.mark_failed.assert_called_once_with(
+        mapping_id=pending_mapping.id,
+        error_message="invalid event data",
+    )
 
 
 def test_synchronize_event_wraps_content_hash_error() -> None:
@@ -634,6 +764,19 @@ def test_synchronize_event_wraps_content_hash_error() -> None:
         mappings_repository,
     ) = create_synchronizer()
     synchronization_event = create_synchronization_event()
+    pending_mapping = create_mapping(
+        outlook_event_id=None,
+        outlook_change_key=None,
+        content_hash=None,
+        sync_status="pending",
+    )
+    mappings_repository.create_pending.return_value = pending_mapping
+    mappings_repository.mark_failed.return_value = create_mapping(
+        outlook_event_id=None,
+        outlook_change_key=None,
+        content_hash=None,
+        sync_status="failed",
+    )
 
     with (
         patch(
@@ -652,7 +795,14 @@ def test_synchronize_event_wraps_content_hash_error() -> None:
 
     graph_client.create_event.assert_not_called()
     graph_client.update_event.assert_not_called()
-    mappings_repository.create_pending.assert_not_called()
+    mappings_repository.create_pending.assert_called_once_with(
+        event_id=1,
+        calendar_id="calendar-1",
+    )
+    mappings_repository.mark_failed.assert_called_once_with(
+        mapping_id=pending_mapping.id,
+        error_message="invalid payload",
+    )
 
 
 def test_synchronize_event_wraps_pending_mapping_creation_error() -> None:
@@ -1049,6 +1199,7 @@ def test_synchronize_event_retries_failed_mapping_without_outlook_event_id() -> 
         outlook_change_key=None,
         content_hash="new-hash",
         event_revision=1,
+        presentation_revision=1,
     )
 
 
@@ -1097,4 +1248,5 @@ def test_synchronize_event_reuses_pending_mapping_without_outlook_event_id() -> 
         outlook_change_key=None,
         content_hash="new-hash",
         event_revision=1,
+        presentation_revision=1,
     )

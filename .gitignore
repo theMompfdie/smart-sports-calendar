@@ -219,6 +219,7 @@ __marimo__/
 
 # SMART Sports Calendar - runtime data
 data/
+/media/
 logs/
 *.db
 *.db-journal

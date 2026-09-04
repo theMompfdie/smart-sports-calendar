@@ -17,7 +17,6 @@ class CompetitionCatalogEntry:
     country_code: str
     competition_format: CompetitionFormat
     region: str
-    calendar_category: str
 
 
 COMPETITION_CATALOG = (
@@ -29,7 +28,6 @@ COMPETITION_CATALOG = (
         country_code="GB-ENG",
         competition_format=CompetitionFormat.LEAGUE,
         region="England",
-        calendar_category="SMART | England",
     ),
     CompetitionCatalogEntry(
         sport_key="football",
@@ -39,7 +37,6 @@ COMPETITION_CATALOG = (
         country_code="DE",
         competition_format=CompetitionFormat.LEAGUE,
         region="Germany",
-        calendar_category="SMART | Germany",
     ),
     CompetitionCatalogEntry(
         sport_key="football",
@@ -49,7 +46,6 @@ COMPETITION_CATALOG = (
         country_code="GB-ENG",
         competition_format=CompetitionFormat.LEAGUE,
         region="England",
-        calendar_category="SMART | England",
     ),
     CompetitionCatalogEntry(
         sport_key="football",
@@ -59,7 +55,6 @@ COMPETITION_CATALOG = (
         country_code="DE",
         competition_format=CompetitionFormat.LEAGUE,
         region="Germany",
-        calendar_category="SMART | Germany",
     ),
     CompetitionCatalogEntry(
         sport_key="football",
@@ -69,7 +64,6 @@ COMPETITION_CATALOG = (
         country_code="DE",
         competition_format=CompetitionFormat.KNOCKOUT_CUP,
         region="Germany",
-        calendar_category="SMART | Germany",
     ),
     CompetitionCatalogEntry(
         sport_key="football",
@@ -79,7 +73,6 @@ COMPETITION_CATALOG = (
         country_code="AT",
         competition_format=CompetitionFormat.KNOCKOUT_CUP,
         region="Austria",
-        calendar_category="SMART | Austria",
     ),
     CompetitionCatalogEntry(
         sport_key="football",
@@ -89,7 +82,6 @@ COMPETITION_CATALOG = (
         country_code="INT",
         competition_format=CompetitionFormat.HYBRID_TOURNAMENT,
         region="Europe",
-        calendar_category="SMART | UEFA",
     ),
     CompetitionCatalogEntry(
         sport_key="football",
@@ -99,7 +91,6 @@ COMPETITION_CATALOG = (
         country_code="INT",
         competition_format=CompetitionFormat.HYBRID_TOURNAMENT,
         region="Europe",
-        calendar_category="SMART | UEFA",
     ),
     CompetitionCatalogEntry(
         sport_key="american_football",
@@ -109,7 +100,6 @@ COMPETITION_CATALOG = (
         country_code="US",
         competition_format=CompetitionFormat.LEAGUE,
         region="United States",
-        calendar_category="SMART | NFL",
     ),
 )
 
@@ -135,7 +125,6 @@ def initialize_competitions_catalog(
                 competition_type=entry.competition_format,
                 metadata={
                     "region": entry.region,
-                    "calendar_category": entry.calendar_category,
                 },
             )
         )

@@ -1,9 +1,72 @@
+import logging
+from dataclasses import replace
+from unittest.mock import MagicMock
+
+from app.database.reminder_rules_repository import (
+    ReminderRulesRepository,
+    ReminderRuleTarget,
+)
 from app.database.sports_events_repository import SportsEventsRepository
+from app.database.synchronization_query_repository import (
+    SynchronizationEvent,
+    SynchronizationQueryRepository,
+)
+from app.domain.reminder_rules import (
+    ReminderAction,
+    ReminderRuleWrite,
+    ReminderScope,
+)
 from app.graph.client import OutlookEventReference
+from app.synchronization.event_reminder_resolver import EventReminderResolver
+from app.synchronization.event_synchronizer import EventSynchronizer
+from app.synchronization.outlook_event_payload_builder import (
+    OutlookEventPayload,
+    OutlookEventPayloadBuilder,
+)
+from app.synchronization.synchronization_orchestrator import (
+    SynchronizationOrchestrator,
+)
+from app.synchronization.synchronization_runtime_service import (
+    SynchronizationRuntimeService,
+)
 
 from tests.integration.conftest import SynchronizationHarness
 
 CALENDAR_ID = "integration-calendar"
+
+
+class _LegacyPresentationBuilder(OutlookEventPayloadBuilder):
+    def build(
+        self,
+        synchronization_event: SynchronizationEvent,
+    ) -> OutlookEventPayload:
+        payload = super().build(synchronization_event)
+        return replace(
+            payload,
+            subject=synchronization_event.event.title,
+            body="Status: scheduled\nSport: Football",
+            body_content_type="text",
+            categories=("Football", "Premier League", "SMART Sports Calendar"),
+        )
+
+
+def _build_runtime_service(
+    harness: SynchronizationHarness,
+    payload_builder: OutlookEventPayloadBuilder,
+) -> SynchronizationRuntimeService:
+    return SynchronizationRuntimeService(
+        orchestrator=SynchronizationOrchestrator(
+            query_repository=SynchronizationQueryRepository(harness.database_path),
+            event_synchronizer=EventSynchronizer(
+                payload_builder=payload_builder,
+                graph_client=harness.graph_client,
+                mappings_repository=harness.mappings_repository,
+            ),
+            sync_runs_repository=harness.sync_runs_repository,
+        ),
+        sync_runs_repository=harness.sync_runs_repository,
+        logger=MagicMock(spec=logging.Logger),
+    )
 
 
 def test_create_then_skip_unchanged_event(
@@ -76,6 +139,147 @@ def test_create_then_skip_unchanged_event(
     assert first_run.items_failed == 0
 
 
+def test_existing_mapping_converges_to_new_presentation_without_duplicate(
+    synchronization_harness: SynchronizationHarness,
+) -> None:
+    legacy_service = _build_runtime_service(
+        synchronization_harness,
+        _LegacyPresentationBuilder(),
+    )
+    first_result = legacy_service.run(CALENDAR_ID, 100)
+
+    assert first_result is not None
+    assert first_result.items_created == 1
+    before = synchronization_harness.mappings_repository.get_by_event(
+        synchronization_harness.event.id,
+        CALENDAR_ID,
+    )
+    assert before is not None
+    assert before.outlook_event_id == "outlook-event-1"
+
+    synchronization_harness.graph_client.update_event.return_value = (
+        OutlookEventReference(id="outlook-event-1")
+    )
+    current_service = _build_runtime_service(
+        synchronization_harness,
+        OutlookEventPayloadBuilder(),
+    )
+    update_result = current_service.run(CALENDAR_ID, 100)
+
+    assert update_result is not None
+    assert update_result.items_created == 0
+    assert update_result.items_updated == 1
+    synchronization_harness.graph_client.create_event.assert_called_once()
+    synchronization_harness.graph_client.update_event.assert_called_once()
+    update_payload = synchronization_harness.graph_client.update_event.call_args.kwargs[
+        "payload"
+    ]
+    assert update_payload.subject == "⚽ Arsenal vs Liverpool"
+    assert update_payload.categories == ("Premier League",)
+    assert update_payload.body_content_type == "html"
+    assert "<h3" in update_payload.body
+
+    after = synchronization_harness.mappings_repository.get_by_event(
+        synchronization_harness.event.id,
+        CALENDAR_ID,
+    )
+    assert after is not None
+    assert after.id == before.id
+    assert after.outlook_event_id == before.outlook_event_id
+    assert after.transaction_id == before.transaction_id
+
+    unchanged_result = current_service.run(CALENDAR_ID, 100)
+
+    assert unchanged_result is not None
+    assert unchanged_result.items_unchanged == 1
+    synchronization_harness.graph_client.update_event.assert_called_once()
+
+
+def test_runtime_team_rule_converges_existing_outlook_event(
+    synchronization_harness: SynchronizationHarness,
+) -> None:
+    rules = ReminderRulesRepository(synchronization_harness.database_path)
+    service = _build_runtime_service(
+        synchronization_harness,
+        OutlookEventPayloadBuilder(
+            reminder_resolver=EventReminderResolver(rules),
+        ),
+    )
+    first_result = service.run(CALENDAR_ID, 100)
+    assert first_result is not None
+    assert first_result.items_created == 1
+    before = synchronization_harness.mappings_repository.get_by_event(
+        synchronization_harness.event.id,
+        CALENDAR_ID,
+    )
+    assert before is not None
+    assert before.last_synced_presentation_revision == 1
+
+    selector = rules.resolve_target(
+        ReminderRuleTarget(
+            ReminderScope.PARTICIPANT,
+            participant_key="arsenal",
+        )
+    )
+    rules.set(
+        ReminderRuleWrite(
+            selector,
+            action=ReminderAction.ENABLE,
+            preferred_lead_minutes=60,
+        )
+    )
+    invalidated = synchronization_harness.mappings_repository.get_by_id(before.id)
+    assert invalidated is not None
+    assert invalidated.presentation_revision == 2
+    assert invalidated.last_synced_presentation_revision == 1
+
+    synchronization_harness.graph_client.update_event.return_value = (
+        OutlookEventReference(id="outlook-event-1")
+    )
+    update_result = service.run(CALENDAR_ID, 100)
+
+    assert update_result is not None
+    assert update_result.items_created == 0
+    assert update_result.items_updated == 1
+    assert synchronization_harness.graph_client.create_event.call_count == 1
+    assert synchronization_harness.graph_client.update_event.call_count == 1
+    payload = synchronization_harness.graph_client.update_event.call_args.kwargs[
+        "payload"
+    ]
+    assert payload.is_reminder_on is True
+    assert payload.reminder_minutes_before_start == 60
+    after = synchronization_harness.mappings_repository.get_by_id(before.id)
+    assert after is not None
+    assert after.transaction_id == before.transaction_id
+    assert after.outlook_event_id == before.outlook_event_id
+    assert after.last_synced_presentation_revision == 2
+
+    rules.set(
+        ReminderRuleWrite(
+            selector,
+            action=ReminderAction.ENABLE,
+            preferred_lead_minutes=60,
+        )
+    )
+    unchanged_result = service.run(CALENDAR_ID, 100)
+
+    assert unchanged_result is not None
+    assert unchanged_result.items_unchanged == 1
+    assert synchronization_harness.graph_client.update_event.call_count == 1
+
+    rules.delete(selector)
+    fallback_result = service.run(CALENDAR_ID, 100)
+
+    assert fallback_result is not None
+    assert fallback_result.items_updated == 1
+    assert synchronization_harness.graph_client.update_event.call_count == 2
+    fallback_payload = (
+        synchronization_harness.graph_client.update_event.call_args.kwargs["payload"]
+    )
+    assert fallback_payload.is_reminder_on is True
+    assert fallback_payload.reminder_minutes_before_start == 15
+
+
 def test_changed_event_is_updated_in_outlook(
     synchronization_harness: SynchronizationHarness,
 ) -> None:
@@ -139,7 +343,8 @@ def test_changed_event_is_updated_in_outlook(
     assert update_call.kwargs["calendar_id"] == CALENDAR_ID
     assert update_call.kwargs["event_id"] == "outlook-event-1"
     payload = update_call.kwargs["payload"]
-    assert payload.subject == "Arsenal vs Liverpool – Rescheduled"
+    assert payload.subject == "⚽ Arsenal vs Liverpool – Rescheduled"
+    assert payload.categories == ("Premier League",)
     mapping = synchronization_harness.mappings_repository.get_by_event(
         event_id=event.id,
         calendar_id=CALENDAR_ID,
