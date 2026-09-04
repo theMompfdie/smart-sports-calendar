@@ -2,11 +2,12 @@
 
 ## Release status
 
-Release preparation for #199 and #214. This candidate is not yet published.
-Live qualification and the operator-controlled Git and publication gates in
-[the release checklist](docs/v0.8.0-beta.1-release-checklist.md) remain open.
-The published baseline is v0.7.0-beta.1; production promotion is a separate
-explicit operator decision.
+Published on 2026-09-04 as the [v0.8.0-beta.1 GitHub pre-release](https://github.com/theMompfdie/smart-sports-calendar/releases/tag/v0.8.0-beta.1)
+from verified main commit `c2b46159b8df876694c509225231fe87bb03a207`.
+The operator-created tag is GPG-signed and points to that exact commit.
+Main CI run 33920348994 passed all five jobs, including 1,249 tests.
+Isolated staging qualification is accepted under #214. Production promotion
+remains blocked by the upstream Championship response-contract issue #233.
 
 ## Added and changed
 
@@ -86,8 +87,7 @@ See [deployment](docs/deployment.md),
 
 Offline tests cover migrations, reminder precedence and quiet hours,
 presentation convergence, media reconciliation, failure/recovery, and
-SQLite-to-mocked-Graph behavior. Local results and final CI evidence belong
-in the release checklist and must be rechecked on the committed candidate.
+SQLite-to-mocked-Graph behavior. The tagged main commit passed all five CI jobs, including 1,249 tests.
 
 Live acceptance in #214 includes competition/home/away/NFL/trophy visual
 samples, six remote attachment/CID samples, the exact six-rule runtime mutation
