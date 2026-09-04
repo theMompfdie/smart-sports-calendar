@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "smart-sports-calendar"
-version = "0.7.0b1"
+version = "0.8.0b1"
 description = "Synchronizes sports events with a Microsoft Outlook calendar."
 requires-python = ">=3.13"
 dependencies = [

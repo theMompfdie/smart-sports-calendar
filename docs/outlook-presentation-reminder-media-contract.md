@@ -256,13 +256,19 @@ Suppressed or invalid reminder output is normalized as:
 
 ## Target operator policy
 
-The private runtime configuration intended after Phase 8 rollout is:
+The Phase 8 staging profile confirmed in #214 contains six active rules:
 
-- global: suppress reminders;
-- Manchester United participant: enable, preferred lead 60 minutes;
-- New England Patriots participant: enable, preferred lead 60 minutes,
-  minimum 60 minutes, maximum 480 minutes, quiet period `22:00`–`08:00`,
-  timezone `Europe/Vienna`.
+- global: suppress, with shared preferred/minimum lead 60 minutes, maximum
+  480 minutes, quiet period `22:00`–`08:00`, timezone `Europe/Vienna`;
+- three operator-selected competitions: enable, inheriting timing fields;
+- Manchester United participant: enable, inheriting timing fields;
+- New England Patriots participant: enable, inheriting timing fields.
+
+The three competition keys require private operator readback; DFB-Pokal is
+confirmed by the competition-only UI sample. This is an operator profile,
+not a hard-coded application default. The earlier selected-team-only example
+is a smaller supported configuration, not the complete qualification profile.
+See [the staging runbook](phase-8-staging-validation.md).
 
 No private IDs, local database paths, or operator-specific secrets belong in
 source control. Documentation and tests use stable synthetic or catalog keys.

@@ -4,19 +4,23 @@
 
 ## Current Status
 
-**Current release:** `v0.6.0-beta.1`
+**Current release:** `v0.7.0-beta.1`
 
-**Release candidate:** `v0.7.0-beta.1`
+**Release candidate:** `v0.8.0-beta.1` (qualification and publication pending)
 
 **Development stage:** Beta
 
-**Completed phases:** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, and Phase 6
+**Completed phases:** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, and Phase 7
 
-**Latest delivery track:** Phase 7 NFL provider and 2026 regular-season
-delivery for `v0.7.0-beta.1`
-([tracker #178](https://github.com/theMompfdie/smart-sports-calendar/issues/178))
+**Latest delivery track:** Phase 8 Outlook presentation, runtime reminders,
+and rights-controlled media for `v0.8.0-beta.1`
+([tracker #199](https://github.com/theMompfdie/smart-sports-calendar/issues/199)).
+Functional children are complete; staging and release gates remain open in
+[#214](https://github.com/theMompfdie/smart-sports-calendar/issues/214).
 
-**Automated tests:** 1,048 passing tests
+**Automated tests:** 1,223 passed for the prepared Phase 8 tree. See the
+[Phase 8 release checklist](docs/v0.8.0-beta.1-release-checklist.md)
+for candidate validation and remaining gates.
 
 The application foundation, persistent domain model, repository layer,
 Microsoft Graph integration, Outlook synchronization engine, and scheduled
@@ -36,7 +40,8 @@ automated ingestion.
 
 ## Project Vision
 
-SMART Sports Calendar is designed as a reliable, extensible, and fully automated sports calendar synchronization platform. It maintains a dedicated Outlook calendar containing relevant sports events and updates them when schedules, participants, results, or event states change.
+SMART Sports Calendar synchronizes sports fixtures into a dedicated Outlook
+calendar and updates them when schedules, participants, or event states change.
 
 The application focuses on:
 
@@ -222,8 +227,10 @@ Phase 8 design and implementation documentation:
   PNG/JPEG normalization, content-addressed operator storage, and restart-safe
   Outlook inline-attachment reconciliation are implemented
 - [Phase 8 isolated staging validation](docs/phase-8-staging-validation.md) —
-  planned upgrade, Outlook-client, reminder-mutation, media-recovery,
+  partial live acceptance with remaining upgrade, reminder-mutation, media-recovery,
   unchanged-cycle, backup/restore, and release qualification for issue #214
+- [Phase 8 release checklist](docs/v0.8.0-beta.1-release-checklist.md)
+- [Phase 8 candidate release notes](RELEASE_NOTES_v0.8.0-beta.1.md)
 
 ### Database and Persistence
 
@@ -655,7 +662,7 @@ Nations League stages remain outside `v0.6.0-beta.1`.
 
 ### Phase 7 – NFL Provider
 
-**Status:** _Release candidate qualified; publication pending_ through
+**Status:** _Published as `v0.7.0-beta.1`_ through
 [#178](https://github.com/theMompfdie/smart-sports-calendar/issues/178) and
 [#198](https://github.com/theMompfdie/smart-sports-calendar/issues/198).
 
@@ -689,7 +696,27 @@ Qualification records:
 - [Phase 7 staging record](docs/phase-7-staging-validation.md)
 - [Phase 7 release checklist](docs/v0.7.0-beta.1-release-checklist.md)
 
+### Phase 8 – Outlook presentation, reminders, and media
+
+**Status:** _Implemented; live qualification and publication pending_ under
+[#199](https://github.com/theMompfdie/smart-sports-calendar/issues/199) and
+[#214](https://github.com/theMompfdie/smart-sports-calendar/issues/214).
+
+The candidate adds competition-only categories, sport icons, deterministic
+HTML, Vienna event timezone projection, persistent runtime reminder rules,
+quiet-hour resolution, targeted presentation convergence, and optional
+rights-controlled inline artwork. Migrations 009–012 preserve existing data.
+The nine qualified authorities and provider lifecycle boundaries are unchanged.
+
+Visual and reminder UI samples have partial acceptance. Mutation/restart,
+synthetic cleanup, media recovery, backup/restore, final provider integrity,
+and write-free convergence still require final evidence. Phase 9 remains
+blocked until the signed Phase 8 beta has been verified and published.
+
 ## Release History
+
+Phase 8 candidate notes are available in
+[`RELEASE_NOTES_v0.8.0-beta.1.md`](RELEASE_NOTES_v0.8.0-beta.1.md).
 
 Detailed Phase 4 release notes are available in
 [`RELEASE_NOTES_v0.4.0-alpha.1.md`](RELEASE_NOTES_v0.4.0-alpha.1.md).
@@ -703,10 +730,10 @@ Detailed Phase 5 beta release notes are available in
 Detailed Phase 6 beta release notes are available in
 [`RELEASE_NOTES_v0.6.0-beta.1.md`](RELEASE_NOTES_v0.6.0-beta.1.md).
 
-Phase 7 release-candidate notes are available in
+Phase 7 release notes are available in
 [`RELEASE_NOTES_v0.7.0-beta.1.md`](RELEASE_NOTES_v0.7.0-beta.1.md).
 
-### `v0.7.0-beta.1` (release candidate)
+### `v0.7.0-beta.1`
 
 - zero-cost nflverse authority for exactly 272 NFL 2026 regular-season games,
   32 teams, and weeks 1–18
