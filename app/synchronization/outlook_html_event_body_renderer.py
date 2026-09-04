@@ -27,7 +27,24 @@ _LABEL_CELL_STYLE = (
     "vertical-align:top;width:120px;"
 )
 _VALUE_CELL_STYLE = "border-bottom:1px solid #e5e7eb;padding:4px 0;vertical-align:top;"
+_MIDDLE_LABEL_CELL_STYLE = (
+    "border-bottom:1px solid #e5e7eb;font-weight:600;padding:4px 12px 4px 0;"
+    "vertical-align:middle;width:120px;"
+)
+_MIDDLE_VALUE_CELL_STYLE = (
+    "border-bottom:1px solid #e5e7eb;padding:4px 0;vertical-align:middle;"
+)
+_PARTICIPANT_VALUE_TABLE_STYLE = "border-collapse:collapse;margin:0;"
+_PARTICIPANT_IMAGE_CELL_STYLE = "line-height:0;padding:0 8px 0 0;vertical-align:middle;"
+_PARTICIPANT_NAME_CELL_STYLE = "padding:0;vertical-align:middle;"
+_TITLE_MEDIA_TABLE_STYLE = "border-collapse:collapse;margin:0;"
+_TITLE_HOME_IMAGE_CELL_STYLE = "line-height:0;padding:0 10px 0 0;vertical-align:middle;"
+_TITLE_TEXT_CELL_STYLE = "padding:0;vertical-align:middle;"
+_TITLE_AWAY_IMAGE_CELL_STYLE = "line-height:0;padding:0 0 0 10px;vertical-align:middle;"
 _CONTENT_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._@-]{0,254}$")
+_INLINE_IMAGE_SIZE = 30
+_DETAIL_IMAGE_SIZE = 24
+_COMPETITION_HEADER_IMAGE_SIZE = 44
 
 
 @dataclass(frozen=True)
@@ -70,20 +87,26 @@ class OutlookHtmlEventBodyRenderer:
         images = {image.slot: image for image in inline_images}
         if len(images) != len(inline_images):
             raise ValueError("Inline image slots must be unique.")
-        sections = [
-            f'<div style="{_CONTAINER_STYLE}">',
-            self._render_header(synchronization_event, images),
-            self._render_event_details(
-                synchronization_event,
-                is_cancelled=is_cancelled,
-                location=location,
-            ),
-        ]
-
         participants = sorted(
             synchronization_event.participants,
             key=self._participant_sort_key,
         )
+        header = self._render_header(
+            synchronization_event,
+            participants,
+            images,
+        )
+        sections = [
+            f'<div style="{_CONTAINER_STYLE}">',
+            header,
+            self._render_event_details(
+                synchronization_event,
+                is_cancelled=is_cancelled,
+                location=location,
+                images=images,
+            ),
+        ]
+
         if participants:
             sections.append(self._render_participants(participants, images))
 
@@ -123,6 +146,7 @@ class OutlookHtmlEventBodyRenderer:
     def _render_header(
         self,
         synchronization_event: SynchronizationEvent,
+        participants: list[SynchronizationParticipant],
         images: dict[str, OutlookInlineImage],
     ) -> str:
         event = synchronization_event.event
@@ -131,20 +155,76 @@ class OutlookHtmlEventBodyRenderer:
             if synchronization_event.competition is not None
             else synchronization_event.sport.name
         )
+        header_slots = tuple(
+            slot for slot in ("competition", "final") if slot in images
+        )
         image_cells = "".join(
-            self._render_image_cell(images[slot])
-            for slot in ("competition", "final")
-            if slot in images
+            self._render_image_cell(images[slot]) for slot in header_slots
+        )
+        content = self._render_header_content(
+            event.title,
+            context,
+            participants,
+            images,
         )
         return (
             f'<table role="presentation" style="{_HEADER_TABLE_STYLE}"><tbody><tr>'
             f"{image_cells}"
             f'<td style="{_HEADER_CELL_STYLE}">'
-            '<div style="font-size:20px;font-weight:600;margin:0 0 2px;">'
-            f"{self._text(event.title)}</div>"
-            '<div style="color:#5f6368;font-size:13px;">'
-            f"{self._text(context)}</div>"
+            f"{content}"
             "</td></tr></tbody></table>"
+        )
+
+    @classmethod
+    def _render_header_content(
+        cls,
+        event_title: str,
+        context: str,
+        participants: list[SynchronizationParticipant],
+        images: dict[str, OutlookInlineImage],
+    ) -> str:
+        participant_names = {
+            participant.role: participant.participant.name
+            for participant in participants
+            if participant.role in {"home", "away"}
+        }
+        home = participant_names.get("home")
+        away = participant_names.get("away")
+        if home is None or away is None or event_title != f"{home} vs {away}":
+            home_image = None
+            away_image = None
+        else:
+            home_image = images.get("home")
+            away_image = images.get("away")
+
+        title_context = (
+            '<div style="font-size:20px;font-weight:600;margin:0 0 2px;">'
+            f"{cls._text(event_title)}</div>"
+            '<div style="color:#5f6368;font-size:13px;">'
+            f"{cls._text(context)}</div>"
+        )
+        if home_image is None and away_image is None:
+            return title_context
+
+        home_cell = ""
+        if home_image is not None:
+            home_cell = (
+                f'<td style="{_TITLE_HOME_IMAGE_CELL_STYLE}">'
+                f"{cls._render_image(home_image, size=_COMPETITION_HEADER_IMAGE_SIZE)}"
+                "</td>"
+            )
+        away_cell = ""
+        if away_image is not None:
+            away_cell = (
+                f'<td style="{_TITLE_AWAY_IMAGE_CELL_STYLE}">'
+                f"{cls._render_image(away_image, size=_COMPETITION_HEADER_IMAGE_SIZE)}"
+                "</td>"
+            )
+        return (
+            f'<table role="presentation" style="{_TITLE_MEDIA_TABLE_STYLE}">'
+            f"<tbody><tr>{home_cell}"
+            f'<td style="{_TITLE_TEXT_CELL_STYLE}">{title_context}</td>'
+            f"{away_cell}</tr></tbody></table>"
         )
 
     def _render_event_details(
@@ -153,15 +233,28 @@ class OutlookHtmlEventBodyRenderer:
         *,
         is_cancelled: bool,
         location: str | None,
+        images: dict[str, OutlookInlineImage],
     ) -> str:
         event = synchronization_event.event
         rows: list[tuple[str, str]] = [
             ("Status", "Cancelled" if is_cancelled else event.status),
             ("Sport", synchronization_event.sport.name),
         ]
+        html_value_rows: set[int] = set()
+        middle_aligned_rows: set[int] = set()
 
         if synchronization_event.competition is not None:
-            rows.append(("Competition", synchronization_event.competition.name))
+            competition_value = synchronization_event.competition.name
+            competition_image = images.get("competition")
+            if competition_image is not None:
+                competition_value = self._image_label_value(
+                    competition_value,
+                    competition_image,
+                    size=_DETAIL_IMAGE_SIZE,
+                )
+                html_value_rows.add(len(rows))
+                middle_aligned_rows.add(len(rows))
+            rows.append(("Competition", competition_value))
         if synchronization_event.season is not None:
             rows.append(("Season", synchronization_event.season.name))
         if synchronization_event.parent_event is not None:
@@ -180,7 +273,12 @@ class OutlookHtmlEventBodyRenderer:
         if location is not None:
             rows.append(("Location", location))
 
-        return self._render_table("Event details", rows)
+        return self._render_table(
+            "Event details",
+            rows,
+            html_value_rows=frozenset(html_value_rows),
+            middle_aligned_rows=frozenset(middle_aligned_rows),
+        )
 
     def _render_participants(
         self,
@@ -197,7 +295,17 @@ class OutlookHtmlEventBodyRenderer:
             )
             for participant in participants
         ]
-        return self._render_table("Participants", rows, values_are_html=True)
+        middle_aligned_rows = frozenset(
+            index
+            for index, participant in enumerate(participants)
+            if participant.role in images
+        )
+        return self._render_table(
+            "Participants",
+            rows,
+            values_are_html=True,
+            middle_aligned_rows=middle_aligned_rows,
+        )
 
     def _render_results(
         self,
@@ -249,15 +357,31 @@ class OutlookHtmlEventBodyRenderer:
         rows: list[tuple[str, str]],
         *,
         values_are_html: bool = False,
+        html_value_rows: frozenset[int] = frozenset(),
+        middle_aligned_rows: frozenset[int] = frozenset(),
     ) -> str:
-        rendered_rows = "".join(
-            "<tr>"
-            f'<td style="{_LABEL_CELL_STYLE}">{cls._text(label)}:</td>'
-            f'<td style="{_VALUE_CELL_STYLE}">'
-            f"{value if values_are_html else cls._text(value)}</td>"
-            "</tr>"
-            for label, value in rows
-        )
+        rendered_row_values: list[str] = []
+        for index, (label, value) in enumerate(rows):
+            align_middle = index in middle_aligned_rows
+            label_cell_style = (
+                _MIDDLE_LABEL_CELL_STYLE if align_middle else _LABEL_CELL_STYLE
+            )
+            value_cell_style = (
+                _MIDDLE_VALUE_CELL_STYLE if align_middle else _VALUE_CELL_STYLE
+            )
+            rendered_value = (
+                value
+                if values_are_html or index in html_value_rows
+                else cls._text(value)
+            )
+            rendered_row_values.append(
+                "<tr>"
+                f'<td style="{label_cell_style}">{cls._text(label)}:</td>'
+                f'<td style="{value_cell_style}">'
+                f"{rendered_value}</td>"
+                "</tr>"
+            )
+        rendered_rows = "".join(rendered_row_values)
         return (
             f'<h3 style="{_SECTION_HEADING_STYLE}">{cls._text(heading)}</h3>'
             f'<table role="presentation" style="{_TABLE_STYLE}"><tbody>'
@@ -272,22 +396,49 @@ class OutlookHtmlEventBodyRenderer:
     ) -> str:
         if image is None:
             return cls._text(name)
-        return f"{cls._render_image(image)}&nbsp;{cls._text(name)}"
+        return cls._image_label_value(name, image, size=_INLINE_IMAGE_SIZE)
 
     @classmethod
-    def _render_image_cell(cls, image: OutlookInlineImage) -> str:
+    def _image_label_value(
+        cls,
+        label: str,
+        image: OutlookInlineImage,
+        *,
+        size: int,
+    ) -> str:
         return (
-            '<td style="padding:10px 0 10px 12px;vertical-align:middle;">'
-            f"{cls._render_image(image)}</td>"
+            f'<table role="presentation" style="{_PARTICIPANT_VALUE_TABLE_STYLE}">'
+            "<tbody><tr>"
+            f'<td style="{_PARTICIPANT_IMAGE_CELL_STYLE}">'
+            f"{cls._render_image(image, size=size)}</td>"
+            f'<td style="{_PARTICIPANT_NAME_CELL_STYLE}">{cls._text(label)}</td>'
+            "</tr></tbody></table>"
         )
 
     @classmethod
-    def _render_image(cls, image: OutlookInlineImage) -> str:
+    def _render_image_cell(cls, image: OutlookInlineImage) -> str:
+        size = (
+            _COMPETITION_HEADER_IMAGE_SIZE
+            if image.slot in {"competition", "home", "away"}
+            else _INLINE_IMAGE_SIZE
+        )
+        return (
+            '<td style="padding:10px 0 10px 12px;vertical-align:middle;">'
+            f"{cls._render_image(image, size=size)}</td>"
+        )
+
+    @classmethod
+    def _render_image(
+        cls,
+        image: OutlookInlineImage,
+        *,
+        size: int = _INLINE_IMAGE_SIZE,
+    ) -> str:
         return (
             f'<img src="cid:{cls._text(image.content_id)}" '
-            f'alt="{cls._text(image.alt_text)}" width="30" height="30" '
-            'style="border:0;display:inline-block;height:30px;max-height:30px;'
-            'max-width:30px;vertical-align:middle;width:30px;" />'
+            f'alt="{cls._text(image.alt_text)}" width="{size}" height="{size}" '
+            f'style="border:0;display:inline-block;height:{size}px;max-height:{size}px;'
+            f'max-width:{size}px;vertical-align:middle;width:{size}px;" />'
         )
 
     def _format_start_time(self, value: str, event_time_zone: str) -> str:

@@ -50,6 +50,7 @@ from app.providers.nflverse.models import parse_snapshot
 from app.providers.nflverse.profiles import NFL_2026_REGULAR_SEASON_PROFILE
 from app.synchronization.event_synchronizer import EventSynchronizer
 from app.synchronization.outlook_event_payload_builder import (
+    DEFAULT_OUTLOOK_GRAPH_TIME_ZONE,
     OutlookEventPayloadBuilder,
     OutlookEventPresentation,
 )
@@ -256,7 +257,8 @@ def graph_start(operation: CapturedGraphOperation) -> datetime:
     time_zone = start["timeZone"]
     assert isinstance(date_time, str)
     assert isinstance(time_zone, str)
-    return datetime.fromisoformat(date_time).replace(tzinfo=ZoneInfo(time_zone))
+    assert time_zone == DEFAULT_OUTLOOK_GRAPH_TIME_ZONE
+    return datetime.fromisoformat(date_time).replace(tzinfo=VIENNA)
 
 
 def graph_end(operation: CapturedGraphOperation) -> datetime:
@@ -267,7 +269,8 @@ def graph_end(operation: CapturedGraphOperation) -> datetime:
     time_zone = end["timeZone"]
     assert isinstance(date_time, str)
     assert isinstance(time_zone, str)
-    return datetime.fromisoformat(date_time).replace(tzinfo=ZoneInfo(time_zone))
+    assert time_zone == DEFAULT_OUTLOOK_GRAPH_TIME_ZONE
+    return datetime.fromisoformat(date_time).replace(tzinfo=VIENNA)
 
 
 def test_nfl_snapshot_synchronizes_272_events_and_is_idempotent(

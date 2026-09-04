@@ -625,6 +625,15 @@ and run the strict read-only profile after convergence:
 python -m app.operations.staging_evidence --database /data/sports.db --limit 50 --validate-phase-5-candidate
 ```
 
+For the Phase 8 presentation, reminder, and media candidate, follow
+[`phase-8-staging-validation.md`](phase-8-staging-validation.md) and run the
+strict read-only profile only after the private reminder and approved media
+tests have converged:
+
+```bash
+python -m app.operations.staging_evidence --database /data/sports.db --limit 120 --validate-phase-8-candidate
+```
+
 The command opens SQLite in read-only mode and reports only database integrity,
 schema version, startup count, public authoritative source/scope keys, fixture
 and source-mapping aggregates, kickoff range, source freshness, normalized

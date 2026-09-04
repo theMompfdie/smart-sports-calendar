@@ -320,13 +320,38 @@ class EventAssetAttachmentsRepository:
                 """
                 UPDATE calendar_event_asset_attachments
                 SET status = 'failed',
-                    last_error = 'Core event body requires media refresh.',
+                    last_error = 'Event body requires media refresh.',
                     updated_at = ?
                 WHERE calendar_event_mapping_id = ?
                   AND status != 'event_deleted'
                 """,
                 (timestamp, mapping_id),
             )
+
+    def mark_remote_missing(
+        self,
+        attachment_id: int,
+    ) -> EventAssetAttachment:
+        timestamp = self._timestamp()
+        return self._update_and_get(
+            attachment_id,
+            """
+            UPDATE calendar_event_asset_attachments
+            SET synchronized_asset_id = NULL,
+                synchronized_sha256 = NULL,
+                content_id = NULL,
+                outlook_attachment_id = NULL,
+                status = CASE
+                    WHEN desired_asset_id IS NULL THEN 'synced'
+                    ELSE 'pending'
+                END,
+                last_error = NULL,
+                updated_at = ?
+            WHERE id = ?
+              AND outlook_attachment_id IS NOT NULL
+            """,
+            (timestamp, attachment_id),
+        )
 
     def apply_body(
         self,

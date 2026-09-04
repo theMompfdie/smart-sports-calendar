@@ -67,6 +67,15 @@ class EventMediaSynchronizer:
         )
         if any(state.obsolete_outlook_attachment_id is not None for state in existing):
             return
+        if core_event_written or any(
+            state.status == "failed" and state.outlook_attachment_id is not None
+            for state in existing
+        ):
+            existing = self._recover_missing_remote(
+                mapping.calendar_id,
+                outlook_event_id,
+                existing,
+            )
         desired = self._selector.select(synchronization_event)
         states = self._attachments.reconcile_desired(mapping.id, desired)
         states = self._cleanup_obsolete(
@@ -120,6 +129,53 @@ class EventMediaSynchronizer:
             raise
         states = self._attachments.apply_body(mapping.id, applied)
         self._cleanup_obsolete(mapping.calendar_id, outlook_event_id, states)
+
+    def _recover_missing_remote(
+        self,
+        calendar_id: str,
+        outlook_event_id: str,
+        states: list[EventAssetAttachment],
+    ) -> list[EventAssetAttachment]:
+        synchronized = [
+            state for state in states if state.outlook_attachment_id is not None
+        ]
+        if not synchronized:
+            return states
+        try:
+            remote = self._graph.list_event_attachments(calendar_id, outlook_event_id)
+        except Exception as error:
+            for state in synchronized:
+                self._record_failure(state, error)
+            raise
+
+        remote_by_id = {attachment.id: attachment for attachment in remote}
+        for state in synchronized:
+            remote_attachment = remote_by_id.get(state.outlook_attachment_id or "")
+            if (
+                remote_attachment is not None
+                and remote_attachment.content_id == state.content_id
+            ):
+                continue
+            if remote_attachment is not None:
+                try:
+                    self._graph.delete_event_attachment(
+                        calendar_id,
+                        outlook_event_id,
+                        remote_attachment.id,
+                    )
+                except OutlookAttachmentNotFoundError:
+                    pass
+                except Exception as error:
+                    self._record_failure(state, error)
+                    raise
+            self._attachments.mark_remote_missing(state.id)
+        return self._attachments.list_for_mapping(
+            synchronized[0].calendar_event_mapping_id
+        )
+
+    def request_presentation_refresh(self, mapping_id: int) -> None:
+        """Durably queue an audit and body refresh before core acknowledgement."""
+        self._attachments.mark_body_refresh_required(mapping_id)
 
     def mark_event_deleted(self, mapping_id: int) -> None:
         self._attachments.mark_event_deleted(mapping_id)

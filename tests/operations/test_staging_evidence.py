@@ -1,4 +1,5 @@
 import json
+import sqlite3
 from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
@@ -36,6 +37,8 @@ from app.database.sync_runs_repository import SyncRunsRepository
 from app.operations.staging_evidence import (
     SafeAuthoritySummary,
     SafeFixtureScopeSummary,
+    SafePhase8ProjectionSummary,
+    SafeRetiredLocalAuditSummary,
     SafeRunSummary,
     StagingEvidence,
     StagingEvidenceValidationError,
@@ -46,6 +49,7 @@ from app.operations.staging_evidence import (
     validate_nations_league_a_candidate,
     validate_phase_5_candidate,
     validate_phase_7_nfl_candidate,
+    validate_phase_8_candidate,
 )
 from app.providers.contracts import SourceRole
 
@@ -389,6 +393,30 @@ def phase_7_nfl_candidate_evidence() -> StagingEvidence:
     )
 
 
+def phase_8_candidate_evidence() -> StagingEvidence:
+    return replace(
+        phase_7_nfl_candidate_evidence(),
+        schema_version="012_create_calendar_event_asset_attachments",
+        phase_8_projection=SafePhase8ProjectionSummary(
+            current_reminder_rules_by_scope={"global": 1, "participant": 2},
+            active_reminder_rules_by_scope={"global": 1, "participant": 2},
+            media_assets_by_state={"active": 4},
+            active_media_assets_by_owner_type={
+                "competition": 1,
+                "participant": 2,
+                "project": 1,
+            },
+            event_attachments_by_status={"synced": 24},
+            synced_event_attachments_by_slot={
+                "away": 8,
+                "competition": 8,
+                "home": 8,
+            },
+            event_attachments_pending_convergence=0,
+        ),
+    )
+
+
 def champions_league_candidate_evidence() -> StagingEvidence:
     nations_league = nations_league_a_candidate_evidence()
     fixture_count = 144
@@ -539,6 +567,159 @@ def test_collect_staging_evidence_returns_only_safe_operational_fields(
     assert "secret-value" not in rendered
     assert "metadata" not in rendered
     assert "error_message" not in rendered
+
+
+def test_collect_staging_evidence_reports_safe_phase_8_projection_counts(
+    tmp_path: Path,
+) -> None:
+    database_path = create_database(tmp_path)
+    timestamp = "2026-09-01T12:00:00+00:00"
+    with sqlite3.connect(database_path) as connection:
+        connection.executemany(
+            """
+            INSERT INTO reminder_rules (
+                scope, participant_id, action, preferred_lead_minutes,
+                is_active, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                ("global", None, "suppress", None, 1, timestamp, timestamp),
+                ("participant", 1, "enable", 60, 1, timestamp, timestamp),
+                ("participant", 2, "enable", 60, 0, timestamp, timestamp),
+            ),
+        )
+        connection.executemany(
+            """
+            INSERT INTO media_assets (
+                asset_key, version, owner_type, project_key, competition_id,
+                participant_id, variant, mime_type, width, height, byte_size,
+                sha256, storage_path, source_reference, license_name,
+                is_approved, approved_by, approved_at, is_active,
+                created_at, updated_at
+            ) VALUES (
+                ?, 1, ?, ?, ?, ?, ?, 'image/png', 60, 60, 100, ?, ?,
+                'project test asset', 'MIT', ?, ?, ?, ?, ?, ?
+            )
+            """,
+            (
+                (
+                    "project.final.trophy",
+                    "project",
+                    "smart_sports_calendar",
+                    None,
+                    None,
+                    "trophy",
+                    "a" * 64,
+                    "aa/project.png",
+                    1,
+                    "tester",
+                    timestamp,
+                    1,
+                    timestamp,
+                    timestamp,
+                ),
+                (
+                    "competition.premier_league.logo",
+                    "competition",
+                    None,
+                    1,
+                    None,
+                    "logo",
+                    "b" * 64,
+                    "bb/competition.png",
+                    1,
+                    "tester",
+                    timestamp,
+                    1,
+                    timestamp,
+                    timestamp,
+                ),
+                (
+                    "team.manchester_united.logo",
+                    "participant",
+                    None,
+                    None,
+                    1,
+                    "logo",
+                    "c" * 64,
+                    "cc/team.png",
+                    0,
+                    None,
+                    None,
+                    0,
+                    timestamp,
+                    timestamp,
+                ),
+            ),
+        )
+        connection.executemany(
+            """
+            INSERT INTO calendar_event_asset_attachments (
+                calendar_event_mapping_id, slot, desired_asset_id,
+                desired_sha256, synchronized_asset_id, synchronized_sha256,
+                content_id, outlook_attachment_id, status, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                (
+                    1,
+                    "competition",
+                    1,
+                    "a" * 64,
+                    1,
+                    "a" * 64,
+                    "competition-logo",
+                    "outlook-attachment",
+                    "synced",
+                    timestamp,
+                    timestamp,
+                ),
+                (
+                    1,
+                    "home",
+                    3,
+                    "c" * 64,
+                    None,
+                    None,
+                    None,
+                    None,
+                    "failed",
+                    timestamp,
+                    timestamp,
+                ),
+                (
+                    1,
+                    "away",
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    "synced",
+                    timestamp,
+                    timestamp,
+                ),
+            ),
+        )
+
+    payload = json.loads(
+        render_staging_evidence(collect_staging_evidence(database_path))
+    )
+    projection = payload["phase_8_projection"]
+    assert projection == {
+        "active_media_assets_by_owner_type": {"competition": 1, "project": 1},
+        "active_reminder_rules_by_scope": {"global": 1, "participant": 1},
+        "current_reminder_rules_by_scope": {"global": 1, "participant": 2},
+        "event_attachments_by_status": {"failed": 1, "synced": 2},
+        "event_attachments_pending_convergence": 1,
+        "media_assets_by_state": {"active": 2, "pending": 1},
+        "synced_event_attachments_by_slot": {"competition": 1},
+    }
+    rendered = json.dumps(payload)
+    assert "outlook-attachment" not in rendered
+    assert "project test asset" not in rendered
+    assert "aa/project.png" not in rendered
 
 
 def test_collect_staging_evidence_reports_safe_authoritative_fixture_scope(
@@ -985,6 +1166,93 @@ def test_validate_phase_7_nfl_candidate_requires_write_free_calendar_run() -> No
         )
 
 
+def test_validate_phase_8_candidate_accepts_converged_projection() -> None:
+    validate_phase_8_candidate(phase_8_candidate_evidence())
+
+
+@pytest.mark.parametrize(
+    ("mutate", "message"),
+    (
+        (
+            lambda evidence: replace(
+                evidence,
+                schema_version="011_create_media_assets",
+            ),
+            "database schema is not the Phase 8 candidate schema",
+        ),
+        (
+            lambda evidence: replace(evidence, phase_8_projection=None),
+            "Phase 8 projection evidence is missing",
+        ),
+        (
+            lambda evidence: replace(
+                evidence,
+                phase_8_projection=replace(
+                    evidence.phase_8_projection,
+                    active_reminder_rules_by_scope={
+                        "global": 1,
+                        "participant": 1,
+                    },
+                ),
+            ),
+            "Phase 8 reminder profile is incomplete",
+        ),
+        (
+            lambda evidence: replace(
+                evidence,
+                phase_8_projection=replace(
+                    evidence.phase_8_projection,
+                    active_media_assets_by_owner_type={
+                        "competition": 1,
+                        "participant": 2,
+                    },
+                ),
+            ),
+            "Phase 8 active media coverage is incomplete",
+        ),
+        (
+            lambda evidence: replace(
+                evidence,
+                phase_8_projection=replace(
+                    evidence.phase_8_projection,
+                    event_attachments_by_status={"failed": 1, "synced": 23},
+                ),
+            ),
+            "Phase 8 event attachments are not fully synchronized",
+        ),
+        (
+            lambda evidence: replace(
+                evidence,
+                phase_8_projection=replace(
+                    evidence.phase_8_projection,
+                    event_attachments_pending_convergence=1,
+                ),
+            ),
+            "Phase 8 event attachments have pending convergence",
+        ),
+        (
+            lambda evidence: replace(
+                evidence,
+                phase_8_projection=replace(
+                    evidence.phase_8_projection,
+                    synced_event_attachments_by_slot={
+                        "competition": 8,
+                        "home": 8,
+                    },
+                ),
+            ),
+            "Phase 8 required attachment slots are missing",
+        ),
+    ),
+)
+def test_validate_phase_8_candidate_rejects_incomplete_projection(
+    mutate: Callable[[StagingEvidence], StagingEvidence],
+    message: str,
+) -> None:
+    with pytest.raises(StagingEvidenceValidationError, match=message):
+        validate_phase_8_candidate(mutate(phase_8_candidate_evidence()))
+
+
 @pytest.mark.parametrize(
     "mutate",
     (
@@ -1240,6 +1508,32 @@ def test_main_selects_phase_7_nfl_candidate_validation(
     assert json.loads(capsys.readouterr().out)["database_quick_check"] == "ok"
 
 
+def test_main_selects_phase_8_candidate_validation(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database_path = create_database(tmp_path)
+    validated: list[StagingEvidence] = []
+    monkeypatch.setattr(
+        staging_evidence,
+        "validate_phase_8_candidate",
+        validated.append,
+    )
+
+    result = main(
+        [
+            "--database",
+            str(database_path),
+            "--validate-phase-8-candidate",
+        ]
+    )
+
+    assert result == 0
+    assert len(validated) == 1
+    assert json.loads(capsys.readouterr().out)["database_quick_check"] == "ok"
+
+
 def test_main_selects_champions_league_candidate_validation(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -1264,3 +1558,218 @@ def test_main_selects_champions_league_candidate_validation(
     assert result == 0
     assert len(validated) == 1
     assert json.loads(capsys.readouterr().out)["database_quick_check"] == "ok"
+
+
+def _local_cleanup_fixture(tmp_path: Path) -> tuple[Path, int, int]:
+    database_path = create_database(tmp_path)
+    sport = SportsRepository(database_path).upsert(
+        sport_key="american_football", name="American football"
+    )
+    event = SportsEventsRepository(database_path).upsert(
+        sport_id=sport.id,
+        event_key="local:synthetic:cleanup",
+        event_type="match",
+        title="Private synthetic cleanup sample",
+        start_time="2027-02-01T18:00:00+00:00",
+    )
+    mapping = CalendarEventMappingsRepository(database_path).create_pending(
+        event.id, "private-staging-calendar"
+    )
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """
+            INSERT INTO media_assets (
+                asset_key, version, owner_type, project_key, variant,
+                mime_type, width, height, byte_size, sha256, storage_path,
+                source_reference, license_name, created_at, updated_at
+            ) VALUES (
+                'local.trophy', 1, 'project', 'smart_sports_calendar', 'trophy',
+                'image/png', 1, 1, 1, ?, 'test/trophy.png', 'local', 'MIT', ?, ?
+            )
+            """,
+            ("a" * 64, event.created_at, event.updated_at),
+        )
+        connection.execute(
+            """
+            INSERT INTO calendar_event_asset_attachments (
+                calendar_event_mapping_id, slot, status, outlook_attachment_id,
+                desired_asset_id, synchronized_asset_id, desired_sha256,
+                synchronized_sha256, content_id, created_at, updated_at
+            ) VALUES (?, 'final', 'synced', 'private-remote-id', 1, 1,
+                'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+                'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+                'private-cid', ?, ?)
+            """,
+            (mapping.id, event.created_at, event.updated_at),
+        )
+        connection.execute(
+            """
+            INSERT INTO reminder_rules (
+                scope, event_id, action, is_active, created_at, updated_at
+            ) VALUES ('event', ?, 'suppress', 1, ?, ?)
+            """,
+            (event.id, event.created_at, event.updated_at),
+        )
+    return database_path, event.id, mapping.id
+
+
+def _phase_8_with_local_cleanup(database_path: Path) -> StagingEvidence:
+    base = phase_8_candidate_evidence()
+    local = collect_staging_evidence(database_path)
+    assert base.phase_8_projection is not None
+    assert local.phase_8_projection is not None
+    mappings = dict(base.calendar_mappings_by_status)
+    for status, count in local.calendar_mappings_by_status.items():
+        mappings[status] = mappings.get(status, 0) + count
+    attachments = dict(base.phase_8_projection.event_attachments_by_status)
+    for status, count in local.phase_8_projection.event_attachments_by_status.items():
+        attachments[status] = attachments.get(status, 0) + count
+    return replace(
+        base,
+        sports_events=base.sports_events + local.sports_events,
+        calendar_mappings_by_status=mappings,
+        retired_local_audit=local.retired_local_audit,
+        phase_8_projection=replace(
+            base.phase_8_projection,
+            event_attachments_by_status=attachments,
+            event_attachments_pending_convergence=(
+                local.phase_8_projection.event_attachments_pending_convergence
+            ),
+        ),
+    )
+
+
+def _finish_local_cleanup(database_path: Path, event_id: int, mapping_id: int) -> None:
+    from app.database.event_asset_attachments_repository import (
+        EventAssetAttachmentsRepository,
+    )
+
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            "UPDATE sports_events SET deleted_at = updated_at WHERE id = ?",
+            (event_id,),
+        )
+        connection.execute(
+            """
+            UPDATE reminder_rules SET is_active = 0, deleted_at = updated_at
+            WHERE event_id = ?
+            """,
+            (event_id,),
+        )
+    CalendarEventMappingsRepository(database_path).mark_deleted(mapping_id)
+    EventAssetAttachmentsRepository(database_path).mark_event_deleted(mapping_id)
+
+
+def test_phase_8_accepts_only_completed_local_cleanup_with_audit_history(
+    tmp_path: Path,
+) -> None:
+    database_path, event_id, mapping_id = _local_cleanup_fixture(tmp_path)
+    with pytest.raises(StagingEvidenceValidationError, match="outside"):
+        validate_phase_8_candidate(_phase_8_with_local_cleanup(database_path))
+
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            "UPDATE sports_events SET deleted_at = updated_at WHERE id = ?",
+            (event_id,),
+        )
+    CalendarEventMappingsRepository(database_path).mark_delete_pending(mapping_id)
+    with pytest.raises(StagingEvidenceValidationError, match="outside"):
+        validate_phase_8_candidate(_phase_8_with_local_cleanup(database_path))
+
+    _finish_local_cleanup(database_path, event_id, mapping_id)
+    before = database_path.read_bytes()
+    evidence = _phase_8_with_local_cleanup(database_path)
+    validate_phase_8_candidate(evidence)
+    assert database_path.read_bytes() == before
+    assert evidence.retired_local_audit == SafeRetiredLocalAuditSummary(1, 1, 1)
+    assert evidence.calendar_mappings_by_status["deleted"] == 1
+    assert evidence.phase_8_projection is not None
+    assert evidence.phase_8_projection.event_attachments_by_status["event_deleted"] == 1
+    assert evidence.phase_8_projection.event_attachments_pending_convergence == 0
+    rendered = render_staging_evidence(evidence)
+    assert "local:synthetic:cleanup" not in rendered
+    assert "private-staging-calendar" not in rendered
+    assert "private-remote-id" not in rendered
+    with sqlite3.connect(database_path) as connection:
+        assert (
+            connection.execute("SELECT COUNT(*) FROM sports_events").fetchone()[0] == 1
+        )
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM reminder_rules WHERE deleted_at IS NOT NULL"
+            ).fetchone()[0]
+            == 1
+        )
+
+
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "UPDATE sports_events SET deleted_at = NULL",
+        "UPDATE calendar_event_mappings SET sync_status = 'delete_pending'",
+        "UPDATE calendar_event_mappings SET sync_status = 'failed'",
+        "UPDATE calendar_event_mappings SET sync_status = 'synced'",
+        "UPDATE calendar_event_mappings SET last_sync_error = 'unresolved'",
+        "UPDATE reminder_rules SET deleted_at = NULL",
+        "DELETE FROM calendar_event_mappings",
+        "UPDATE calendar_event_asset_attachments SET status = 'failed'",
+        "UPDATE calendar_event_asset_attachments SET status = 'pending'",
+        "UPDATE calendar_event_asset_attachments SET status = 'uploaded'",
+        "UPDATE calendar_event_asset_attachments SET status = 'synced'",
+        "UPDATE calendar_event_asset_attachments SET desired_asset_id = 1",
+        "UPDATE calendar_event_asset_attachments SET synchronized_asset_id = 1",
+        "UPDATE calendar_event_asset_attachments SET desired_sha256 = 'residual'",
+        "UPDATE calendar_event_asset_attachments SET synchronized_sha256 = 'residual'",
+        "UPDATE calendar_event_asset_attachments SET content_id = 'residual'",
+        (
+            "UPDATE calendar_event_asset_attachments "
+            "SET outlook_attachment_id = 'residual'"
+        ),
+        "UPDATE calendar_event_asset_attachments SET pending_asset_id = 1",
+        "UPDATE calendar_event_asset_attachments SET pending_sha256 = 'residual'",
+        "UPDATE calendar_event_asset_attachments SET pending_content_id = 'residual'",
+        (
+            "UPDATE calendar_event_asset_attachments "
+            "SET pending_outlook_attachment_id = 'x'"
+        ),
+        (
+            "UPDATE calendar_event_asset_attachments "
+            "SET obsolete_outlook_attachment_id = 'x'"
+        ),
+        "UPDATE calendar_event_asset_attachments SET last_error = 'unresolved'",
+    ],
+)
+def test_phase_8_rejects_incomplete_or_inconsistent_local_cleanup(
+    tmp_path: Path, sql: str
+) -> None:
+    database_path, event_id, mapping_id = _local_cleanup_fixture(tmp_path)
+    _finish_local_cleanup(database_path, event_id, mapping_id)
+    with sqlite3.connect(database_path) as connection:
+        # Exercise fail-closed evidence even for inconsistent persisted state.
+        connection.execute("PRAGMA ignore_check_constraints = ON")
+        connection.execute(sql)
+    evidence = _phase_8_with_local_cleanup(database_path)
+    assert evidence.retired_local_audit == SafeRetiredLocalAuditSummary()
+    with pytest.raises(StagingEvidenceValidationError, match="outside"):
+        validate_phase_8_candidate(evidence)
+
+
+def test_phase_7_does_not_discount_phase_8_local_audit(tmp_path: Path) -> None:
+    database_path, event_id, mapping_id = _local_cleanup_fixture(tmp_path)
+    _finish_local_cleanup(database_path, event_id, mapping_id)
+    with pytest.raises(StagingEvidenceValidationError, match="outside"):
+        validate_phase_7_nfl_candidate(_phase_8_with_local_cleanup(database_path))
+
+
+def test_phase_8_retired_audit_does_not_mask_provider_failure(tmp_path: Path) -> None:
+    database_path, event_id, mapping_id = _local_cleanup_fixture(tmp_path)
+    _finish_local_cleanup(database_path, event_id, mapping_id)
+    evidence = _phase_8_with_local_cleanup(database_path)
+    runs = tuple(
+        replace(run, status="failed", items_failed=1)
+        if run.job_key == "football-data-championship"
+        else run
+        for run in evidence.recent_runs
+    )
+    with pytest.raises(StagingEvidenceValidationError, match="championship"):
+        validate_phase_8_candidate(replace(evidence, recent_runs=runs))

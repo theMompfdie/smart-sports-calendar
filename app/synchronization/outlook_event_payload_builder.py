@@ -10,6 +10,9 @@ from app.synchronization.outlook_html_event_body_renderer import (
     OutlookInlineImage,
 )
 
+DEFAULT_OUTLOOK_PRESENTATION_TIME_ZONE = "Europe/Vienna"
+DEFAULT_OUTLOOK_GRAPH_TIME_ZONE = "W. Europe Standard Time"
+
 
 class ReminderResolver(Protocol):
     def resolve(
@@ -37,6 +40,8 @@ class OutlookEventPresentation:
     )
     show_as: str = "busy"
     cancelled_prefix: str = "[CANCELLED]"
+    time_zone: str = DEFAULT_OUTLOOK_PRESENTATION_TIME_ZONE
+    graph_time_zone: str = DEFAULT_OUTLOOK_GRAPH_TIME_ZONE
 
     def __post_init__(self) -> None:
         if (
@@ -48,6 +53,19 @@ class OutlookEventPresentation:
             raise ValueError("Reminder minutes must not be negative.")
         if self.default_duration_minutes <= 0:
             raise ValueError("Default duration minutes must be positive.")
+        if not self.time_zone or self.time_zone != self.time_zone.strip():
+            raise ValueError("Outlook presentation time zone must be normalized.")
+        try:
+            ZoneInfo(self.time_zone)
+        except ZoneInfoNotFoundError as error:
+            raise ValueError(
+                f"Unknown Outlook presentation time zone: {self.time_zone}"
+            ) from error
+        if (
+            not self.graph_time_zone
+            or self.graph_time_zone != self.graph_time_zone.strip()
+        ):
+            raise ValueError("Outlook Graph time zone must be normalized.")
         sport_keys: set[str] = set()
         for sport_key, duration_minutes in self.fallback_duration_minutes_by_sport:
             if not sport_key or sport_key != sport_key.strip():
@@ -203,53 +221,46 @@ class OutlookEventPayloadBuilder:
 
         return (self._presentation.fallback_category,)
 
+    def _build_date_time(self, value: str, source_time_zone: str) -> OutlookDateTime:
+        parsed = self._parse_source_date_time(value, source_time_zone)
+        presentation_zone = ZoneInfo(self._presentation.time_zone)
+        displayed = parsed.astimezone(presentation_zone)
+
+        return OutlookDateTime(
+            date_time=displayed.replace(tzinfo=None).isoformat(timespec="seconds"),
+            time_zone=self._presentation.graph_time_zone,
+        )
+
     @staticmethod
-    def _build_date_time(value: str, time_zone: str) -> OutlookDateTime:
+    def _parse_source_date_time(value: str, source_time_zone: str) -> datetime:
         try:
-            zone = ZoneInfo(time_zone)
+            source_zone = ZoneInfo(source_time_zone)
         except ZoneInfoNotFoundError as error:
-            raise ValueError(f"Unknown event time zone: {time_zone}") from error
+            raise ValueError(f"Unknown event time zone: {source_time_zone}") from error
 
         try:
             parsed = datetime.fromisoformat(value)
         except ValueError as error:
             raise ValueError(f"Invalid event date-time: {value}") from error
 
-        if parsed.tzinfo is not None:
-            parsed = parsed.astimezone(zone).replace(tzinfo=None)
-
-        return OutlookDateTime(
-            date_time=parsed.isoformat(timespec="seconds"),
-            time_zone=time_zone,
-        )
+        if parsed.tzinfo is None:
+            return parsed.replace(tzinfo=source_zone)
+        return parsed
 
     def _build_fallback_end(
         self,
         start_value: str,
-        time_zone: str,
+        source_time_zone: str,
         duration_minutes: int,
     ) -> OutlookDateTime:
-        try:
-            zone = ZoneInfo(time_zone)
-        except ZoneInfoNotFoundError as error:
-            raise ValueError(f"Unknown event time zone: {time_zone}") from error
-
-        try:
-            parsed_start = datetime.fromisoformat(start_value)
-        except ValueError as error:
-            raise ValueError(f"Invalid event date-time: {start_value}") from error
-
-        if parsed_start.tzinfo is None:
-            zoned_start = parsed_start.replace(tzinfo=zone)
-        else:
-            zoned_start = parsed_start.astimezone(zone)
-
+        parsed_start = self._parse_source_date_time(start_value, source_time_zone)
+        presentation_zone = ZoneInfo(self._presentation.time_zone)
         end = (
-            zoned_start.astimezone(UTC) + timedelta(minutes=duration_minutes)
-        ).astimezone(zone)
+            parsed_start.astimezone(UTC) + timedelta(minutes=duration_minutes)
+        ).astimezone(presentation_zone)
         return OutlookDateTime(
             date_time=end.replace(tzinfo=None).isoformat(timespec="seconds"),
-            time_zone=time_zone,
+            time_zone=self._presentation.graph_time_zone,
         )
 
     @staticmethod
