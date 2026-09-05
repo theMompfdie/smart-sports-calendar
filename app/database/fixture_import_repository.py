@@ -1,5 +1,6 @@
 import json
 import sqlite3
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -337,7 +338,7 @@ class FixtureImportRepository:
                 f"external_id={fixture.external_id}, event_id={event_id}."
             )
 
-        target = self._target_values(event, fixture)
+        target = self.target_values(event, fixture)
         was_cancelled = event["status"] == "cancelled"
         is_cancelled = target["status"] == "cancelled"
         if is_cancelled:
@@ -487,9 +488,9 @@ class FixtureImportRepository:
             raise RuntimeError("SQLite did not return an ID for the created event.")
         return event_id
 
-    def _target_values(
-        self,
-        event: sqlite3.Row,
+    @staticmethod
+    def target_values(
+        event: Mapping[str, Any] | sqlite3.Row,
         fixture: FixtureImportRecord,
     ) -> dict[str, object]:
         start_time = event["start_time"]
@@ -500,9 +501,11 @@ class FixtureImportRepository:
             if event["metadata_json"] is None
             else json.loads(event["metadata_json"])
         )
-        event_metadata = self._event_metadata(fixture, persisted_metadata)
+        event_metadata = FixtureImportRepository._event_metadata(
+            fixture, persisted_metadata
+        )
         metadata_json = (
-            self._serialize_metadata(event_metadata)
+            FixtureImportRepository._serialize_metadata(event_metadata)
             if event_metadata is not None
             or (
                 persisted_metadata is not None
@@ -538,7 +541,7 @@ class FixtureImportRepository:
             "city": fixture.city if fixture.city is not None else event["city"],
             "status": fixture.status,
             "source_updated_at": (
-                self._isoformat(fixture.source_updated_at)
+                FixtureImportRepository._isoformat(fixture.source_updated_at)
                 if fixture.source_updated_at is not None
                 else event["source_updated_at"]
             ),
