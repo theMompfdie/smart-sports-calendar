@@ -21,7 +21,7 @@ JSON integer token `1`. A schema-only check does not make a file import-ready.
 | Limit | Value |
 | --- | --- |
 | Encoded manifest | 2 MiB (2,097,152 bytes) |
-| Fixtures per package | 1-2,000 |
+| Fixtures per package | 0-2,000; zero requires an active review task |
 | Explicit stage/round boundaries | 1-256, without duplicates |
 | JSON nesting | At most 12 containers |
 | Pending review tasks | 1-32 for an active plan |
@@ -58,6 +58,13 @@ source key `manual`. Neither component permits a colon, making this encoding
 unambiguous. Filenames, array positions, participants and kickoff times never
 contribute to identity. Preserve an offline ID ledger across preparations.
 Keep a new submission ID separate from unchanged fixture IDs.
+
+A review-only package may use an empty `fixtures` array when its active review
+plan contains at least one task. This records an approved publication check
+without inventing a fixture, participant or kickoff. An empty fixture list with
+a completed plan is rejected as an accidental no-op. Applying a review-only
+package performs no canonical fixture operation and supplies no cancellation or
+removal evidence.
 
 ## Fixture fields
 

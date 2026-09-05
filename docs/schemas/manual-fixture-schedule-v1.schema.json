@@ -77,7 +77,7 @@
     },
     "fixtures": {
       "type": "array",
-      "minItems": 1,
+      "minItems": 0,
       "maxItems": 2000,
       "items": {
         "$ref": "#/$defs/fixture"
@@ -87,6 +87,30 @@
       "$ref": "#/$defs/review_plan"
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "fixtures": {
+            "type": "array",
+            "maxItems": 0
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "review_plan": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "const": "active"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
     "boundary": {
       "type": "object",

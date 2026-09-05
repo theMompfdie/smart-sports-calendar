@@ -200,8 +200,8 @@ def _timestamp(value: Any, path: str, *, utc: bool = False) -> datetime:
     return result
 
 
-def _array(value: Any, path: str, maximum: int) -> list[Any]:
-    if not isinstance(value, list) or not 1 <= len(value) <= maximum:
+def _array(value: Any, path: str, maximum: int, *, minimum: int = 1) -> list[Any]:
+    if not isinstance(value, list) or not minimum <= len(value) <= maximum:
         _fail(path, "array size outside supported limits")
     return value
 
@@ -445,12 +445,17 @@ def parse_manifest(payload: bytes) -> ManualManifest:
         _fail("provenance", "observation must not follow preparation")
     fixtures = tuple(
         _fixture(v, f"fixtures[{i}]")
-        for i, v in enumerate(_array(root["fixtures"], "fixtures", MAX_FIXTURES))
+        for i, v in enumerate(
+            _array(root["fixtures"], "fixtures", MAX_FIXTURES, minimum=0)
+        )
     )
     if len({f.fixture_id for f in fixtures}) != len(fixtures):
         _fail("fixtures", "duplicate fixture identities")
     if any(f.boundary not in boundaries for f in fixtures):
         _fail("fixtures", "fixture outside declared boundary")
+    review_plan = _review_plan(root["review_plan"])
+    if not fixtures and review_plan.state != "active":
+        _fail("fixtures", "an empty fixture list requires an active review plan")
     return ManualManifest(
         "fixture_schedule",
         1,
@@ -474,7 +479,7 @@ def parse_manifest(payload: bytes) -> ManualManifest:
             prepared,
         ),
         fixtures,
-        _review_plan(root["review_plan"]),
+        review_plan,
         hashlib.sha256(payload).hexdigest(),
         payload,
     )

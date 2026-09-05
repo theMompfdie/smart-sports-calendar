@@ -99,7 +99,6 @@ def test_models_and_original_bytes_are_immutable():
         ("namespace", "a:b"),
         ("namespace", "x" * 129),
         ("namespace", "Ã©"),
-        ("fixtures", []),
         ("fixtures", {}),
         ("boundaries", []),
         ("scope", None),
@@ -438,6 +437,23 @@ def test_review_plan_requires_explicit_pending_work_or_explained_completion(plan
     data = sample()
     data["review_plan"] = plan
     with pytest.raises(ManifestValidationError):
+        parse_manifest(encoded(data))
+
+
+def test_review_only_manifest_requires_an_active_task():
+    data = sample()
+    data["fixtures"] = []
+    manifest = parse_manifest(encoded(data))
+    assert manifest.fixtures == ()
+    assert manifest.review_plan.state == "active"
+    assert manifest.review_plan.tasks
+
+    data["review_plan"] = {
+        "state": "complete",
+        "tasks": [],
+        "completion_note": "No further reviews are required.",
+    }
+    with pytest.raises(ManifestValidationError, match="active review plan"):
         parse_manifest(encoded(data))
 
 
