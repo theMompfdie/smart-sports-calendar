@@ -1,9 +1,9 @@
 # Atomic manual import persistence
 
 Issue #251 implements the transactional backend for reviewed manual imports.
-It is available as an application service through the container. Inbox transport,
-operator CLI commands and the scheduled worker follow in #252; this is not yet
-a complete Docker-host import workflow.
+It is available as an application service through the container. The optional
+inbox, operator CLI and worker are documented in the
+[Docker-host workflow](manual-import-workflow.md) added by #252.
 
 ## Storage and migration
 
@@ -78,8 +78,8 @@ manual B/C/D grants do not change League A source presentation or revisions.
 ## Application service lifecycle
 
 The existing application container exposes `manual_import_service`. Its methods
-are intended for the single owning application process and the upcoming inbox
-worker, not an additional concurrent writer process on the Docker host.
+are intended for the single owning application process and its inbox worker,
+not an additional concurrent writer process on the Docker host.
 
 1. `configure(configuration)` installs the independently reviewed profile.
 2. `receive(manifest_bytes)` validates and stores one immutable package as
@@ -104,8 +104,9 @@ before committing. A mismatch or persistence failure rolls back the whole batch.
 DEFER remains an explicit accepted outcome without a corresponding event write.
 
 After a persistence failure the previous APPROVED state survives rollback and
-can be retried after the cause is resolved. Transient retry scheduling belongs
-to #252. A stale plan instead commits NEEDS_REVIEW without canonical changes.
+can be retried after the cause is resolved. The #252 worker retries transient
+failures on later cycles. A stale plan instead commits NEEDS_REVIEW without
+canonical changes.
 Unchanged transport redelivery and repeated apply of APPLIED return the original
 receipt. An intentional later replay uses a new submission ID and fresh approval;
 unchanged events and review plans retain their revisions.
@@ -126,8 +127,9 @@ accepted changes invalidate only the relevant manual event presentation.
 Microsoft Graph stays outside the SQLite transaction. Existing synchronization
 selects the committed canonical events and handles Graph failure/retry through
 its established mappings. Graph failure never rolls back an already committed
-manual batch. Dedicated update-review appointments, their mappings and overdue
-catch-up behavior remain #252 work; storing a plan does not create an appointment.
+manual batch. The optional #252 worker projects update-review appointments with
+separate mappings and persisted overdue catch-up. This backend alone stores the
+accepted plan; it does not call Graph.
 
 ## Qualification boundary
 
@@ -137,7 +139,8 @@ changes, unchanged replay and SQLite-to-mocked-Graph recovery. Synthetic Nations
 League A/B/C/D coexistence verifies that B/C/D imports preserve A's canonical
 state and that A cannot apply changes or removal evidence to another stage.
 
-Live source qualification, inbox execution and staging evidence remain required
-under #252-#254. Production promotion follows a verified release and separate
-operator authorization; blocker #233 is unchanged. No production import or
-release publication is performed by this change.
+Live source qualification and staging evidence remain required under #253/#254.
+The #252 workflow has separate deterministic and Docker validation. Production
+promotion follows a verified release and separate operator authorization;
+blocker #233 is unchanged. No production import or release publication is
+performed by this change.

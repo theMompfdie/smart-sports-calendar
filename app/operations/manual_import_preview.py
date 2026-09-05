@@ -11,17 +11,8 @@ from app.application.manual_preview_service import (
     parse_preview_configuration,
 )
 from app.database.manual_preview_repository import ManualPreviewRepository
-from app.imports.manual_manifest import MAX_BYTES, ManifestValidationError
-
-
-def read_bounded(path: Path) -> bytes:
-    if path.is_symlink() or not path.is_file():
-        raise ValueError("Input must be a regular local file.")
-    with path.open("rb") as handle:
-        payload = handle.read(MAX_BYTES + 1)
-    if len(payload) > MAX_BYTES:
-        raise ValueError("Input exceeds the size limit.")
-    return payload
+from app.imports.manual_files import read_bounded
+from app.imports.manual_manifest import ManifestValidationError
 
 
 def main(argv: Sequence[str] | None = None) -> int:

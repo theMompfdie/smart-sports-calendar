@@ -31,6 +31,8 @@ from app.application.football_data_premier_league_service import (
     register_football_data_source,
 )
 from app.application.manual_import_service import ManualImportService
+from app.application.manual_import_worker import ManualImportWorker
+from app.application.manual_review_service import ManualReviewService
 from app.application.nflverse_competition_service import (
     NflverseCompetitionService,
     register_nflverse_source,
@@ -74,6 +76,7 @@ from app.database.event_results_repository import EventResultsRepository
 from app.database.event_statistics_repository import EventStatisticsRepository
 from app.database.fixture_import_repository import FixtureImportRepository
 from app.database.manual_import_repository import ManualImportRepository
+from app.database.manual_review_repository import ManualReviewRepository
 from app.database.media_assets_repository import MediaAssetsRepository
 from app.database.participants_catalog import initialize_participants_catalog
 from app.database.participants_repository import ParticipantsRepository
@@ -95,9 +98,11 @@ from app.database.synchronization_query_repository import (
 )
 from app.graph.authentication import GraphTokenProvider
 from app.graph.client import GraphClient
+from app.imports.manual_inbox import ManualInbox
 from app.logging.logger import configure_logging
 from app.media.asset_service import MediaAssetService
 from app.media.event_asset_selector import EventAssetSelector
+from app.operations.instance_lock import instance_lock
 from app.providers.api_football.catalog_adapter import ApiFootballCatalogAdapter
 from app.providers.api_football.client import ApiFootballClient
 from app.providers.api_football.fixture_adapter import ApiFootballFixtureAdapter
@@ -755,11 +760,44 @@ class ApplicationContainer:
                 supported_roles=frozenset({SourceRole.AUTHORITATIVE}),
                 writes_canonical=True,
             )
+        self.manual_import_worker = (
+            ManualImportWorker(
+                ManualInbox(
+                    self.settings.manual_import_root, self.settings.instance_name
+                ),
+                self.manual_import_service,
+                self.logger,
+                self.settings.manual_import_limit,
+            )
+            if self.settings.manual_import_root is not None
+            else None
+        )
+        self.manual_review_service = (
+            ManualReviewService(
+                ManualReviewRepository(self.settings.database_path),
+                self.graph_client,
+                self.settings.outlook_calendar_id,
+                self.logger,
+            )
+            if self.manual_import_worker is not None
+            else None
+        )
         self.source_scheduled_jobs = self.source_registry.build_scheduled_jobs(
             self.settings.source_jobs
         )
         self.scheduled_jobs = (
             *self.source_scheduled_jobs,
+            *(
+                (
+                    ScheduledJob(
+                        "system:manual-import",
+                        self.settings.manual_import_interval,
+                        self._run_manual_import,
+                    ),
+                )
+                if self.manual_import_worker
+                else ()
+            ),
             ScheduledJob(
                 job_key="system:calendar-synchronization",
                 interval_seconds=self.settings.heartbeat_interval,
@@ -769,6 +807,10 @@ class ApplicationContainer:
         self.stop_event = Event()
 
     def run(self) -> None:
+        with instance_lock(self.settings.database_path):
+            self._run_owned()
+
+    def _run_owned(self) -> None:
         self._register_signal_handlers()
 
         self.database.initialize()
@@ -814,6 +856,8 @@ class ApplicationContainer:
                 repository=self.data_sources_repository,
             )
         self._persist_source_assignments()
+        if self.manual_import_worker is not None:
+            self.manual_import_worker.initialize()
         self.database.record_startup()
 
         self.logger.info(
@@ -865,7 +909,7 @@ class ApplicationContainer:
             "enabled" if self.nflverse_client is not None else "disabled",
         )
 
-        if self.settings.source_jobs:
+        if self.settings.source_jobs or self.manual_import_worker is not None:
             self.scheduler.run_jobs(
                 jobs=self.scheduled_jobs,
                 stop_event=self.stop_event,
@@ -895,6 +939,12 @@ class ApplicationContainer:
             signal_name,
         )
         self.stop_event.set()
+
+    def _run_manual_import(self) -> None:
+        if self.manual_import_worker is not None:
+            self.manual_import_worker.run()
+        if self.manual_review_service is not None:
+            self.manual_review_service.synchronize(self.settings.manual_import_limit)
 
     def _run_synchronization(self) -> None:
         self.synchronization_runtime_service.run(

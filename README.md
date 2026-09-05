@@ -718,7 +718,7 @@ The signed Phase 8 beta is published; the Phase 9 prerequisite is satisfied.
 
 ### Phase 9 - Reviewed manual fixture imports
 
-**Status:** _Parser, preview and atomic backend implemented; inbox work remains._
+**Status:** _Manual import workflow implemented; live qualification remains._
 
 Master [#200](https://github.com/theMompfdie/smart-sports-calendar/issues/200)
 targets `v0.9.0-beta.1` with reviewed manual imports for Austrian Bundesliga,
@@ -749,7 +749,7 @@ alongside League A. Explicit configuration and live qualification remain
 required before enabling those manual writers.
 Review plans carry due dates and reminder lead times for missing kickoffs, new
 draws and return legs. Dedicated Outlook update-reminder appointments are
-planned in #252; the parser does not create them.
+provided by the optional #252 worker; the parser does not create them.
 
 Issue #250 adds a [standalone preview](docs/manual-import-preview.md) against
 an existing read-only SQLite snapshot. It reports fixture and review-appointment
@@ -759,8 +759,9 @@ It does not apply imports or create Outlook appointments.
 Issue #251 adds the [atomic persistence backend](docs/manual-import-apply.md):
 immutable packages and receipts, persisted review plans, durable instance
 identity and disjoint stage authority. It preserves the normal Outlook retry
-boundary. Host commands, inbox scheduling and update-reminder delivery follow
-in #252; the backend alone is not the complete operational import workflow.
+boundary. Host commands, inbox scheduling and update-reminder delivery are
+available through the
+[Docker-host workflow](docs/manual-import-workflow.md) in #252.
 
 Production use follows verified publication and separately approved manual
 promotion. The independently tracked #233 production blocker remains in force.

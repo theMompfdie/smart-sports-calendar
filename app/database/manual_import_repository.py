@@ -45,6 +45,12 @@ class ManualImportTransaction:
         self._connection = connection
         self._path = path
 
+    def database_identity(self) -> dict[str, str]:
+        row = self._connection.execute(
+            "SELECT instance_id FROM manual_import_instance WHERE id=1"
+        ).fetchone()
+        return {"database_id": row["instance_id"]}
+
     def batch(self, submission_id: str) -> dict[str, Any]:
         row = self._connection.execute(
             "SELECT * FROM import_batches WHERE submission_id=?", (submission_id,)

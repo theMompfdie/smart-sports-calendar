@@ -19,7 +19,8 @@ python -m app.operations.manual_import_preview `
 ```
 
 The same module runs on Linux with Linux paths. Docker inbox commands and
-mount configuration follow in #252. The CLI prints a private JSON report to
+mount configuration are documented in the
+[workflow guide](manual-import-workflow.md). The CLI prints private JSON to
 stdout; redirect it only into operator-controlled storage. Exit code 0 means
 the batch is valid for this preview; exit code 2 means rejection or unavailable
 input/database. It is not evidence of applied fixtures or Outlook convergence.
@@ -51,7 +52,7 @@ source qualification or a provisioned catalog.
 
 The manual source key is `manual`. A missing source row is visible in the
 precondition and permits planning only; its controlled provisioning uses
-the #251 service; the host workflow follows in #252. An inactive manual source
+the #251 service and #252 startup profiles. An inactive manual source
 rejects preview. Any overlapping authoritative or bootstrap assignment also
 rejects preview. Verification and
 disabled assignments do not grant writes. Existing whole-season assignments
@@ -79,9 +80,8 @@ Only exact manual source mappings with the expected stable event key are
 accepted. Mappings outside scope, shared provider mappings and suspicious new
 IDs for an existing matchup/round/leg require explicit review. No automatic
 cross-source correlation is performed. A distinct round or explicitly different
-leg may create a distinct identity. Issue #251 must preserve this behavior when
-integrating apply; the historical provider importer's heuristic must not run
-for manual fixtures.
+leg may create a distinct identity. Issue #251 preserves this during apply;
+the historical provider importer's heuristic does not run for manual fixtures.
 
 Omitted fixtures produce no operation. DELETE is unavailable. Any rejected
 record makes `accepted` false for the whole batch; decisions shown for other
@@ -100,7 +100,7 @@ preview fingerprint or silently reschedules a task.
 The reader now loads the namespace's accepted plan from SQLite, populated only
 by successful #251 apply. A namespace without an accepted plan shows initial
 creation. Completed or replaced tasks are previewed against that persisted plan.
-Issue #252 still owns actual Outlook projection and one-time overdue catch-up;
+The optional #252 worker provides Outlook projection and overdue catch-up;
 this CLI does not create Outlook events or dismiss reminders.
 
 ## Review and stale-state checks

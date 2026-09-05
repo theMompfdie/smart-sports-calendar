@@ -115,6 +115,20 @@ class Settings:
     source_jobs: tuple[SourceJobDefinition, ...] = ()
     instance_name: str = "default"
     media_root: Path = Path("/data/media")
+    manual_import_root: Path | None = None
+    manual_import_interval: int = 60
+    manual_import_limit: int = 10
+
+    def __post_init__(self) -> None:
+        if (
+            self.manual_import_root is not None
+            and not self.manual_import_root.is_absolute()
+        ):
+            raise ValueError("MANUAL_IMPORT_ROOT must be absolute.")
+        if self.manual_import_interval <= 0 or not 1 <= self.manual_import_limit <= 100:
+            raise ValueError(
+                "Manual interval must be positive and batch limit must be 1-100."
+            )
 
 
 def get_required_environment_variable(name: str) -> str:
@@ -763,4 +777,15 @@ def load_settings() -> Settings:
         oefb_ical=load_oefb_ical_settings(),
         source_jobs=load_source_jobs(),
         media_root=get_media_root(),
+        manual_import_root=(
+            Path(os.environ["MANUAL_IMPORT_ROOT"].strip())
+            if os.getenv("MANUAL_IMPORT_ROOT", "").strip()
+            else None
+        ),
+        manual_import_interval=get_positive_integer_environment_variable(
+            "MANUAL_IMPORT_INTERVAL", default=60
+        ),
+        manual_import_limit=get_positive_integer_environment_variable(
+            "MANUAL_IMPORT_LIMIT", default=10
+        ),
     )
