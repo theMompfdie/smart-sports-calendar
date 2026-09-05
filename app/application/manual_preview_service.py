@@ -130,7 +130,7 @@ class ManualPreviewService:
         return plan_preview(manifest, configuration, self.repository.read(manifest))
 
 
-def _record(
+def manual_fixture_record(
     manifest: ManualManifest, fixture: ManualFixture, state: ManualPreviewState
 ) -> FixtureImportRecord:
     people = {row["participant_key"]: row for row in state.participants}
@@ -184,7 +184,7 @@ def _plan_fixture(
     state: ManualPreviewState,
     participants_by_event: dict[int, list[dict[str, Any]]],
 ) -> dict[str, Any]:
-    record = _record(manifest, fixture, state)
+    record = manual_fixture_record(manifest, fixture, state)
     source_ids = {
         source["id"] for source in state.sources if source["source_key"] == "manual"
     }
@@ -327,19 +327,36 @@ def plan_preview(
             for row in state.sources
         ):
             raise ValueError("manual_source_disabled")
+        if state.instance_ref is not None and state.instance_ref != config.instance_ref:
+            raise ValueError("wrong_configured_instance")
+        requested_stages = {boundary.stage for boundary in config.profile.boundaries}
+        own_found = False
         for assignment in state.assignments:
             if not assignment["is_enabled"] or assignment["role"] in {
                 "disabled",
                 "verification",
             }:
                 continue
+            stages = (
+                None
+                if assignment["stages_json"] is None
+                else set(json.loads(assignment["stages_json"]))
+            )
             source = sources.get(assignment["source_id"])
-            if (
-                source is None
-                or source["source_key"] != "manual"
-                or assignment["role"] != "authoritative"
-            ):
+            own = (
+                source is not None
+                and source["source_key"] == "manual"
+                and assignment["namespace"] == manifest.namespace
+                and assignment["role"] == "authoritative"
+            )
+            if own:
+                own_found = True
+                if stages is not None and not requested_stages <= stages:
+                    raise ValueError("profile_exceeds_persisted_authority")
+            elif stages is None or requested_stages.intersection(stages):
                 raise ValueError("conflicting_whole_season_writer")
+        if state.configured_profile is not None and not own_found:
+            raise ValueError("manual_authority_unavailable")
         identities: set[tuple[Any, ...]] = set()
         for index, fixture in enumerate(manifest.fixtures):
             try:

@@ -1,13 +1,14 @@
 """Read one consistent manual-preview snapshot without bootstrap or mutations."""
 
 import hashlib
+import json
 import sqlite3
 from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from app.imports.manual_manifest import ManualManifest, ManualReviewPlan
+from app.imports.manual_manifest import ManualManifest, ManualReviewPlan, _review_plan
 
 
 @dataclass(frozen=True)
@@ -22,6 +23,8 @@ class ManualPreviewState:
     sources: tuple[dict[str, Any], ...]
     schema_versions: tuple[str, ...]
     accepted_review_plan: ManualReviewPlan | None = None
+    configured_profile: dict[str, Any] | None = None
+    instance_ref: str | None = None
 
 
 class ManualPreviewRepository:
@@ -129,7 +132,8 @@ class ManualPreviewRepository:
             )
         )
         assignments = rows(
-            """SELECT job_key, source_id, role, is_enabled, interval_seconds
+            """SELECT job_key, source_id, role, is_enabled, interval_seconds,
+                      namespace, stages_json
                FROM source_assignments WHERE competition_id = ? AND season_id = ?
                ORDER BY job_key""",
             (scope["competition_id"], scope["season_id"]),
@@ -143,8 +147,24 @@ class ManualPreviewRepository:
             (scope["competition_id"], scope["season_id"]),
         )
         versions = rows("SELECT version FROM schema_migrations ORDER BY version")
+        instance = rows(
+            "SELECT instance_id,instance_ref FROM manual_import_instance WHERE id=1"
+        )
+        if len(instance) != 1:
+            raise ValueError("Durable database identity is missing.")
+        profile = rows(
+            """SELECT configuration_json,attribution FROM manual_import_profiles
+                         WHERE namespace=?""",
+            (manifest.namespace,),
+        )
+        review = rows(
+            "SELECT plan_json FROM manual_review_plans WHERE namespace=?",
+            (manifest.namespace,),
+        )
         return ManualPreviewState(
-            hashlib.sha256(database_identity.encode("utf-8")).hexdigest(),
+            hashlib.sha256(
+                (database_identity + ":" + instance[0]["instance_id"]).encode("utf-8")
+            ).hexdigest(),
             scope,
             participants,
             events,
@@ -153,4 +173,7 @@ class ManualPreviewRepository:
             assignments,
             sources,
             tuple(row["version"] for row in versions),
+            None if not review else _review_plan(json.loads(review[0]["plan_json"])),
+            None if not profile else profile[0],
+            instance[0]["instance_ref"],
         )

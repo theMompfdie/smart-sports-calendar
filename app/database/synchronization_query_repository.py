@@ -198,6 +198,7 @@ class SynchronizationQueryRepository:
             connection=connection,
             competition_id=event.competition_id,
             season_id=event.season_id,
+            stage=event.stage,
         )
         operator_notice = self._load_operator_notice(event.metadata)
 
@@ -401,24 +402,28 @@ class SynchronizationQueryRepository:
         connection: sqlite3.Connection,
         competition_id: int | None,
         season_id: int | None,
+        stage: str | None = None,
     ) -> str | None:
         if competition_id is None or season_id is None:
             return None
 
         rows = connection.execute(
             """
-            SELECT ds.metadata_json
+            SELECT ds.metadata_json, sa.namespace, mp.attribution AS manual_attribution
             FROM source_assignments AS sa
             INNER JOIN data_sources AS ds
                 ON ds.id = sa.source_id
+            LEFT JOIN manual_import_profiles AS mp ON mp.namespace = sa.namespace
             WHERE sa.competition_id = ?
               AND sa.season_id = ?
               AND sa.role = 'authoritative'
               AND sa.is_enabled = 1
               AND ds.is_active = 1
+              AND (sa.stages_json IS NULL OR ? IN
+                   (SELECT value FROM json_each(sa.stages_json)))
             ORDER BY sa.id
             """,
-            (competition_id, season_id),
+            (competition_id, season_id, stage),
         ).fetchall()
 
         if not rows:
@@ -428,6 +433,8 @@ class SynchronizationQueryRepository:
                 "Multiple active authoritative sources found for event scope."
             )
 
+        if rows[0]["namespace"] is not None:
+            return rows[0]["manual_attribution"]
         metadata = self._deserialize_metadata(rows[0]["metadata_json"])
         if metadata is None or "attribution" not in metadata:
             return None

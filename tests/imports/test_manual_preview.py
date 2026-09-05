@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 from app.application.manual_preview_service import (
     ManualPreviewService,
-    _record,
+    manual_fixture_record,
     parse_preview_configuration,
     plan_preview,
     validate_preview_approval,
@@ -120,7 +120,7 @@ def report(context, raw=None):
 def persist(context):
     path, _, manifest, config, _ = context
     state = ManualPreviewRepository(path).read(manifest)
-    record = _record(manifest, manifest.fixtures[0], state)
+    record = manual_fixture_record(manifest, manifest.fixtures[0], state)
     result = FixtureImportRepository(path).import_observation(
         1,
         (record,),

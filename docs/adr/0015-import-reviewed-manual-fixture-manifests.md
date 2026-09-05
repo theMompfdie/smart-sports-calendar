@@ -53,17 +53,17 @@ assignment contracts. The manifest cannot grant itself authority or alter
 configuration. Refuse apply if an automated writer owns that scope. Bootstrap
 and verification data cannot overwrite an authoritative source or delete data.
 
-### Phase 9.3 stage-authority extension for review (#250)
+### Phase 9.3 stage-authority extension (#250/#251)
 
 The operator added Nations League B/C/D to the four original manual targets.
 The seven target scopes share the same import contract. Nations League A/B/C/D
 use one canonical competition and season; creating duplicate competitions
 would conceal conflicting ownership and is rejected.
 
-This extension is proposed for operator review with #250. Its persistence and
-runtime enforcement belong to #251/#252; it does not alter existing assignments
-in the preview implementation. The accepted whole-season rule continues to
-apply until that integration is implemented and qualified.
+The operator reviewed this extension by merging PR #259 for #250. Issue #251
+implements its migration, persisted grants and canonical enforcement; #252
+adds the inbox worker. Existing broad grants remain broad until explicitly
+reconfigured. Live source/stage qualification still belongs to #254.
 
 Use explicit authority grants within one competition/season:
 
@@ -97,7 +97,7 @@ must not require fabricated refresh intervals. Issue #252 must schedule only
 actual automated jobs and the bounded inbox worker.
 
 The pure `validate_stage_authorities` contract checks one proposed scope here.
-The current read-only preview still rejects a competing broad assignment;
+The read-only preview still rejects a competing broad assignment;
 passing that pure validator does not enable a second runtime writer. Tests
 must prove League A remains untouched before B/C/D can be qualified in #254.
 
@@ -553,3 +553,14 @@ operation.
 - This decision requires a small receipt migration and assignment/transaction
   extensions in later issues. This ADR adds no runtime code, dependency, schema
   migration or production configuration in #168.
+
+## Phase 9.4 implementation checkpoint (#251)
+
+The transactional backend now persists immutable import batches and receipts,
+accepted review plans and durable database identity. The canonical importer
+exposes a caller-owned transaction and disables heuristic correlation for manual
+namespaces. Configuration, attribution lookup and revision triggers honor the
+stage grants described above, while preserving legacy broad ownership.
+See [atomic manual import persistence](../manual-import-apply.md) for the actual
+service lifecycle and remaining #252-#254 operational qualification boundaries.
+No inbox worker, update-appointment delivery or production rollout is claimed.

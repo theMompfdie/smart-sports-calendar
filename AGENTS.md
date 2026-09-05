@@ -208,8 +208,10 @@ changes and corrections; repeated unchanged imports must be idempotent.
 Missing entries in a partial manual import do not imply cancellation or
 deletion. Periodic operator-reviewed updates maintain the data until an
 explicitly qualified provider transition is available, with one authoritative
-writer per competition and season. This section describes planned behavior,
-not an implemented import feature; detailed acceptance criteria remain in #200.
+writer per competition/season or explicitly disjoint stage boundary, as defined
+in ADR 0015. Legacy broad grants must never be narrowed implicitly.
+The complete Docker-host workflow is not yet available; implementation status
+and detailed acceptance criteria remain in #200.
 
 ## PRs and Issues
 

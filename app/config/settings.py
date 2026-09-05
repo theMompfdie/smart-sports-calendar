@@ -6,6 +6,8 @@ from math import isfinite
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from app.imports.manual_authority import StageAuthority, validate_stage_authorities
+from app.imports.manual_manifest import IDENTIFIER
 from app.providers.api_football.exceptions import ProviderConfigurationError
 from app.providers.contracts import (
     SourceConfigurationError,
@@ -595,7 +597,7 @@ def load_source_jobs() -> tuple[SourceJobDefinition, ...]:
             "role",
             "interval_seconds",
         }
-        if set(raw_job) != required:
+        if not required <= set(raw_job) <= required | {"authority_stages"}:
             raise SourceConfigurationError(
                 f"SOURCE_JOBS_JSON item {index} must contain exactly: "
                 + ", ".join(sorted(required))
@@ -639,6 +641,17 @@ def load_source_jobs() -> tuple[SourceJobDefinition, ...]:
                 f"SOURCE_JOBS_JSON item {index} interval_seconds must be a "
                 "positive integer."
             )
+        stages = raw_job.get("authority_stages")
+        if stages is not None and (
+            not isinstance(stages, list)
+            or not stages
+            or any(
+                not isinstance(stage, str) or not IDENTIFIER.fullmatch(stage)
+                for stage in stages
+            )
+            or len(stages) != len(set(stages))
+        ):
+            raise SourceConfigurationError("Invalid explicit authority_stages.")
         jobs.append(
             SourceJobDefinition(
                 job_key=text_fields["job_key"],
@@ -650,6 +663,7 @@ def load_source_jobs() -> tuple[SourceJobDefinition, ...]:
                     season_key=text_fields["season_key"],
                 ),
                 interval_seconds=interval_seconds,
+                authority_stages=None if stages is None else frozenset(stages),
             )
         )
     validate_source_jobs(jobs)
@@ -680,12 +694,24 @@ def validate_source_jobs(jobs: list[SourceJobDefinition]) -> None:
         authorities = [
             job for job in scoped_jobs if job.role is SourceRole.AUTHORITATIVE
         ]
-        if len(authorities) != 1:
+        if not authorities:
             raise SourceConfigurationError(
                 "Each active competition and season scope must have exactly one "
                 f"authoritative source: {scope.sport_key}/"
                 f"{scope.competition_key}/{scope.season_key}."
             )
+
+        try:
+            validate_stage_authorities(
+                tuple(
+                    StageAuthority(job.job_key, job.authority_stages)
+                    for job in authorities
+                )
+            )
+        except ValueError as error:
+            raise SourceConfigurationError(
+                "Each scope must have exactly one authoritative source per stage."
+            ) from error
 
 
 def load_settings() -> Settings:
