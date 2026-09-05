@@ -718,11 +718,12 @@ The signed Phase 8 beta is published; the Phase 9 prerequisite is satisfied.
 
 ### Phase 9 - Reviewed manual fixture imports
 
-**Status:** _Architecture accepted; importer not implemented._
+**Status:** _Manifest parser implemented; runtime importer not implemented._
 
 Master [#200](https://github.com/theMompfdie/smart-sports-calendar/issues/200)
 targets `v0.9.0-beta.1` with reviewed manual imports for Austrian Bundesliga,
-FA Cup, EFL Cup and UEFA Conference League. Europa League remains on the
+FA Cup, EFL Cup, UEFA Conference League and Nations League B/C/D.
+Europa League remains on the
 planned later API path. Each target requires explicit source/scope qualification.
 
 The [manual import contract ADR](docs/adr/0015-import-reviewed-manual-fixture-manifests.md)
@@ -731,10 +732,24 @@ text/PDF, write-free preview, stable fixture IDs, atomic canonical import and
 recoverable Outlook synchronization. Partial omissions never delete events.
 The planned Docker-host workflow stages immutable import packages for review
 and approval; a worker in the existing service applies approved batches;
-commands, parser and persistence follow in #249-#253, with all four targets
+commands, staging and persistence follow in #250-#253, with all seven
+competition/league targets
 qualified in staging under #254 and release documentation under #255.
 The typed import envelope leaves room for future result imports; v0.9 accepts
 fixture schedules only and does not implement scores or result processing.
+
+Issue #249 adds the strict parser, detached approval format, explicit profile
+validation, explicit schedule-review plans and synthetic packages for all seven
+targets. See the
+[manual preparation guide](docs/manual-import-preparation.md) for the versioned
+schemas, limits and Python API. These checks do not write to SQLite or Outlook
+and do not enable a source or replace runtime preview and authority validation.
+Nations League B/C/D require the reviewed authority-scope extension in #250/#251
+to coexist with the existing League A provider; the parser alone cannot enable
+that coexistence.
+Review plans carry due dates and reminder lead times for missing kickoffs, new
+draws and return legs. Dedicated Outlook update-reminder appointments are
+planned in #252; the parser does not create them.
 
 Production use follows verified publication and separately approved manual
 promotion. The independently tracked #233 production blocker remains in force.
