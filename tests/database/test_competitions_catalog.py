@@ -39,17 +39,20 @@ def test_initialize_competitions_catalog_creates_reviewed_competitions(
         sports_repository=sports_repository,
     )
 
-    assert len(competitions) == 10
+    assert len(competitions) == 13
 
     by_key = {competition.competition_key: competition for competition in competitions}
     premier_league = by_key["premier_league"]
     bundesliga = by_key["bundesliga"]
+    austrian_bundesliga = by_key["austrian_bundesliga"]
     championship = by_key["championship"]
     efl_cup = by_key["efl_cup"]
+    fa_cup = by_key["fa_cup"]
     second_bundesliga = by_key["second_bundesliga"]
     dfb_pokal = by_key["dfb_pokal"]
     oefb_cup = by_key["oefb_cup"]
     nations_league = by_key["uefa_nations_league"]
+    conference_league = by_key["uefa_conference_league"]
     nfl = by_key["nfl"]
     champions_league = by_key["uefa_champions_league"]
     football = sports_repository.get_by_key("football")
@@ -68,6 +71,12 @@ def test_initialize_competitions_catalog_creates_reviewed_competitions(
     assert bundesliga.country_code == "DE"
     assert bundesliga.competition_type == "league"
     assert bundesliga.metadata == {"region": "Germany"}
+    assert austrian_bundesliga.sport_id == football.id
+    assert austrian_bundesliga.name == "ADMIRAL Bundesliga"
+    assert austrian_bundesliga.short_name == "AT BL"
+    assert austrian_bundesliga.country_code == "AT"
+    assert austrian_bundesliga.competition_type == "league"
+    assert austrian_bundesliga.metadata == {"region": "Austria"}
     assert championship.sport_id == football.id
     assert championship.name == "EFL Championship"
     assert championship.short_name == "EFL"
@@ -80,6 +89,12 @@ def test_initialize_competitions_catalog_creates_reviewed_competitions(
     assert efl_cup.country_code == "GB-ENG"
     assert efl_cup.competition_type == "knockout_cup"
     assert efl_cup.metadata == {"region": "England"}
+    assert fa_cup.sport_id == football.id
+    assert fa_cup.name == "Emirates FA Cup"
+    assert fa_cup.short_name == "FA Cup"
+    assert fa_cup.country_code == "GB-ENG"
+    assert fa_cup.competition_type == "knockout_cup"
+    assert fa_cup.metadata == {"region": "England"}
     assert second_bundesliga.sport_id == football.id
     assert second_bundesliga.name == "2. Bundesliga"
     assert second_bundesliga.short_name == "2BL"
@@ -104,6 +119,12 @@ def test_initialize_competitions_catalog_creates_reviewed_competitions(
     assert nations_league.country_code == "INT"
     assert nations_league.competition_type == "hybrid_tournament"
     assert nations_league.metadata == {"region": "Europe"}
+    assert conference_league.sport_id == football.id
+    assert conference_league.name == "UEFA Conference League"
+    assert conference_league.short_name == "UECL"
+    assert conference_league.country_code == "INT"
+    assert conference_league.competition_type == "hybrid_tournament"
+    assert conference_league.metadata == {"region": "Europe"}
     assert champions_league.sport_id == football.id
     assert champions_league.name == "UEFA Champions League"
     assert champions_league.short_name == "UCL"

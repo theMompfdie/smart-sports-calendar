@@ -58,7 +58,7 @@ def test_initialize_seasons_catalog_creates_reviewed_seasons(
         sports_repository=sports_repository,
     )
 
-    assert len(seasons) == 10
+    assert len(seasons) == 13
     football = sports_repository.get_by_key("football")
 
     assert football is not None
@@ -74,6 +74,11 @@ def test_initialize_seasons_catalog_creates_reviewed_seasons(
         competition_key="bundesliga",
     )
     assert bundesliga is not None
+    austrian_bundesliga = competitions_repository.get_by_key(
+        sport_id=football.id,
+        competition_key="austrian_bundesliga",
+    )
+    assert austrian_bundesliga is not None
     championship = competitions_repository.get_by_key(
         sport_id=football.id,
         competition_key="championship",
@@ -84,6 +89,11 @@ def test_initialize_seasons_catalog_creates_reviewed_seasons(
         competition_key="efl_cup",
     )
     assert efl_cup is not None
+    fa_cup = competitions_repository.get_by_key(
+        sport_id=football.id,
+        competition_key="fa_cup",
+    )
+    assert fa_cup is not None
     second_bundesliga = competitions_repository.get_by_key(
         sport_id=football.id,
         competition_key="second_bundesliga",
@@ -104,6 +114,11 @@ def test_initialize_seasons_catalog_creates_reviewed_seasons(
         competition_key="uefa_nations_league",
     )
     assert nations_league is not None
+    conference_league = competitions_repository.get_by_key(
+        sport_id=football.id,
+        competition_key="uefa_conference_league",
+    )
+    assert conference_league is not None
     champions_league = competitions_repository.get_by_key(
         sport_id=football.id,
         competition_key="uefa_champions_league",
@@ -133,6 +148,14 @@ def test_initialize_seasons_catalog_creates_reviewed_seasons(
     assert bundesliga_season.is_current is True
     assert bundesliga_season.metadata is None
 
+    austrian_bundesliga_season = by_competition[austrian_bundesliga.id]
+    assert austrian_bundesliga_season.season_key == "2026_27"
+    assert austrian_bundesliga_season.name == "2026/27"
+    assert austrian_bundesliga_season.start_date == "2026-07-31"
+    assert austrian_bundesliga_season.end_date == "2027-05-31"
+    assert austrian_bundesliga_season.is_current is True
+    assert austrian_bundesliga_season.metadata is None
+
     championship_season = by_competition[championship.id]
     assert championship_season.season_key == "2026_27"
     assert championship_season.name == "2026/27"
@@ -148,6 +171,14 @@ def test_initialize_seasons_catalog_creates_reviewed_seasons(
     assert efl_cup_season.end_date == "2027-03-21"
     assert efl_cup_season.is_current is True
     assert efl_cup_season.metadata is None
+
+    fa_cup_season = by_competition[fa_cup.id]
+    assert fa_cup_season.season_key == "2026_27"
+    assert fa_cup_season.name == "2026/27"
+    assert fa_cup_season.start_date == "2026-08-08"
+    assert fa_cup_season.end_date == "2027-05-22"
+    assert fa_cup_season.is_current is True
+    assert fa_cup_season.metadata is None
 
     second_bundesliga_season = by_competition[second_bundesliga.id]
     assert second_bundesliga_season.season_key == "2026_27"
@@ -175,10 +206,18 @@ def test_initialize_seasons_catalog_creates_reviewed_seasons(
 
     nations_league_season = by_competition[nations_league.id]
     assert nations_league_season.season_key == "2026_27"
-    assert nations_league_season.name == "2026/27 League A group phase"
+    assert nations_league_season.name == "2026/27 league phase"
     assert nations_league_season.start_date == "2026-09-24"
     assert nations_league_season.end_date == "2026-11-17"
     assert nations_league_season.is_current is True
+    conference_league_season = by_competition[conference_league.id]
+    assert conference_league_season.season_key == "2026_27"
+    assert conference_league_season.name == "2026/27 league phase"
+    assert conference_league_season.start_date == "2026-10-15"
+    assert conference_league_season.end_date == "2026-12-17"
+    assert conference_league_season.is_current is True
+    assert conference_league_season.metadata is None
+
     nfl_season = by_competition[nfl.id]
     assert nfl_season.season_key == "2026"
     assert nfl_season.name == "2026 regular season"

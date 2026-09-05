@@ -399,6 +399,21 @@ OEFB_CUP_2026_27_TEAMS = (
     ("wolfsberger_ac", "RZ Pellets WAC", "Wolfsberger AC"),
 )
 
+AUSTRIAN_BUNDESLIGA_2026_27_TEAMS = (
+    ("lask", "LASK", "LASK"),
+    ("sk_sturm_graz", "SK Puntigamer Sturm Graz", "Sturm Graz"),
+    ("fc_red_bull_salzburg", "FC Red Bull Salzburg", "Salzburg"),
+    ("fk_austria_wien", "FK Austria Wien", "Austria Wien"),
+    ("sk_rapid", "SK Rapid", "SK Rapid"),
+    ("tsv_hartberg", "TSV Egger Glas Hartberg", "TSV Hartberg"),
+    ("sv_ried", "SV Oberbank Ried", "SV Ried"),
+    ("wolfsberger_ac", "RZ Pellets WAC", "Wolfsberger AC"),
+    ("scr_altach", "SCR Altach", "SCR Altach"),
+    ("grazer_ak_1902", "Grazer AK 1902", "Grazer AK"),
+    ("wsg_tirol", "WSG Tirol", "WSG Tirol"),
+    ("sc_austria_lustenau", "SC Austria Lustenau", "Austria Lustenau"),
+)
+
 NATIONS_LEAGUE_A_2026_27_TEAMS = (
     ("france", "France", "France", "FR"),
     ("italy", "Italy", "Italy", "IT"),
@@ -416,6 +431,121 @@ NATIONS_LEAGUE_A_2026_27_TEAMS = (
     ("denmark", "Denmark", "Denmark", "DK"),
     ("norway", "Norway", "Norway", "NO"),
     ("wales_national_team", "Wales", "Wales", "GB-WLS"),
+)
+
+NATIONS_LEAGUE_B_C_D_2026_27_TEAMS = (
+    ("slovenia", "Slovenia", "Slovenia", "SI"),
+    ("scotland", "Scotland", "Scotland", "GB-SCT"),
+    ("north_macedonia", "North Macedonia", "North Macedonia", "MK"),
+    ("switzerland", "Switzerland", "Switzerland", "CH"),
+    ("georgia", "Georgia", "Georgia", "GE"),
+    ("northern_ireland", "Northern Ireland", "Northern Ireland", "GB-NIR"),
+    ("hungary", "Hungary", "Hungary", "HU"),
+    ("ukraine", "Ukraine", "Ukraine", "UA"),
+    ("austria", "Austria", "Austria", "AT"),
+    ("israel", "Israel", "Israel", "IL"),
+    ("kosovo", "Kosovo", "Kosovo", "XK"),
+    ("republic_of_ireland", "Republic of Ireland", "Republic of Ireland", "IE"),
+    ("poland", "Poland", "Poland", "PL"),
+    (
+        "bosnia_and_herzegovina",
+        "Bosnia and Herzegovina",
+        "Bosnia and Herzegovina",
+        "BA",
+    ),
+    ("sweden", "Sweden", "Sweden", "SE"),
+    ("romania", "Romania", "Romania", "RO"),
+    ("albania", "Albania", "Albania", "AL"),
+    ("finland", "Finland", "Finland", "FI"),
+    ("belarus", "Belarus", "Belarus", "BY"),
+    ("san_marino", "San Marino", "San Marino", "SM"),
+    ("montenegro", "Montenegro", "Montenegro", "ME"),
+    ("armenia", "Armenia", "Armenia", "AM"),
+    ("cyprus", "Cyprus", "Cyprus", "CY"),
+    ("latvia", "Latvia", "Latvia", "LV"),
+    ("kazakhstan", "Kazakhstan", "Kazakhstan", "KZ"),
+    ("slovakia", "Slovakia", "Slovakia", "SK"),
+    ("faroe_islands", "Faroe Islands", "Faroe Islands", "FO"),
+    ("moldova", "Moldova", "Moldova", "MD"),
+    ("bulgaria", "Bulgaria", "Bulgaria", "BG"),
+    ("luxembourg", "Luxembourg", "Luxembourg", "LU"),
+    ("iceland", "Iceland", "Iceland", "IS"),
+    ("estonia", "Estonia", "Estonia", "EE"),
+    ("andorra", "Andorra", "Andorra", "AD"),
+    ("malta", "Malta", "Malta", "MT"),
+    ("gibraltar", "Gibraltar", "Gibraltar", "GI"),
+    ("lithuania", "Lithuania", "Lithuania", "LT"),
+    ("azerbaijan", "Azerbaijan", "Azerbaijan", "AZ"),
+    ("liechtenstein", "Liechtenstein", "Liechtenstein", "LI"),
+)
+
+CONFERENCE_LEAGUE_2026_27_TEAMS = (
+    ("fc_lugano", "FC Lugano", "Lugano", "CH"),
+    ("crvena_zvezda", "FK Crvena Zvezda", "Crvena Zvezda", "RS"),
+    ("hajduk_split", "HNK Hajduk Split", "Hajduk Split", "HR"),
+    ("ajax", "AFC Ajax", "Ajax", "NL"),
+    ("gent", "KAA Gent", "Gent", "BE"),
+    ("aarhus", "AGF Aarhus", "Aarhus", "DK"),
+    ("egnatia", "KF Egnatia", "Egnatia", "AL"),
+    ("midtjylland", "FC Midtjylland", "Midtjylland", "DK"),
+    ("kups_kuopio", "KuPS Kuopio", "KuPS Kuopio", "FI"),
+    ("trabzonspor", "Trabzonspor", "Trabzonspor", "TR"),
+    ("mjallby", "Mjällby AIF", "Mjällby", "SE"),
+    (
+        "inter_escaldes",
+        "Inter Club d'Escaldes",
+        "Inter Escaldes",
+        "AD",
+    ),
+    ("panathinaikos", "Panathinaikos FC", "Panathinaikos", "GR"),
+    ("borac_banja_luka", "FK Borac Banja Luka", "Borac", "BA"),
+    ("cska_sofia", "PFC CSKA Sofia", "CSKA Sofia", "BG"),
+    ("monaco", "AS Monaco", "Monaco", "MC"),
+    ("riga", "Riga FC", "Riga", "LV"),
+    ("kairat_almaty", "FC Kairat Almaty", "Kairat Almaty", "KZ"),
+    (
+        "universitatea_craiova",
+        "Universitatea Craiova",
+        "Universitatea Craiova",
+        "RO",
+    ),
+    ("getafe", "Getafe CF", "Getafe", "ES"),
+    ("atalanta", "Atalanta BC", "Atalanta", "IT"),
+    ("pafos", "Pafos FC", "Pafos", "CY"),
+    (
+        "brighton_and_hove_albion",
+        "Brighton & Hove Albion",
+        "Brighton",
+        "GB-ENG",
+    ),
+    ("kauno_zalgiris", "FK Kauno Žalgiris", "Kauno Žalgiris", "LT"),
+    ("copenhagen", "FC Copenhagen", "Copenhagen", "DK"),
+    ("braga", "SC Braga", "Braga", "PT"),
+    ("twente", "FC Twente", "Twente", "NL"),
+    ("thun", "FC Thun", "Thun", "CH"),
+    (
+        "heart_of_midlothian",
+        "Heart of Midlothian FC",
+        "Hearts",
+        "GB-SCT",
+    ),
+    ("nordsjaelland", "FC Nordsjælland", "Nordsjælland", "DK"),
+    (
+        "sint_truidense",
+        "Sint-Truidense VV",
+        "Sint-Truidense",
+        "BE",
+    ),
+    ("iberia_tbilisi", "FC Iberia 1999", "Iberia Tbilisi", "GE"),
+    ("sc_freiburg", "SC Freiburg", "Freiburg", "DE"),
+    ("jablonec", "FK Jablonec", "Jablonec", "CZ"),
+    ("brann", "SK Brann", "Brann", "NO"),
+    (
+        "lincoln_red_imps",
+        "Lincoln Red Imps FC",
+        "Lincoln Red Imps",
+        "GI",
+    ),
 )
 
 CHAMPIONS_LEAGUE_2026_27_TEAMS = (
@@ -523,6 +653,20 @@ SEASON_PARTICIPANTS_CATALOG = (
     ),
     SeasonParticipantsCatalogEntry(
         sport_key="football",
+        competition_key="austrian_bundesliga",
+        season_key="2026_27",
+        country_code="AT",
+        participants=tuple(
+            ParticipantCatalogEntry(
+                participant_key=participant_key,
+                name=name,
+                short_name=short_name,
+            )
+            for participant_key, name, short_name in (AUSTRIAN_BUNDESLIGA_2026_27_TEAMS)
+        ),
+    ),
+    SeasonParticipantsCatalogEntry(
+        sport_key="football",
         competition_key="championship",
         season_key="2026_27",
         country_code="GB-ENG",
@@ -610,7 +754,24 @@ SEASON_PARTICIPANTS_CATALOG = (
                 country_code=country_code,
             )
             for participant_key, name, short_name, country_code in (
-                NATIONS_LEAGUE_A_2026_27_TEAMS
+                NATIONS_LEAGUE_A_2026_27_TEAMS + NATIONS_LEAGUE_B_C_D_2026_27_TEAMS
+            )
+        ),
+    ),
+    SeasonParticipantsCatalogEntry(
+        sport_key="football",
+        competition_key="uefa_conference_league",
+        season_key="2026_27",
+        country_code="INT",
+        participants=tuple(
+            ParticipantCatalogEntry(
+                participant_key=participant_key,
+                name=name,
+                short_name=short_name,
+                country_code=country_code,
+            )
+            for participant_key, name, short_name, country_code in (
+                CONFERENCE_LEAGUE_2026_27_TEAMS
             )
         ),
     ),
