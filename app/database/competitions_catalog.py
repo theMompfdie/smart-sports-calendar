@@ -49,6 +49,15 @@ COMPETITION_CATALOG = (
     ),
     CompetitionCatalogEntry(
         sport_key="football",
+        competition_key="efl_cup",
+        name="EFL Cup",
+        short_name="EFL Cup",
+        country_code="GB-ENG",
+        competition_format=CompetitionFormat.KNOCKOUT_CUP,
+        region="England",
+    ),
+    CompetitionCatalogEntry(
+        sport_key="football",
         competition_key="second_bundesliga",
         name="2. Bundesliga",
         short_name="2BL",

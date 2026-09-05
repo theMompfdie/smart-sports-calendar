@@ -43,6 +43,14 @@ SEASON_CATALOG = (
     ),
     SeasonCatalogEntry(
         sport_key="football",
+        competition_key="efl_cup",
+        season_key="2026_27",
+        name="2026/27",
+        start_date="2026-08-01",
+        end_date="2027-03-21",
+    ),
+    SeasonCatalogEntry(
+        sport_key="football",
         competition_key="second_bundesliga",
         season_key="2026_27",
         name="2026/27",

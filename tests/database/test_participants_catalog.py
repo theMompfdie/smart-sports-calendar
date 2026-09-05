@@ -42,8 +42,8 @@ def test_catalog_creates_and_assigns_reviewed_competition_teams(
 ) -> None:
     repositories, result = initialize(tmp_path)
     database_path = repositories[0]
-    assert len(result.participants) == 292
-    assert len(result.season_participants) == 292
+    assert len(result.participants) == 384
+    assert len(result.season_participants) == 384
     assert {item.participant_key for item in result.participants} >= {
         "arsenal",
         "coventry_city",
@@ -58,6 +58,8 @@ def test_catalog_creates_and_assigns_reviewed_competition_teams(
         "birmingham_city",
         "cardiff_city",
         "wrexham",
+        "newport_county",
+        "york_city",
         "fk_austria_wien",
         "sk_rapid",
         "wolfsberger_ac",
@@ -88,6 +90,7 @@ def test_catalog_creates_and_assigns_reviewed_competition_teams(
         ("bundesliga", 18),
         ("championship", 24),
         ("dfb_pokal", 64),
+        ("efl_cup", 92),
         ("nfl", 32),
         ("oefb_cup", 64),
         ("premier_league", 20),
@@ -104,6 +107,7 @@ def test_catalog_creates_and_assigns_reviewed_competition_teams(
     assert countries_by_key["cardiff_city"] == "GB-WLS"
     assert countries_by_key["swansea_city"] == "GB-WLS"
     assert countries_by_key["wrexham"] == "GB-WLS"
+    assert countries_by_key["newport_county"] == "GB-WLS"
     assert countries_by_key["birmingham_city"] == "GB-ENG"
     assert countries_by_key["fk_austria_wien"] == "AT"
     assert countries_by_key["france"] == "FR"
@@ -138,8 +142,8 @@ def test_catalog_can_run_repeatedly(tmp_path: Path) -> None:
         membership_count = connection.execute(
             "SELECT COUNT(*) FROM season_participants"
         ).fetchone()
-    assert participant_count == (246,)
-    assert membership_count == (292,)
+    assert participant_count == (294,)
+    assert membership_count == (384,)
     assert [item.id for item in second.participants] == [
         item.id for item in first.participants
     ]
