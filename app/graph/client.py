@@ -144,11 +144,19 @@ class GraphClient:
         event_id: str,
         payload: OutlookEventPayload,
     ) -> OutlookEventReference:
-        response = self._send_json(
-            url=self._event_url(calendar_id, event_id),
-            method="PATCH",
-            payload=payload.to_graph_dict(),
-        )
+        try:
+            response = self._send_json(
+                url=self._event_url(calendar_id, event_id),
+                method="PATCH",
+                payload=payload.to_graph_dict(),
+            )
+        except GraphClientError as error:
+            cause = error.__cause__
+            if isinstance(cause, HTTPError) and cause.code == 404:
+                raise OutlookEventNotFoundError(
+                    "Microsoft Graph Outlook event was not found."
+                ) from error
+            raise
 
         return self._parse_event_reference(response)
 
