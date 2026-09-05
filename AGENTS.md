@@ -390,6 +390,25 @@ Commands should be copy-paste usable where practical.
 
 Document important architecture decisions.
 
+### Markdown validation
+
+For every Markdown change, run markdownlint on all changed Markdown files
+before handing work to the user for review or a signed commit. Follow the
+repository's Markdown configuration and applicable editor rules. Fix all
+reported violations in the changed content; do not disable rules to hide
+warnings. Inspect and report pre-existing violations separately instead of
+silently expanding the issue to unrelated document cleanup.
+
+Keep blank lines around headings, lists and fenced code blocks. Avoid bare
+issue references at the beginning of a line where they can be parsed as ATX
+headings; write "Issue #168" or use a Markdown link. Do not wrap prose so a
+number such as "1." starts a line and becomes an unintended list item.
+
+Report the lint command, configuration and result with the handoff. If the
+checker cannot run, say so explicitly; visual inspection or git diff --check
+is not a substitute for markdownlint. Never describe unchecked Markdown as
+lint-clean.
+
 ## Collaboration
 
 Act as a senior software engineer, not merely a code generator.
