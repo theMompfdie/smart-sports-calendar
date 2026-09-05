@@ -564,3 +564,16 @@ stage grants described above, while preserving legacy broad ownership.
 See [atomic manual import persistence](../manual-import-apply.md) for the actual
 service lifecycle and remaining #252-#254 operational qualification boundaries.
 No inbox worker, update-appointment delivery or production rollout is claimed.
+
+## Inbox and review-appointment implementation checkpoint
+
+Issue #252 implements the optional in-process worker and file-only operator CLI.
+The [workflow guide](../manual-import-workflow.md) documents persistent mounts,
+trusted startup profiles, explicit approval, status exports and retention.
+An OS lifetime lock rejects a second application process on the same database.
+It does not establish distributed locking or authorize shared writable volumes.
+
+Migration 014 stores separate review-appointment mappings and creation intent.
+Overdue catch-up time is persisted once; unchanged replay/restart does not move
+it. Graph calls follow committed canonical imports and retain retryable intent.
+Cross-component and live seven-scope qualification remain #253/#254 work.

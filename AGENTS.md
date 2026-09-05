@@ -210,8 +210,9 @@ deletion. Periodic operator-reviewed updates maintain the data until an
 explicitly qualified provider transition is available, with one authoritative
 writer per competition/season or explicitly disjoint stage boundary, as defined
 in ADR 0015. Legacy broad grants must never be narrowed implicitly.
-The complete Docker-host workflow is not yet available; implementation status
-and detailed acceptance criteria remain in #200.
+The optional Docker-host inbox workflow is implemented under #252; live
+qualification and release gates remain in #200. CLI commands only publish
+transport files; the owning application performs canonical and Graph writes.
 
 ## PRs and Issues
 
