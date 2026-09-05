@@ -30,6 +30,7 @@ from app.application.football_data_premier_league_service import (
     FootballDataCompetitionService,
     register_football_data_source,
 )
+from app.application.manual_import_service import ManualImportService
 from app.application.nflverse_competition_service import (
     NflverseCompetitionService,
     register_nflverse_source,
@@ -72,6 +73,7 @@ from app.database.event_participants_repository import EventParticipantsReposito
 from app.database.event_results_repository import EventResultsRepository
 from app.database.event_statistics_repository import EventStatisticsRepository
 from app.database.fixture_import_repository import FixtureImportRepository
+from app.database.manual_import_repository import ManualImportRepository
 from app.database.media_assets_repository import MediaAssetsRepository
 from app.database.participants_catalog import initialize_participants_catalog
 from app.database.participants_repository import ParticipantsRepository
@@ -326,6 +328,9 @@ class ApplicationContainer:
         )
         self.source_mappings_repository = SourceMappingsRepository(
             self.settings.database_path
+        )
+        self.manual_import_service = ManualImportService(
+            ManualImportRepository(self.settings.database_path)
         )
         self.source_assignments_repository = SourceAssignmentsRepository(
             self.settings.database_path
@@ -991,6 +996,7 @@ class ApplicationContainer:
                     season_id=season.id,
                     role=job.role,
                     interval_seconds=job.interval_seconds,
+                    stages=job.authority_stages,
                 )
             )
         self.source_assignments_repository.synchronize(tuple(assignments))

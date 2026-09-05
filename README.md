@@ -718,7 +718,7 @@ The signed Phase 8 beta is published; the Phase 9 prerequisite is satisfied.
 
 ### Phase 9 - Reviewed manual fixture imports
 
-**Status:** _Parser and write-free preview implemented; apply is not available._
+**Status:** _Parser, preview and atomic backend implemented; inbox work remains._
 
 Master [#200](https://github.com/theMompfdie/smart-sports-calendar/issues/200)
 targets `v0.9.0-beta.1` with reviewed manual imports for Austrian Bundesliga,
@@ -732,7 +732,7 @@ text/PDF, write-free preview, stable fixture IDs, atomic canonical import and
 recoverable Outlook synchronization. Partial omissions never delete events.
 The planned Docker-host workflow stages immutable import packages for review
 and approval; a worker in the existing service applies approved batches;
-staging, apply and runtime commands follow in #251-#253, with all seven
+inbox processing and runtime commands follow in #252-#253, with all seven
 competition/league targets
 qualified in staging under #254 and release documentation under #255.
 The typed import envelope leaves room for future result imports; v0.9 accepts
@@ -744,9 +744,9 @@ targets. See the
 [manual preparation guide](docs/manual-import-preparation.md) for the versioned
 schemas, limits and Python API. These checks do not write to SQLite or Outlook
 and do not enable a source or replace runtime preview and authority validation.
-Nations League B/C/D require the reviewed authority-scope extension in #250/#251
-to coexist with the existing League A provider; the parser alone cannot enable
-that coexistence.
+Issue #251 supplies the stage-authority foundation for Nations League B/C/D
+alongside League A. Explicit configuration and live qualification remain
+required before enabling those manual writers.
 Review plans carry due dates and reminder lead times for missing kickoffs, new
 draws and return legs. Dedicated Outlook update-reminder appointments are
 planned in #252; the parser does not create them.
@@ -755,6 +755,12 @@ Issue #250 adds a [standalone preview](docs/manual-import-preview.md) against
 an existing read-only SQLite snapshot. It reports fixture and review-appointment
 changes separately and binds approval checks to the exact input and state.
 It does not apply imports or create Outlook appointments.
+
+Issue #251 adds the [atomic persistence backend](docs/manual-import-apply.md):
+immutable packages and receipts, persisted review plans, durable instance
+identity and disjoint stage authority. It preserves the normal Outlook retry
+boundary. Host commands, inbox scheduling and update-reminder delivery follow
+in #252; the backend alone is not the complete operational import workflow.
 
 Production use follows verified publication and separately approved manual
 promotion. The independently tracked #233 production blocker remains in force.

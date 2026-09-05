@@ -1,7 +1,9 @@
 # Previewing a manual fixture import
 
 Issue #250 adds a standalone, write-free preview of `fixture_schedule` v1.
-It does not submit, approve or apply a package and does not contact Graph.
+The standalone CLI does not submit, approve or apply a package and does not
+contact Graph. Issue #251 adds the separate
+[transactional application service](manual-import-apply.md).
 The manifest contract is described in
 [the preparation guide](manual-import-preparation.md).
 
@@ -48,9 +50,10 @@ matching or automatic catalog creation. The synthetic profile is not a real
 source qualification or a provisioned catalog.
 
 The manual source key is `manual`. A missing source row is visible in the
-precondition and permits planning only; its controlled provisioning belongs
-to #251/#252. An inactive manual source rejects preview. Any enabled competing
-authoritative or bootstrap assignment rejects preview. Verification and
+precondition and permits planning only; its controlled provisioning uses
+the #251 service; the host workflow follows in #252. An inactive manual source
+rejects preview. Any overlapping authoritative or bootstrap assignment also
+rejects preview. Verification and
 disabled assignments do not grant writes. Existing whole-season assignments
 remain whole-season assignments, including Nations League A.
 
@@ -94,21 +97,20 @@ previous tasks. Each proposed task includes the original due time and reminder
 lead minutes. Overdue tasks stay visible. No wall-clock polling changes the
 preview fingerprint or silently reschedules a task.
 
-The pure planner supports comparison against an accepted plan in its snapshot.
-The current database has no accepted-plan storage, so the standalone reader
-supplies no previous plan and shows initial task creation. Issue #251 must add
-transactional plan persistence and extend this reader before applying imports.
-Issue #252 owns actual Outlook appointment projection and one-time overdue
-catch-up. This preview does not create Outlook events or dismiss reminders.
+The reader now loads the namespace's accepted plan from SQLite, populated only
+by successful #251 apply. A namespace without an accepted plan shows initial
+creation. Completed or replaced tasks are previewed against that persisted plan.
+Issue #252 still owns actual Outlook projection and one-time overdue catch-up;
+this CLI does not create Outlook events or dismiss reminders.
 
 ## Review and stale-state checks
 
 `preview_sha256` hashes the canonical JSON report before adding that field.
 The report binds the exact manifest bytes, validator version, instance reference,
-resolved database-path identity, effective trusted profile and relevant state.
+durable database UUID plus resolved path, trusted profile and relevant state.
 That state includes season catalog membership, source assignments and activity,
 namespace mappings, canonical season events and their participants, schema
-versions and the accepted review plan when supplied.
+versions, configured profile and the persisted accepted review plan.
 
 The digest includes absent proposed mappings and the season's possible identity
 candidates. It conservatively invalidates on another event change within that
@@ -118,21 +120,21 @@ are different targets. Moving the database requires another preview.
 
 `validate_preview_approval` checks report integrity, exact package identity,
 instance, fingerprints and approval time against a newly calculated report.
-There is no standalone apply or approval-writing command in this issue.
-Issue #251 must read and recalculate under its single `BEGIN IMMEDIATE`
-transaction and reject changed preconditions before any mutation. Persisted
-instance identity and receipt integration must be finalized there; a path hash
-alone is not a durable database-instance UUID across restore/replacement.
+There is no standalone apply or approval-writing command in this CLI.
+The #251 application service recalculates under its single `BEGIN IMMEDIATE`
+transaction and rejects changed preconditions before mutation. It binds the
+configured instance name and durable database UUID alongside the resolved path;
+copying or relocating a pending package does not carry its approval to a
+different configured instance. APPLIED receipts remain historical audit records.
 
 ## Nations League authority extension
 
-The design extension in
-[ADR 0015](adr/0015-import-reviewed-manual-fixture-manifests.md) proposes explicit,
-non-overlapping stage grants for one competition/season. A pure validator and
-regression tests cover broad-grant and stage-overlap rejection here.
-No assignment schema, runtime writer selection or scheduler ownership changes
-are made in #250. Manual B/C/D preview remains blocked by an enabled broad
-League A assignment until #251 implements and qualifies the explicit migration
-and runtime enforcement. A profile cannot narrow that existing assignment.
+The stage-authority extension in
+[ADR 0015](adr/0015-import-reviewed-manual-fixture-manifests.md) was reviewed
+through the operator merge of #259. Issue #251 implements disjoint stage grants,
+legacy broad-grant preservation and canonical enforcement. A supplied preview
+profile cannot narrow an existing broad assignment; explicit operator
+configuration is required first. See
+[the persistence guide](manual-import-apply.md) for migration and isolation rules.
 
 [profile]: examples/manual-import/profiles/efl-cup-preview-profile.json

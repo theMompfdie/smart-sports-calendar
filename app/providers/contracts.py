@@ -45,6 +45,7 @@ class SourceJobDefinition:
     role: SourceRole
     scope: SourceScope
     interval_seconds: int
+    authority_stages: frozenset[str] | None = None
 
     @property
     def enabled(self) -> bool:
