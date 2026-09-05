@@ -718,7 +718,7 @@ The signed Phase 8 beta is published; the Phase 9 prerequisite is satisfied.
 
 ### Phase 9 - Reviewed manual fixture imports
 
-**Status:** _Architecture proposed; importer not implemented._
+**Status:** _Architecture accepted; importer not implemented._
 
 Master [#200](https://github.com/theMompfdie/smart-sports-calendar/issues/200)
 targets `v0.9.0-beta.1` with reviewed manual imports for Austrian Bundesliga,
@@ -726,10 +726,10 @@ FA Cup, EFL Cup and UEFA Conference League. Europa League remains on the
 planned later API path. Each target requires explicit source/scope qualification.
 
 The [manual import contract ADR](docs/adr/0015-import-reviewed-manual-fixture-manifests.md)
-under #168 proposes a versioned JSON manifest prepared separately from source
+accepted under #168 defines a versioned JSON manifest prepared separately from source
 text/PDF, write-free preview, stable fixture IDs, atomic canonical import and
 recoverable Outlook synchronization. Partial omissions never delete events.
-The proposed Docker-host workflow stages immutable import packages for review
+The planned Docker-host workflow stages immutable import packages for review
 and approval; a worker in the existing service applies approved batches;
 commands, parser and persistence follow in #249-#253, with all four targets
 qualified in staging under #254 and release documentation under #255.

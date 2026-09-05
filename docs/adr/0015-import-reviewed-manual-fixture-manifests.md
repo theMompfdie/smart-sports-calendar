@@ -1,7 +1,8 @@
 # ADR 0015: Import reviewed manual fixture manifests through the canonical lifecycle
 
-- Status: Proposed (operator review pending; implementation not yet available)
+- Status: Accepted (architecture only; implementation not yet available)
 - Date: 2026-09-05
+- Acceptance: Operator-approved merge of PR #256 on 2026-09-05
 - Decision owners: SMART Sports Calendar maintainers
 - Related issues: #168, #200, #249, #250, #251, #252, #253, #254, #255
 - Follows: ADR 0004, ADR 0011
