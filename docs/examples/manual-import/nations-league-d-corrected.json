@@ -1,0 +1,96 @@
+{
+  "import_type": "fixture_schedule",
+  "schema_version": 1,
+  "submission_id": "demo-nations-league-d-corrected",
+  "namespace": "demo-nations-league-d-2030",
+  "scope": {
+    "sport_key": "football",
+    "competition_key": "uefa_nations_league",
+    "season_key": "demo_2030_31",
+    "observation_scope": "partial"
+  },
+  "boundaries": [
+    {
+      "stage": "league_d_group_phase",
+      "round_name": "group-1",
+      "stage_kind": "league_phase"
+    }
+  ],
+  "provenance": {
+    "issuer": "Synthetic example author",
+    "document_ref": "synthetic-001",
+    "rights_ref": "synthetic-owned",
+    "attribution": "Fictional fixtures for parser tests only",
+    "document_sha256": null,
+    "checksum_unavailable_reason": "Hand-authored synthetic example",
+    "observed_at": "2030-09-02T10:00:00Z",
+    "prepared_at": "2030-09-02T11:00:00Z"
+  },
+  "fixtures": [
+    {
+      "fixture_id": "m001",
+      "boundary": {
+        "stage": "league_d_group_phase",
+        "round_name": "group-1",
+        "stage_kind": "league_phase"
+      },
+      "home": {
+        "resolution": "resolved",
+        "participant_key": "demo-home"
+      },
+      "away": {
+        "resolution": "resolved",
+        "participant_key": "demo-away"
+      },
+      "kickoff": "2030-09-15T19:30:00+02:00",
+      "timezone": "Europe/Vienna",
+      "kickoff_confirmed": true,
+      "status": "scheduled",
+      "group": "league-d-group-1",
+      "tie_key": null,
+      "leg": null,
+      "venue": null,
+      "city": null
+    },
+    {
+      "fixture_id": "m002",
+      "boundary": {
+        "stage": "league_d_group_phase",
+        "round_name": "group-1",
+        "stage_kind": "league_phase"
+      },
+      "home": {
+        "resolution": "resolved",
+        "participant_key": "demo-home"
+      },
+      "away": {
+        "resolution": "resolved",
+        "participant_key": "demo-away"
+      },
+      "kickoff": "2030-09-14T18:00:00+02:00",
+      "timezone": "Europe/Vienna",
+      "kickoff_confirmed": true,
+      "status": "scheduled",
+      "group": "league-d-group-1",
+      "tie_key": null,
+      "leg": null,
+      "venue": null,
+      "city": null
+    }
+  ],
+  "review_plan": {
+    "state": "active",
+    "completion_note": null,
+    "tasks": [
+      {
+        "task_id": "next-publication",
+        "due_at": "2030-09-09T08:00:00Z",
+        "reason": "kickoff_confirmation",
+        "target_stage": "league_d_group_phase",
+        "target_round": null,
+        "note": "Review the next synthetic publication; do not infer fixtures.",
+        "reminder_minutes": 60
+      }
+    ]
+  }
+}
