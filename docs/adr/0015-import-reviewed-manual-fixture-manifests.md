@@ -53,6 +53,60 @@ assignment contracts. The manifest cannot grant itself authority or alter
 configuration. Refuse apply if an automated writer owns that scope. Bootstrap
 and verification data cannot overwrite an authoritative source or delete data.
 
+### Phase 9.3 stage-authority extension for review (#250)
+
+The operator added Nations League B/C/D to the four original manual targets.
+The seven target scopes share the same import contract. Nations League A/B/C/D
+use one canonical competition and season; creating duplicate competitions
+would conceal conflicting ownership and is rejected.
+
+This extension is proposed for operator review with #250. Its persistence and
+runtime enforcement belong to #251/#252; it does not alter existing assignments
+in the preview implementation. The accepted whole-season rule continues to
+apply until that integration is implemented and qualified.
+
+Use explicit authority grants within one competition/season:
+
+- A broad grant owns the entire season and conflicts with every other writer.
+- A bounded grant owns a nonempty set of exact stage identifiers. No wildcard,
+  implicit future stage or stage inferred from a job name is allowed.
+- An automated writer uses its configured assignment identity. A manual writer
+  includes its stable namespace, so B/C/D can share source_key `manual` while
+  retaining separate ownership and review plans.
+- Bounded grants may coexist only when their stage sets are disjoint. The same
+  writer must consolidate its stages into one grant rather than duplicate it.
+- Every fixture and an existing mapped event must remain within the writer's
+  grant. A future round on a reminder task never extends that grant.
+- Stage ownership must also constrain complete-snapshot removal evidence from
+  automated providers. Manual imports remain PARTIAL and never remove by
+  omission, even within their owned stages.
+
+Legacy assignments migrate as broad grants, never automatically as stage A
+because a current adapter happens to fetch A. Narrowing the existing League A
+assignment requires explicit reviewed configuration and validation of existing
+mappings and provider observation boundaries. Unknown or overlapping grants
+fail closed. No production configuration is changed by this ADR extension.
+
+Issue #251 must provide a deterministic non-destructive migration preserving
+assignment identities, mappings and existing events. It must replace the
+current one-authority-per-season uniqueness model with transactional broad
+and stage-overlap enforcement, and account for multiple manual namespaces
+sharing the same data source. Configuration synchronization must retain manual
+assignments and verify old and new event boundaries; non-periodic manual jobs
+must not require fabricated refresh intervals. Issue #252 must schedule only
+actual automated jobs and the bounded inbox worker.
+
+The pure `validate_stage_authorities` contract checks one proposed scope here.
+The current read-only preview still rejects a competing broad assignment;
+passing that pure validator does not enable a second runtime writer. Tests
+must prove League A remains untouched before B/C/D can be qualified in #254.
+
+The preview shares the existing canonical target-value comparison, but does
+not invoke its heuristic cross-source correlation. Issue #251 must integrate
+manual operations using exact mappings only and verify preview/apply parity
+inside the same write transaction. Otherwise a newly planned return fixture
+could be correlated to a different existing match by the provider importer.
+
 ### Identity and catalog resolution
 
 Use source_key `manual` and a permanently assigned `namespace` identifying the

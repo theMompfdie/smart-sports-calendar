@@ -718,7 +718,7 @@ The signed Phase 8 beta is published; the Phase 9 prerequisite is satisfied.
 
 ### Phase 9 - Reviewed manual fixture imports
 
-**Status:** _Manifest parser implemented; runtime importer not implemented._
+**Status:** _Parser and write-free preview implemented; apply is not available._
 
 Master [#200](https://github.com/theMompfdie/smart-sports-calendar/issues/200)
 targets `v0.9.0-beta.1` with reviewed manual imports for Austrian Bundesliga,
@@ -732,7 +732,7 @@ text/PDF, write-free preview, stable fixture IDs, atomic canonical import and
 recoverable Outlook synchronization. Partial omissions never delete events.
 The planned Docker-host workflow stages immutable import packages for review
 and approval; a worker in the existing service applies approved batches;
-commands, staging and persistence follow in #250-#253, with all seven
+staging, apply and runtime commands follow in #251-#253, with all seven
 competition/league targets
 qualified in staging under #254 and release documentation under #255.
 The typed import envelope leaves room for future result imports; v0.9 accepts
@@ -750,6 +750,11 @@ that coexistence.
 Review plans carry due dates and reminder lead times for missing kickoffs, new
 draws and return legs. Dedicated Outlook update-reminder appointments are
 planned in #252; the parser does not create them.
+
+Issue #250 adds a [standalone preview](docs/manual-import-preview.md) against
+an existing read-only SQLite snapshot. It reports fixture and review-appointment
+changes separately and binds approval checks to the exact input and state.
+It does not apply imports or create Outlook appointments.
 
 Production use follows verified publication and separately approved manual
 promotion. The independently tracked #233 production blocker remains in force.

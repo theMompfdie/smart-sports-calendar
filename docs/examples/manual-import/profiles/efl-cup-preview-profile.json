@@ -1,0 +1,17 @@
+{
+  "instance_ref": "synthetic-staging",
+  "namespace": "demo-efl-cup-2030",
+  "scope": {
+    "sport_key": "football",
+    "competition_key": "efl_cup",
+    "season_key": "demo_2030_31"
+  },
+  "competition_format": "knockout_cup",
+  "boundaries": [
+    {
+      "stage": "MAIN",
+      "round_name": "SEMI_FINAL",
+      "stage_kind": null
+    }
+  ]
+}

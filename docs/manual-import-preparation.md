@@ -2,8 +2,9 @@
 
 Issue #249 implements a strict JSON parser, typed immutable models and an
 explicit profile-validation function. It does **not** implement inbox submission,
-preview, database import, source registration or Outlook synchronization.
-Those follow in issues #250-#252 under the
+database import, source registration or Outlook synchronization.
+Issue #250 adds the [write-free preview](manual-import-preview.md);
+persistence and runtime delivery follow in #251/#252 under the
 [accepted architecture](adr/0015-import-reviewed-manual-fixture-manifests.md).
 
 ## Format and limits
