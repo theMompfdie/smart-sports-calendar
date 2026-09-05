@@ -246,6 +246,28 @@ def test_seven_targets_full_lifecycle_and_review_isolation(tmp_path, target):
     assert all(op.calendar_id == CALENDAR for op in h.graph.operations)
 
 
+def test_review_only_manifest_creates_one_idempotent_outlook_appointment(tmp_path):
+    h = Harness(tmp_path)
+    raw = sample("fa-cup")
+    raw["submission_id"] = "fa-cup-review-only"
+    raw["fixtures"] = []
+
+    h.apply(raw)
+    receipt = h.status(raw)["receipt"]
+    assert receipt["items"] == []
+    assert set(receipt["counts"].values()) == {0}
+    assert h.converge().items_created == 0
+    first = h.snapshot()
+    assert first["sports_events"] == []
+    assert len(first["manual_review_appointments"]) == 1
+    operation_count = len(h.graph.operations)
+
+    h.apply(raw)
+    assert h.converge().items_created == 0
+    assert h.snapshot() == first
+    assert len(h.graph.operations) == operation_count
+
+
 def test_all_seven_scopes_coexist_and_partial_updates_preserve_others(tmp_path):
     h = Harness(tmp_path)
     for target in TARGETS:

@@ -158,8 +158,10 @@ mixed-competition input.
 
 #### scope/profile
 
-Explicit qualified stage/round coverage; PARTIAL only; empty fixture lists are
-rejected as accidental input, not interpreted as deletion.
+Explicit qualified stage/round coverage; PARTIAL only. An empty fixture list is
+accepted only with an active review task, performs no fixture operation and is
+never interpreted as deletion. An empty completed plan is rejected as an
+accidental no-op.
 
 #### competition format
 
