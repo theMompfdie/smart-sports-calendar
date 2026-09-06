@@ -4,25 +4,26 @@
 
 ## Current Status
 
-**Current release:** [v0.8.0-beta.1](https://github.com/theMompfdie/smart-sports-calendar/releases/tag/v0.8.0-beta.1) (GitHub pre-release)
+**Current release:**
+[v0.9.0-beta.1](https://github.com/theMompfdie/smart-sports-calendar/releases/tag/v0.9.0-beta.1)
+(GitHub pre-release)
 
-**Production promotion:** blocked by [#233](https://github.com/theMompfdie/smart-sports-calendar/issues/233).
+**Production promotion:** provider requalification completed in
+[#233](https://github.com/theMompfdie/smart-sports-calendar/issues/233).
+The production upgrade and target-specific imports remain operator-controlled.
 
 **Development stage:** Beta
 
-**Completed releases:** Phases 1-8.
+**Completed releases:** Phases 1-9.
 
-**Current preparation:** Phase 9, `v0.9.0-beta.1`, under
-[master #200](https://github.com/theMompfdie/smart-sports-calendar/issues/200).
-Implementation and all seven bounded staging targets are accepted in
+**Latest delivery:** Phase 9 reviewed manual imports, published on 2026-09-06.
+All seven bounded staging targets are accepted in
 [#254](https://github.com/theMompfdie/smart-sports-calendar/issues/254).
-Final documentation, signed integration and publication remain in
-[#255](https://github.com/theMompfdie/smart-sports-calendar/issues/255).
-This candidate has not yet been published.
-
-**Accepted implementation tests:** 1,516 passed on the staging candidate.
-Final preparation/main checks are tracked separately in the
+The signed tag targets verified main commit `36bd6fe`; all five main CI jobs
+passed, including 1,516 tests. See the
 [Phase 9 release checklist](docs/v0.9.0-beta.1-release-checklist.md).
+
+**Next delivery:** Stable v1.0.0 after the remaining roadmap gates pass.
 
 The application foundation, persistent domain model, repository layer,
 Microsoft Graph integration, Outlook synchronization engine, and scheduled
@@ -713,15 +714,15 @@ The nine qualified authorities and provider lifecycle boundaries are unchanged.
 Visual presentation, runtime reminder mutation/restart, synthetic cleanup,
 media replacement/recovery, backup/restore, full-calendar inventory, and
 write-free convergence are accepted. The recurring Championship provider
-response-contract violation remains open in #233 as a documented beta-only
-limitation; strict parsing and last-known-good data retention remain active.
+response-contract violation was a documented beta limitation. Requalification
+completed in #233 on 2026-09-06; strict parsing and data retention remain active.
 The signed Phase 8 beta is published; the Phase 9 prerequisite is satisfied.
 
 ### Phase 9 - Reviewed manual fixture imports
 
-**Status:** _Implementation and bounded staging accepted; release preparation._
+**Status:** _Published as `v0.9.0-beta.1`_.
 
-The `v0.9.0-beta.1` candidate adds operator-reviewed manual imports for
+The `v0.9.0-beta.1` release adds operator-reviewed manual imports for
 Austrian Bundesliga, EFL Cup, UEFA Conference League and Nations League B/C/D.
 Their accepted published scopes contain 388 fixtures. FA Cup is accepted as a
 review-only First Round Proper publication check, with no invented fixtures.
@@ -756,8 +757,9 @@ Task completion retires only those appointments, not fixture history.
 See the [release notes](RELEASE_NOTES_v0.9.0-beta.1.md) for the accepted
 scope, recovery evidence and known limitations. The DFB-Pokal alias issue
 [#268](https://github.com/theMompfdie/smart-sports-calendar/issues/268)
-affects source freshness. Production remains separately approved and blocked
-by [#233](https://github.com/theMompfdie/smart-sports-calendar/issues/233).
+affects source freshness. The provider gate in
+[#233](https://github.com/theMompfdie/smart-sports-calendar/issues/233) is resolved;
+production backup, upgrade and target-specific import checks remain required.
 
 Competition retirement, UEL delivery and the general README/repository audit
 are v1.0 follow-ups #267, #269 and #270. UEL requires provider requalification
@@ -766,9 +768,9 @@ as the last planned pre-release; stable v1.0.0 still requires all final gates.
 
 ## Release History
 
-Prepared Phase 9 notes are available in
+Published Phase 9 notes are available in
 [RELEASE_NOTES_v0.9.0-beta.1.md](RELEASE_NOTES_v0.9.0-beta.1.md).
-Publication is pending; the current published release remains v0.8.0-beta.1.
+The signed pre-release was published on 2026-09-06.
 
 Phase 8 candidate notes are available in
 [`RELEASE_NOTES_v0.8.0-beta.1.md`](RELEASE_NOTES_v0.8.0-beta.1.md).
