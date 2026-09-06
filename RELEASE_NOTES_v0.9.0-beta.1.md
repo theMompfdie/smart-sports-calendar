@@ -1,0 +1,109 @@
+# v0.9.0-beta.1 - Reviewed Manual Fixture Import Beta
+
+## Publication status
+
+Prepared release notes for issue #255 and master #200. The implementation and
+bounded staging qualification are accepted; the signed tag and GitHub
+pre-release have not yet been published. Package version: `0.9.0b1`.
+This is the last planned pre-release before the separately qualified v1.0.0.
+
+## Scope and changes
+
+- Versioned `fixture_schedule` JSON manifests, strict validation and synthetic
+  preparation examples for seven manual competition/league targets.
+- Stable manual fixture IDs, source attribution, provenance, observation time
+  and exact-file fingerprints. Document extraction remains operator-side.
+- Write-free canonical preview with separate fixture and review decisions,
+  detached approval bound to the exact manifest, preview, instance and scope.
+- Atomic SQLite apply, durable receipts and persisted import state. Stale or
+  invalid input fails closed; partial omissions do not cancel existing games.
+- Optional Docker-host inbox and in-process worker with immutable transport,
+  owner locking, bounded processing and restart-safe redelivery.
+- Dedicated Outlook update-review appointments with enabled reminders,
+  Vienna times, free availability and no attendees. Review updates, completion
+  and reopening remain separate from normal sports-event reminders.
+- Explicit disjoint stage authority for Nations League B/C/D alongside A.
+  Existing broad grants are never narrowed implicitly.
+- Catalog additions for the reviewed 2026/27 targets. An active review-only
+  manifest may contain zero fixtures, supporting unpublished FA Cup schedules.
+- Graph PATCH 404 classification enables explicit update recovery for a
+  missing review appointment through the existing Graph abstraction.
+
+## Accepted staging scope
+
+| Target | Accepted published scope | Fixtures | Review tasks |
+| --- | --- | ---: | ---: |
+| Austrian Bundesliga | Regular season rounds 1-16 | 96 | 2 |
+| EFL Cup | Preliminary through third round | 76 | 1 |
+| UEFA Conference League | League phase | 108 | 1 |
+| UEFA Nations League B | League B group phase | 48 | 1 |
+| UEFA Nations League C | League C group phase | 48 | 1 |
+| UEFA Nations League D | League D group phase | 12 | 1 |
+| FA Cup | First Round Proper publication check | 0 | 1 |
+
+The six fixture-bearing scopes total 388 manual games. Eight update-review
+appointments cover all seven targets. Existing automated Nations League A
+retains 48 games under its disjoint group-phase authority.
+FA Cup acceptance is review-only, not a claim of imported future fixtures.
+Source datasets and private preparation/approval records are not bundled.
+
+## Validation and recovery
+
+Issue #254 records operator-supplied staging acceptance against
+`39caf0441bade383b68abd470d79d3d835d9313f`, image `phase9-39caf04`.
+All five integration jobs passed with 1,516 tests on that implementation tree.
+
+Accepted evidence includes initial apply, unchanged replay, direct Outlook
+inventory and eight reminder checks, controlled reschedule/cancellation,
+review retirement/reopening, isolation and final cleanup. The complete
+inventory audit matched 2,500 expected and remote unique event IDs.
+Stopped backup, 91-file hash comparison, isolated recorded-image readback and
+post-backup staging restart passed.
+
+Completed #253 adds deterministic interrupted-transaction rollback and
+429/503 downstream Graph recovery with mocked infrastructure. These complement
+the live evidence; no forced live crash during an active transaction or
+application startup from the isolated restored copy is claimed or required.
+See the [release checklist](docs/v0.9.0-beta.1-release-checklist.md) for the
+separate final-tree CI, signed integration and publication gates.
+
+## Upgrade and operation
+
+Read the [manual workflow](docs/manual-import-workflow.md) and
+[upgrade/rollback runbook](docs/v0.9.0-beta.1-release-checklist.md#upgrade-and-rollback).
+
+Migrations `013_manual_import_persistence` and
+`014_manual_review_appointments` preserve existing canonical data and add
+durable manual packages, profiles, receipts, plans and review mappings.
+Keep the full database, inbox and media together in private stopped backups.
+
+Enable the inbox only on the intended owning instance with
+`MANUAL_IMPORT_ROOT=/data/manual-import`, `MANUAL_IMPORT_INTERVAL=60` and
+`MANUAL_IMPORT_LIMIT=10`. Install separately reviewed instance-specific
+profiles and verify catalog/stage ownership before submitting real manifests.
+An empty inbox root disables the manual worker and its review projection.
+
+QUEUED confirms transport only. Review AWAITING_APPROVAL before approval,
+then require APPLIED and actual fixture/reminder convergence.
+Future corrections retain fixture IDs and use new submission IDs.
+The operator follows the review appointments to check new publications and
+prepare subsequent imports. A reminder never imports new data automatically.
+
+## Known limitations and stable-release follow-up
+
+- Production promotion remains blocked by #233: recurring timestamp-shaped
+  football-data.org match status values require separate qualification.
+- DFB-Pokal source freshness is affected by the reviewed-name mismatch for
+  OpenLigaDB team 4762. Exact alias correction and requalification are #268.
+- Manual v1 imports schedules, not scores, results or finished status.
+  Historical EFL entries retain this accepted schedule-only limitation.
+- Partial published schedules do not grant later rounds, playoffs or stages.
+  No automatic source failover, scraping or heuristic participant matching.
+- Competition retirement #267 and Europa League delivery #269 are v1.0 work.
+  UEL needs provider requalification or a reviewed manual fallback.
+- Product README restructuring, release-note organization and tracked-file
+  audit are deferred to #270; image rights remain under #240.
+
+A pre-release does not authorize production deployment, copying staging
+Outlook mappings into production, or publishing private fixtures and assets.
+Stable v1.0.0 requires the remaining roadmap gates in #201.

@@ -10,18 +10,19 @@
 
 **Development stage:** Beta
 
-**Completed phases:** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, and Phase 7
+**Completed releases:** Phases 1-8.
 
-**Latest delivery track:** Phase 8 Outlook presentation, runtime reminders,
-and rights-controlled media for `v0.8.0-beta.1`
-([tracker #199](https://github.com/theMompfdie/smart-sports-calendar/issues/199)).
-Implementation, isolated staging acceptance, and beta publication are complete.
-The publication and qualification record is tracked in
-[#214](https://github.com/theMompfdie/smart-sports-calendar/issues/214).
+**Current preparation:** Phase 9, `v0.9.0-beta.1`, under
+[master #200](https://github.com/theMompfdie/smart-sports-calendar/issues/200).
+Implementation and all seven bounded staging targets are accepted in
+[#254](https://github.com/theMompfdie/smart-sports-calendar/issues/254).
+Final documentation, signed integration and publication remain in
+[#255](https://github.com/theMompfdie/smart-sports-calendar/issues/255).
+This candidate has not yet been published.
 
-**Automated tests:** 1,249 passed for the accepted Phase 8 candidate tree. See
-the [Phase 8 release checklist](docs/v0.8.0-beta.1-release-checklist.md) for
-validation, signed tag, and publication evidence.
+**Accepted implementation tests:** 1,516 passed on the staging candidate.
+Final preparation/main checks are tracked separately in the
+[Phase 9 release checklist](docs/v0.9.0-beta.1-release-checklist.md).
 
 The application foundation, persistent domain model, repository layer,
 Microsoft Graph integration, Outlook synchronization engine, and scheduled
@@ -718,55 +719,56 @@ The signed Phase 8 beta is published; the Phase 9 prerequisite is satisfied.
 
 ### Phase 9 - Reviewed manual fixture imports
 
-**Status:** _Manual import workflow implemented; live qualification remains._
+**Status:** _Implementation and bounded staging accepted; release preparation._
 
-Master [#200](https://github.com/theMompfdie/smart-sports-calendar/issues/200)
-targets `v0.9.0-beta.1` with reviewed manual imports for Austrian Bundesliga,
-FA Cup, EFL Cup, UEFA Conference League and Nations League B/C/D.
-Europa League remains on the
-planned later API path. Each target requires explicit source/scope qualification.
+The `v0.9.0-beta.1` candidate adds operator-reviewed manual imports for
+Austrian Bundesliga, EFL Cup, UEFA Conference League and Nations League B/C/D.
+Their accepted published scopes contain 388 fixtures. FA Cup is accepted as a
+review-only First Round Proper publication check, with no invented fixtures.
+Eight dedicated Outlook update-review appointments cover all seven targets.
 
-The [manual import contract ADR](docs/adr/0015-import-reviewed-manual-fixture-manifests.md)
-accepted under #168 defines a versioned JSON manifest prepared separately from source
-text/PDF, write-free preview, stable fixture IDs, atomic canonical import and
-recoverable Outlook synchronization. Partial omissions never delete events.
-The planned Docker-host workflow stages immutable import packages for review
-and approval; a worker in the existing service applies approved batches;
-inbox processing and runtime commands follow in #252-#253, with all seven
-competition/league targets
-qualified in staging under #254 and release documentation under #255.
-The typed import envelope leaves room for future result imports; v0.9 accepts
-fixture schedules only and does not implement scores or result processing.
+The [manual import ADR](docs/adr/0015-import-reviewed-manual-fixture-manifests.md)
+defines stable fixture IDs, source provenance, write-free preview, exact
+detached approval, atomic canonical apply and durable receipts.
+Partial omissions never delete games. Extraction from source documents stays
+outside the scheduled runtime; version 1 imports schedules, not results.
 
-Issue #249 adds the strict parser, detached approval format, explicit profile
-validation, explicit schedule-review plans and synthetic packages for all seven
-targets. See the
-[manual preparation guide](docs/manual-import-preparation.md) for the versioned
-schemas, limits and Python API. These checks do not write to SQLite or Outlook
-and do not enable a source or replace runtime preview and authority validation.
-Issue #251 supplies the stage-authority foundation for Nations League B/C/D
-alongside League A. Explicit configuration and live qualification remain
-required before enabling those manual writers.
-Review plans carry due dates and reminder lead times for missing kickoffs, new
-draws and return legs. Dedicated Outlook update-reminder appointments are
-provided by the optional #252 worker; the parser does not create them.
+Use the [preparation guide](docs/manual-import-preparation.md),
+[preview contract](docs/manual-import-preview.md),
+[atomic backend guide](docs/manual-import-apply.md) and
+[Docker-host workflow](docs/manual-import-workflow.md).
+Trusted profiles require qualified catalogs and explicit authority.
+Nations League B/C/D own disjoint group stages alongside existing League A;
+a broad grant is never narrowed implicitly.
 
-Issue #250 adds a [standalone preview](docs/manual-import-preview.md) against
-an existing read-only SQLite snapshot. It reports fixture and review-appointment
-changes separately and binds approval checks to the exact input and state.
-It does not apply imports or create Outlook appointments.
+Enable the optional inbox on one owning instance with
+`MANUAL_IMPORT_ROOT=/data/manual-import`, `MANUAL_IMPORT_INTERVAL=60` and
+`MANUAL_IMPORT_LIMIT=10`. Submit reviewed input, inspect AWAITING_APPROVAL,
+approve the exact preview, then verify APPLIED and actual Outlook convergence.
+QUEUED alone is not import success. Later updates retain fixture IDs and use
+new submission IDs.
 
-Issue #251 adds the [atomic persistence backend](docs/manual-import-apply.md):
-immutable packages and receipts, persisted review plans, durable instance
-identity and disjoint stage authority. It preserves the normal Outlook retry
-boundary. Host commands, inbox scheduling and update-reminder delivery are
-available through the
-[Docker-host workflow](docs/manual-import-workflow.md) in #252.
+Review plans supply due dates and reminder lead times for future publications,
+draws and kickoff checks. The worker creates separate Outlook appointments;
+the operator still obtains and reviews the next source update.
+Task completion retires only those appointments, not fixture history.
 
-Production use follows verified publication and separately approved manual
-promotion. The independently tracked #233 production blocker remains in force.
+See the [release notes](RELEASE_NOTES_v0.9.0-beta.1.md) for the accepted
+scope, recovery evidence and known limitations. The DFB-Pokal alias issue
+[#268](https://github.com/theMompfdie/smart-sports-calendar/issues/268)
+affects source freshness. Production remains separately approved and blocked
+by [#233](https://github.com/theMompfdie/smart-sports-calendar/issues/233).
+
+Competition retirement, UEL delivery and the general README/repository audit
+are v1.0 follow-ups #267, #269 and #270. UEL requires provider requalification
+or a reviewed manual fallback after Phase 9. The operator selected this beta
+as the last planned pre-release; stable v1.0.0 still requires all final gates.
 
 ## Release History
+
+Prepared Phase 9 notes are available in
+[RELEASE_NOTES_v0.9.0-beta.1.md](RELEASE_NOTES_v0.9.0-beta.1.md).
+Publication is pending; the current published release remains v0.8.0-beta.1.
 
 Phase 8 candidate notes are available in
 [`RELEASE_NOTES_v0.8.0-beta.1.md`](RELEASE_NOTES_v0.8.0-beta.1.md).
