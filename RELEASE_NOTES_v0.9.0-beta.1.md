@@ -2,10 +2,12 @@
 
 ## Publication status
 
-Prepared release notes for issue #255 and master #200. The implementation and
-bounded staging qualification are accepted; the signed tag and GitHub
-pre-release have not yet been published. Package version: `0.9.0b1`.
+Published on 2026-09-06 as a GitHub pre-release. Package version: `0.9.0b1`.
+The signed `v0.9.0-beta.1` tag points to verified main commit
+`36bd6fe505ff79f97aa8816f6735339af0538c68`. Main CI run 34032123139
+passed all five jobs, including 1,516 tests in 528.26 seconds.
 This is the last planned pre-release before the separately qualified v1.0.0.
+Production promotion remains blocked by #233.
 
 ## Scope and changes
 
