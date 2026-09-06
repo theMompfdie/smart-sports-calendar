@@ -7,17 +7,13 @@ from app.application.oefb_ical_competition_service import (
     OEFB_ICAL_ATTRIBUTION,
     OefbIcalCompetitionService,
 )
-from app.database.competitions_catalog import initialize_competitions_catalog
 from app.database.competitions_repository import CompetitionsRepository
 from app.database.data_sources_repository import DataSourcesRepository
 from app.database.database import Database
-from app.database.participants_catalog import initialize_participants_catalog
 from app.database.participants_repository import ParticipantsRepository
 from app.database.season_participants_repository import SeasonParticipantsRepository
-from app.database.seasons_catalog import initialize_seasons_catalog
 from app.database.seasons_repository import SeasonsRepository
 from app.database.source_mappings_repository import SourceMappingsRepository
-from app.database.sports_catalog import initialize_sports_catalog
 from app.database.sports_repository import SportsRepository
 from app.domain.competition_lifecycle import CompetitionFormat
 from app.providers.oefb_ical.exceptions import (
@@ -28,6 +24,7 @@ from app.providers.oefb_ical.models import parse_snapshot
 from app.providers.oefb_ical.profiles import OEFB_CUP_PROFILE
 from app.providers.oefb_ical.team_mappings import OefbIcalTeamMapping
 
+from tests.catalog_support import CatalogInitializer
 from tests.providers.oefb_ical.support import (
     FETCHED_AT,
     LAST_MODIFIED,
@@ -220,20 +217,16 @@ def test_service_keeps_snapshot_observation_timestamp(tmp_path: Path) -> None:
     assert batch.fetched_at_utc == datetime(2026, 8, 28, 12, 0, tzinfo=UTC)
 
 
-def test_service_resolves_reviewed_production_catalog_mapping(tmp_path: Path) -> None:
+def test_service_resolves_reviewed_production_catalog_mapping(
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
+) -> None:
     database_path = tmp_path / "reviewed-catalog.db"
-    Database(database_path).initialize()
+    initialize_test_catalog(database_path)
     sports = SportsRepository(database_path)
     competitions = CompetitionsRepository(database_path)
     seasons = SeasonsRepository(database_path)
     participants = ParticipantsRepository(database_path)
     memberships = SeasonParticipantsRepository(database_path)
-    initialize_sports_catalog(sports)
-    initialize_competitions_catalog(competitions, sports)
-    initialize_seasons_catalog(seasons, competitions, sports)
-    initialize_participants_catalog(
-        participants, memberships, sports, competitions, seasons
-    )
     payload = (
         calendar_payload()
         .replace(b"X-HOMENR:2000", b"X-HOMENR:1027")

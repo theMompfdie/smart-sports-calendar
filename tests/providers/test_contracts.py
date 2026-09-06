@@ -15,6 +15,7 @@ from app.providers.contracts import (
 from tests.application.test_api_football_fixture_normalization_service import (
     create_context,
 )
+from tests.catalog_support import CatalogInitializer
 
 
 def test_participant_resolution_is_explicit_and_fail_closed() -> None:
@@ -42,8 +43,12 @@ def test_participant_resolution_is_explicit_and_fail_closed() -> None:
         NormalizedFixtureParticipant(42, "home", 2)
 
 
-def test_hybrid_fixture_lifecycle_metadata_is_typed(tmp_path: Path) -> None:
-    fixture = create_context(tmp_path).service.normalize_current_premier_league()[0]
+def test_hybrid_fixture_lifecycle_metadata_is_typed(
+    tmp_path: Path, initialize_test_catalog: CatalogInitializer
+) -> None:
+    fixture = create_context(
+        tmp_path, initialize_test_catalog=initialize_test_catalog
+    ).service.normalize_current_premier_league()[0]
     hybrid = replace(
         fixture,
         stage="qualifying",
@@ -58,8 +63,12 @@ def test_hybrid_fixture_lifecycle_metadata_is_typed(tmp_path: Path) -> None:
     assert hybrid.participants_resolved is True
 
 
-def test_two_leg_fixture_requires_normalized_tie_key(tmp_path: Path) -> None:
-    fixture = create_context(tmp_path).service.normalize_current_premier_league()[0]
+def test_two_leg_fixture_requires_normalized_tie_key(
+    tmp_path: Path, initialize_test_catalog: CatalogInitializer
+) -> None:
+    fixture = create_context(
+        tmp_path, initialize_test_catalog=initialize_test_catalog
+    ).service.normalize_current_premier_league()[0]
 
     with pytest.raises(NormalizedFixtureContractError, match="requires.*tie key"):
         replace(

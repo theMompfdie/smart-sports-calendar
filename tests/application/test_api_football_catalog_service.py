@@ -6,17 +6,12 @@ from pathlib import Path
 import pytest
 from app.application.api_football_catalog_service import ApiFootballCatalogService
 from app.config.settings import ApiFootballSettings
-from app.database.competitions_catalog import initialize_competitions_catalog
 from app.database.competitions_repository import CompetitionsRepository
 from app.database.data_sources_repository import DataSourcesRepository
-from app.database.database import Database
-from app.database.participants_catalog import initialize_participants_catalog
 from app.database.participants_repository import ParticipantsRepository
 from app.database.season_participants_repository import SeasonParticipantsRepository
-from app.database.seasons_catalog import initialize_seasons_catalog
 from app.database.seasons_repository import SeasonsRepository
 from app.database.source_mappings_repository import SourceMappingsRepository
-from app.database.sports_catalog import initialize_sports_catalog
 from app.database.sports_repository import SportsRepository
 from app.providers.api_football.catalog_models import (
     ApiFootballLeague,
@@ -31,6 +26,7 @@ from app.providers.api_football.exceptions import (
 )
 from app.providers.api_football.team_mappings import PREMIER_LEAGUE_TEAM_MAPPING
 
+from tests.catalog_support import CatalogInitializer
 from tests.providers.api_football.catalog_test_support import load_envelope
 
 
@@ -76,9 +72,10 @@ def create_context(
     *,
     teams: tuple[ApiFootballTeam, ...] | None = None,
     team_mapping: dict[str, str] | None = None,
+    initialize_test_catalog: CatalogInitializer,
 ) -> ServiceContext:
     database_path = tmp_path / "sports.db"
-    Database(database_path).initialize()
+    initialize_test_catalog(database_path)
     sports = SportsRepository(database_path)
     competitions = CompetitionsRepository(database_path)
     seasons = SeasonsRepository(database_path)
@@ -86,17 +83,6 @@ def create_context(
     memberships = SeasonParticipantsRepository(database_path)
     sources = DataSourcesRepository(database_path)
     mappings = SourceMappingsRepository(database_path)
-
-    initialize_sports_catalog(sports)
-    initialize_competitions_catalog(competitions, sports)
-    initialize_seasons_catalog(seasons, competitions, sports)
-    initialize_participants_catalog(
-        participants,
-        memberships,
-        sports,
-        competitions,
-        seasons,
-    )
 
     league = parse_league(load_envelope("premier_league.json")["response"][0])
     parsed_teams = tuple(
@@ -141,9 +127,9 @@ def table_count(database_path: Path, table: str) -> int:
 
 
 def test_service_maps_provider_catalog_to_existing_canonical_rows(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
-    context = create_context(tmp_path)
+    context = create_context(tmp_path, initialize_test_catalog=initialize_test_catalog)
     football = context.sports.get_by_key("football")
     assert football is not None
     competition_before = context.competitions.get_by_key(football.id, "premier_league")
@@ -197,8 +183,10 @@ def test_service_maps_provider_catalog_to_existing_canonical_rows(
     )
 
 
-def test_service_is_idempotent_without_timestamp_churn(tmp_path: Path) -> None:
-    context = create_context(tmp_path)
+def test_service_is_idempotent_without_timestamp_churn(
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
+) -> None:
+    context = create_context(tmp_path, initialize_test_catalog=initialize_test_catalog)
 
     first = context.service.map_current_premier_league()
     second = context.service.map_current_premier_league()
@@ -212,13 +200,15 @@ def test_service_is_idempotent_without_timestamp_churn(tmp_path: Path) -> None:
 
 
 def test_service_uses_external_ids_even_when_provider_names_change(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
     teams_payload = deepcopy(load_envelope("premier_league_teams.json")["response"])
     for index, item in enumerate(teams_payload):
         item["team"]["name"] = f"Provider Display Name {index}"
     teams = tuple(parse_team(item) for item in teams_payload)
-    context = create_context(tmp_path, teams=teams)
+    context = create_context(
+        tmp_path, teams=teams, initialize_test_catalog=initialize_test_catalog
+    )
 
     result = context.service.map_current_premier_league()
 
@@ -237,13 +227,15 @@ def test_service_uses_external_ids_even_when_provider_names_change(
 
 
 def test_service_rejects_incomplete_team_collection_before_writing(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
     teams = tuple(
         parse_team(item)
         for item in load_envelope("premier_league_teams.json")["response"][:-1]
     )
-    context = create_context(tmp_path, teams=teams)
+    context = create_context(
+        tmp_path, teams=teams, initialize_test_catalog=initialize_test_catalog
+    )
 
     with pytest.raises(ProviderIntegrityError, match="missing_ids"):
         context.service.map_current_premier_league()
@@ -253,11 +245,13 @@ def test_service_rejects_incomplete_team_collection_before_writing(
 
 
 def test_service_rejects_unknown_canonical_participant_before_writing(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
     mapping = dict(PREMIER_LEAGUE_TEAM_MAPPING)
     mapping["42"] = "unknown_team"
-    context = create_context(tmp_path, team_mapping=mapping)
+    context = create_context(
+        tmp_path, team_mapping=mapping, initialize_test_catalog=initialize_test_catalog
+    )
 
     with pytest.raises(ProviderResolutionError, match="unknown canonical participant"):
         context.service.map_current_premier_league()
@@ -267,9 +261,9 @@ def test_service_rejects_unknown_canonical_participant_before_writing(
 
 
 def test_service_rejects_incompatible_canonical_current_season(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
-    context = create_context(tmp_path)
+    context = create_context(tmp_path, initialize_test_catalog=initialize_test_catalog)
     football = context.sports.get_by_key("football")
     assert football is not None
     competition = context.competitions.get_by_key(football.id, "premier_league")
@@ -288,9 +282,9 @@ def test_service_rejects_incompatible_canonical_current_season(
 
 
 def test_service_rejects_missing_canonical_current_season(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
-    context = create_context(tmp_path)
+    context = create_context(tmp_path, initialize_test_catalog=initialize_test_catalog)
     football = context.sports.get_by_key("football")
     assert football is not None
     competition = context.competitions.get_by_key(football.id, "premier_league")
@@ -309,9 +303,9 @@ def test_service_rejects_missing_canonical_current_season(
 
 
 def test_service_rejects_mapping_conflict_without_partial_team_mappings(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
-    context = create_context(tmp_path)
+    context = create_context(tmp_path, initialize_test_catalog=initialize_test_catalog)
     source = context.sources.upsert(
         source_key="api_football",
         name="API-Football",

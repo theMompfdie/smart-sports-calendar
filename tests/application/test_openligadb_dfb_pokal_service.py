@@ -8,17 +8,12 @@ from app.application.openligadb_competition_service import (
     OpenLigaDBDFBPokalService,
 )
 from app.config.settings import OpenLigaDBSettings
-from app.database.competitions_catalog import initialize_competitions_catalog
 from app.database.competitions_repository import CompetitionsRepository
 from app.database.data_sources_repository import DataSourcesRepository
-from app.database.database import Database
-from app.database.participants_catalog import initialize_participants_catalog
 from app.database.participants_repository import ParticipantsRepository
 from app.database.season_participants_repository import SeasonParticipantsRepository
-from app.database.seasons_catalog import initialize_seasons_catalog
 from app.database.seasons_repository import SeasonsRepository
 from app.database.source_mappings_repository import SourceMappingsRepository
-from app.database.sports_catalog import initialize_sports_catalog
 from app.database.sports_repository import SportsRepository
 from app.domain.competition_lifecycle import CompetitionFormat, TournamentStageKind
 from app.providers.openligadb.exceptions import OpenLigaDBIntegrityError
@@ -29,6 +24,7 @@ from app.providers.openligadb.profiles import (
     SECOND_BUNDESLIGA_PROFILE,
 )
 
+from tests.catalog_support import CatalogInitializer
 from tests.providers.openligadb.support import (
     FETCHED_AT,
     nations_league_a_payloads,
@@ -46,20 +42,19 @@ class SnapshotAdapter:
         return self._snapshot
 
 
-def create_service(tmp_path: Path, *, changed_name: bool = False):
+def create_service(
+    tmp_path: Path,
+    *,
+    changed_name: bool = False,
+    initialize_test_catalog: CatalogInitializer,
+):
     database_path = tmp_path / "sports.db"
-    Database(database_path).initialize()
+    initialize_test_catalog(database_path)
     sports = SportsRepository(database_path)
     competitions = CompetitionsRepository(database_path)
     seasons = SeasonsRepository(database_path)
     participants = ParticipantsRepository(database_path)
     memberships = SeasonParticipantsRepository(database_path)
-    initialize_sports_catalog(sports)
-    initialize_competitions_catalog(competitions, sports)
-    initialize_seasons_catalog(seasons, competitions, sports)
-    initialize_participants_catalog(
-        participants, memberships, sports, competitions, seasons
-    )
     raw_payloads = payloads()
     if changed_name:
         raw_payloads[2][0]["team1"]["teamName"] = "Unreviewed name"
@@ -86,9 +81,11 @@ def create_service(tmp_path: Path, *, changed_name: bool = False):
 
 
 def test_service_normalizes_partial_dfb_pokal_snapshot_and_mappings(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
-    service, database_path = create_service(tmp_path)
+    service, database_path = create_service(
+        tmp_path, initialize_test_catalog=initialize_test_catalog
+    )
 
     batch = service.fetch_normalized_snapshot()
 
@@ -120,8 +117,12 @@ def test_service_normalizes_partial_dfb_pokal_snapshot_and_mappings(
     ]
 
 
-def test_service_fails_closed_on_changed_provider_identity(tmp_path: Path) -> None:
-    service, _ = create_service(tmp_path, changed_name=True)
+def test_service_fails_closed_on_changed_provider_identity(
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
+) -> None:
+    service, _ = create_service(
+        tmp_path, changed_name=True, initialize_test_catalog=initialize_test_catalog
+    )
 
     with pytest.raises(
         OpenLigaDBIntegrityError,
@@ -131,21 +132,15 @@ def test_service_fails_closed_on_changed_provider_identity(tmp_path: Path) -> No
 
 
 def test_service_normalizes_complete_second_bundesliga_snapshot(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
     database_path = tmp_path / "second-bundesliga.db"
-    Database(database_path).initialize()
+    initialize_test_catalog(database_path)
     sports = SportsRepository(database_path)
     competitions = CompetitionsRepository(database_path)
     seasons = SeasonsRepository(database_path)
     participants = ParticipantsRepository(database_path)
     memberships = SeasonParticipantsRepository(database_path)
-    initialize_sports_catalog(sports)
-    initialize_competitions_catalog(competitions, sports)
-    initialize_seasons_catalog(seasons, competitions, sports)
-    initialize_participants_catalog(
-        participants, memberships, sports, competitions, seasons
-    )
     snapshot = parse_snapshot(
         *second_bundesliga_payloads(),
         profile=SECOND_BUNDESLIGA_PROFILE,
@@ -185,21 +180,15 @@ def test_service_normalizes_complete_second_bundesliga_snapshot(
 
 
 def test_service_normalizes_nations_league_a_hybrid_group_phase(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
     database_path = tmp_path / "nations-league-a.db"
-    Database(database_path).initialize()
+    initialize_test_catalog(database_path)
     sports = SportsRepository(database_path)
     competitions = CompetitionsRepository(database_path)
     seasons = SeasonsRepository(database_path)
     participants = ParticipantsRepository(database_path)
     memberships = SeasonParticipantsRepository(database_path)
-    initialize_sports_catalog(sports)
-    initialize_competitions_catalog(competitions, sports)
-    initialize_seasons_catalog(seasons, competitions, sports)
-    initialize_participants_catalog(
-        participants, memberships, sports, competitions, seasons
-    )
     snapshot = parse_snapshot(
         *nations_league_a_payloads(include_later_stage_fixture=True),
         profile=NATIONS_LEAGUE_A_PROFILE,

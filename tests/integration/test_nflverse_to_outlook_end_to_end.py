@@ -23,22 +23,17 @@ from app.config.settings import NflverseSettings
 from app.database.calendar_event_mappings_repository import (
     CalendarEventMappingsRepository,
 )
-from app.database.competitions_catalog import initialize_competitions_catalog
 from app.database.competitions_repository import CompetitionsRepository
 from app.database.data_sources_repository import DataSourcesRepository
-from app.database.database import Database
 from app.database.fixture_import_repository import FixtureImportRepository
-from app.database.participants_catalog import initialize_participants_catalog
 from app.database.participants_repository import ParticipantsRepository
 from app.database.season_participants_repository import SeasonParticipantsRepository
-from app.database.seasons_catalog import initialize_seasons_catalog
 from app.database.seasons_repository import SeasonsRepository
 from app.database.source_assignments_repository import (
     SourceAssignmentsRepository,
     SourceAssignmentWrite,
 )
 from app.database.source_mappings_repository import SourceMappingsRepository
-from app.database.sports_catalog import initialize_sports_catalog
 from app.database.sports_repository import SportsRepository
 from app.database.sync_runs_repository import SyncRunsRepository
 from app.database.synchronization_query_repository import (
@@ -59,6 +54,7 @@ from app.synchronization.synchronization_runtime_service import (
     SynchronizationRuntimeService,
 )
 
+from tests.catalog_support import CatalogInitializer
 from tests.integration.provider_outlook_support import (
     CapturedGraphOperation,
     RecordingGraphClient,
@@ -103,8 +99,10 @@ class NflverseOutlookHarness:
         cls,
         database_path: Path,
         payload_builder: OutlookEventPayloadBuilder | None = None,
+        *,
+        initialize_test_catalog: CatalogInitializer,
     ) -> "NflverseOutlookHarness":
-        Database(database_path).initialize()
+        initialize_test_catalog(database_path)
         sports = SportsRepository(database_path)
         competitions = CompetitionsRepository(database_path)
         seasons = SeasonsRepository(database_path)
@@ -114,12 +112,6 @@ class NflverseOutlookHarness:
         source_mappings = SourceMappingsRepository(database_path)
         calendar_mappings = CalendarEventMappingsRepository(database_path)
         runs = SyncRunsRepository(database_path)
-        initialize_sports_catalog(sports)
-        initialize_competitions_catalog(competitions, sports)
-        initialize_seasons_catalog(seasons, competitions, sports)
-        initialize_participants_catalog(
-            participants, memberships, sports, competitions, seasons
-        )
         settings = NflverseSettings(enabled=True)
         source = register_nflverse_source(settings, sources)
         adapter = MutableNflverseAdapter()
@@ -274,9 +266,11 @@ def graph_end(operation: CapturedGraphOperation) -> datetime:
 
 
 def test_nfl_snapshot_synchronizes_272_events_and_is_idempotent(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
-    harness = NflverseOutlookHarness.create(tmp_path / "nfl.db")
+    harness = NflverseOutlookHarness.create(
+        tmp_path / "nfl.db", initialize_test_catalog=initialize_test_catalog
+    )
 
     first_import = harness.provider.import_current_competition()
     first_sync = harness.synchronize_all(limit=100)
@@ -330,7 +324,7 @@ def test_nfl_snapshot_synchronizes_272_events_and_is_idempotent(
 
 
 def test_three_hour_duration_updates_existing_events_without_duplicates(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
     legacy_builder = OutlookEventPayloadBuilder(
         OutlookEventPresentation(fallback_duration_minutes_by_sport=())
@@ -338,6 +332,7 @@ def test_three_hour_duration_updates_existing_events_without_duplicates(
     harness = NflverseOutlookHarness.create(
         tmp_path / "nfl-duration-upgrade.db",
         payload_builder=legacy_builder,
+        initialize_test_catalog=initialize_test_catalog,
     )
     harness.provider.import_current_competition()
     harness.synchronize_all()
@@ -375,9 +370,11 @@ def test_three_hour_duration_updates_existing_events_without_duplicates(
 
 
 def test_changed_operator_notice_updates_one_stable_outlook_event(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
-    harness = NflverseOutlookHarness.create(tmp_path / "nfl-notice.db")
+    harness = NflverseOutlookHarness.create(
+        tmp_path / "nfl-notice.db", initialize_test_catalog=initialize_test_catalog
+    )
     harness.provider.import_current_competition()
     harness.synchronize_all()
     game_id = harness.adapter.rows[0]["game_id"]
@@ -410,8 +407,12 @@ def test_changed_operator_notice_updates_one_stable_outlook_event(
     assert after.transaction_id == before.transaction_id
 
 
-def test_nfl_flex_change_updates_one_stable_outlook_event(tmp_path: Path) -> None:
-    harness = NflverseOutlookHarness.create(tmp_path / "nfl-flex.db")
+def test_nfl_flex_change_updates_one_stable_outlook_event(
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
+) -> None:
+    harness = NflverseOutlookHarness.create(
+        tmp_path / "nfl-flex.db", initialize_test_catalog=initialize_test_catalog
+    )
     harness.provider.import_current_competition()
     harness.synchronize_all()
     game_id = harness.adapter.rows[0]["game_id"]
@@ -441,9 +442,11 @@ def test_nfl_flex_change_updates_one_stable_outlook_event(tmp_path: Path) -> Non
 
 
 def test_rejected_nfl_observation_preserves_sqlite_and_graph_state(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
-    harness = NflverseOutlookHarness.create(tmp_path / "nfl-rejected.db")
+    harness = NflverseOutlookHarness.create(
+        tmp_path / "nfl-rejected.db", initialize_test_catalog=initialize_test_catalog
+    )
     harness.provider.import_current_competition()
     harness.synchronize_all()
     operation_count = len(harness.graph.operations)
@@ -465,9 +468,11 @@ def test_rejected_nfl_observation_preserves_sqlite_and_graph_state(
 
 
 def test_graph_failure_and_interrupted_run_recover_without_duplicates(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
-    harness = NflverseOutlookHarness.create(tmp_path / "nfl-recovery.db")
+    harness = NflverseOutlookHarness.create(
+        tmp_path / "nfl-recovery.db", initialize_test_catalog=initialize_test_catalog
+    )
     harness.provider.import_current_competition()
     interrupted = harness.runs.start(
         run_type="calendar_sync",

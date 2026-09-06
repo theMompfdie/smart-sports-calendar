@@ -20,22 +20,17 @@ from app.config.settings import OpenLigaDBSettings
 from app.database.calendar_event_mappings_repository import (
     CalendarEventMappingsRepository,
 )
-from app.database.competitions_catalog import initialize_competitions_catalog
 from app.database.competitions_repository import CompetitionsRepository
 from app.database.data_sources_repository import DataSourcesRepository
-from app.database.database import Database
 from app.database.fixture_import_repository import FixtureImportRepository
-from app.database.participants_catalog import initialize_participants_catalog
 from app.database.participants_repository import ParticipantsRepository
 from app.database.season_participants_repository import SeasonParticipantsRepository
-from app.database.seasons_catalog import initialize_seasons_catalog
 from app.database.seasons_repository import SeasonsRepository
 from app.database.source_assignments_repository import (
     SourceAssignmentsRepository,
     SourceAssignmentWrite,
 )
 from app.database.source_mappings_repository import SourceMappingsRepository
-from app.database.sports_catalog import initialize_sports_catalog
 from app.database.sports_repository import SportsRepository
 from app.database.sync_runs_repository import SyncRunsRepository
 from app.database.synchronization_query_repository import (
@@ -48,6 +43,7 @@ from app.synchronization.event_synchronizer import EventSynchronizer
 from app.synchronization.outlook_event_payload_builder import OutlookEventPayloadBuilder
 from app.synchronization.synchronization_orchestrator import SynchronizationOrchestrator
 
+from tests.catalog_support import CatalogInitializer
 from tests.integration.provider_outlook_support import RecordingGraphClient
 from tests.providers.openligadb.support import (
     FETCHED_AT,
@@ -75,8 +71,8 @@ class SnapshotAdapter:
         return self.snapshot
 
 
-def create_harness(database_path):
-    Database(database_path).initialize()
+def create_harness(database_path, *, initialize_test_catalog: CatalogInitializer):
+    initialize_test_catalog(database_path)
     sports = SportsRepository(database_path)
     competitions = CompetitionsRepository(database_path)
     seasons = SeasonsRepository(database_path)
@@ -84,12 +80,6 @@ def create_harness(database_path):
     memberships = SeasonParticipantsRepository(database_path)
     sources = DataSourcesRepository(database_path)
     runs = SyncRunsRepository(database_path)
-    initialize_sports_catalog(sports)
-    initialize_competitions_catalog(competitions, sports)
-    initialize_seasons_catalog(seasons, competitions, sports)
-    initialize_participants_catalog(
-        participants, memberships, sports, competitions, seasons
-    )
     settings = OpenLigaDBSettings(enabled=True)
     source = register_openligadb_source(settings, sources)
     adapter = SnapshotAdapter()
@@ -155,10 +145,11 @@ def create_harness(database_path):
 
 
 def test_second_bundesliga_import_is_idempotent_and_non_destructive(
-    tmp_path,
+    tmp_path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
     provider, calendar, adapter, graph = create_harness(
-        tmp_path / "openligadb-second-bundesliga.db"
+        tmp_path / "openligadb-second-bundesliga.db",
+        initialize_test_catalog=initialize_test_catalog,
     )
 
     first_import = provider.import_current_competition()
@@ -193,9 +184,12 @@ def test_second_bundesliga_import_is_idempotent_and_non_destructive(
     assert len(graph.operations) == 306
 
 
-def test_second_bundesliga_reschedule_preserves_outlook_identity(tmp_path) -> None:
+def test_second_bundesliga_reschedule_preserves_outlook_identity(
+    tmp_path, *, initialize_test_catalog: CatalogInitializer
+) -> None:
     provider, calendar, adapter, graph = create_harness(
-        tmp_path / "openligadb-second-bundesliga-reschedule.db"
+        tmp_path / "openligadb-second-bundesliga-reschedule.db",
+        initialize_test_catalog=initialize_test_catalog,
     )
     assert provider.import_current_competition().items_created == 306
     assert calendar.synchronize(CALENDAR_ID, 400).items_created == 306
@@ -224,17 +218,19 @@ def test_second_bundesliga_reschedule_preserves_outlook_identity(tmp_path) -> No
 
 
 def test_second_bundesliga_restart_and_provider_failure_preserve_outlook_identity(
-    tmp_path,
+    tmp_path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
     database_path = tmp_path / "openligadb-second-bundesliga-recovery.db"
-    provider, calendar, _, graph = create_harness(database_path)
+    provider, calendar, _, graph = create_harness(
+        database_path, initialize_test_catalog=initialize_test_catalog
+    )
 
     assert provider.import_current_competition().items_created == 306
     assert calendar.synchronize(CALENDAR_ID, 400).items_created == 306
     assert len(graph.operations) == 306
 
     restarted_provider, restarted_calendar, restarted_adapter, restarted_graph = (
-        create_harness(database_path)
+        create_harness(database_path, initialize_test_catalog=initialize_test_catalog)
     )
     assert restarted_provider.import_current_competition().items_unchanged == 306
     assert restarted_calendar.synchronize(CALENDAR_ID, 400).items_unchanged == 306

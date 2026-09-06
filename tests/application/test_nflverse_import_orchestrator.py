@@ -15,24 +15,20 @@ from app.application.nflverse_competition_service import (
 )
 from app.application.nflverse_import_orchestrator import NflverseImportOrchestrator
 from app.config.settings import NflverseSettings
-from app.database.competitions_catalog import initialize_competitions_catalog
 from app.database.competitions_repository import CompetitionsRepository
 from app.database.data_sources_repository import DataSourcesRepository
-from app.database.database import Database
 from app.database.fixture_import_repository import FixtureImportRepository
-from app.database.participants_catalog import initialize_participants_catalog
 from app.database.participants_repository import ParticipantsRepository
 from app.database.season_participants_repository import SeasonParticipantsRepository
-from app.database.seasons_catalog import initialize_seasons_catalog
 from app.database.seasons_repository import SeasonsRepository
 from app.database.source_mappings_repository import SourceMappingsRepository
-from app.database.sports_catalog import initialize_sports_catalog
 from app.database.sports_repository import SportsRepository
 from app.database.sync_runs_repository import SyncRunsRepository
 from app.providers.contracts import SourceJobDefinition, SourceRole, SourceScope
 from app.providers.nflverse.models import parse_snapshot
 from app.providers.nflverse.profiles import NFL_2026_REGULAR_SEASON_PROFILE
 
+from tests.catalog_support import CatalogInitializer
 from tests.providers.nflverse.support import csv_bytes, schedule_rows
 
 OBSERVED_AT = datetime(2026, 8, 30, 12, tzinfo=UTC)
@@ -55,9 +51,9 @@ class MutableAdapter:
 
 
 def build_orchestrator(
-    database_path: Path,
+    database_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> tuple[NflverseImportOrchestrator, MutableAdapter, SyncRunsRepository]:
-    Database(database_path).initialize()
+    initialize_test_catalog(database_path)
     sports = SportsRepository(database_path)
     competitions = CompetitionsRepository(database_path)
     seasons = SeasonsRepository(database_path)
@@ -65,12 +61,6 @@ def build_orchestrator(
     memberships = SeasonParticipantsRepository(database_path)
     sources = DataSourcesRepository(database_path)
     mappings = SourceMappingsRepository(database_path)
-    initialize_sports_catalog(sports)
-    initialize_competitions_catalog(competitions, sports)
-    initialize_seasons_catalog(seasons, competitions, sports)
-    initialize_participants_catalog(
-        participants, memberships, sports, competitions, seasons
-    )
     settings = NflverseSettings(enabled=True)
     register_nflverse_source(settings, sources)
     adapter = MutableAdapter()
@@ -117,10 +107,12 @@ def event_state(database_path: Path) -> list[tuple[str, str, str | None, str | N
 
 
 def test_import_creates_272_fixtures_then_skips_unchanged_snapshot(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
     database_path = tmp_path / "sports.db"
-    orchestrator, adapter, runs = build_orchestrator(database_path)
+    orchestrator, adapter, runs = build_orchestrator(
+        database_path, initialize_test_catalog=initialize_test_catalog
+    )
 
     first = orchestrator.import_current_competition()
     adapter.observed_at += timedelta(hours=6)
@@ -159,9 +151,13 @@ def test_import_creates_272_fixtures_then_skips_unchanged_snapshot(
     ]
 
 
-def test_flex_change_updates_stable_game_without_duplicate(tmp_path: Path) -> None:
+def test_flex_change_updates_stable_game_without_duplicate(
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
+) -> None:
     database_path = tmp_path / "sports.db"
-    orchestrator, adapter, _ = build_orchestrator(database_path)
+    orchestrator, adapter, _ = build_orchestrator(
+        database_path, initialize_test_catalog=initialize_test_catalog
+    )
     first = orchestrator.import_current_competition()
     target_id = adapter.rows[0]["game_id"]
     adapter.rows[0]["gametime"] = "20:30"
@@ -179,10 +175,12 @@ def test_flex_change_updates_stable_game_without_duplicate(tmp_path: Path) -> No
 
 
 def test_invalid_partial_observation_preserves_last_known_good_state(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
     database_path = tmp_path / "sports.db"
-    orchestrator, adapter, runs = build_orchestrator(database_path)
+    orchestrator, adapter, runs = build_orchestrator(
+        database_path, initialize_test_catalog=initialize_test_catalog
+    )
     first = orchestrator.import_current_competition()
     before = event_state(database_path)
     adapter.rows.pop()

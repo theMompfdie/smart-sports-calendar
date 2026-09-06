@@ -17,22 +17,17 @@ from app.config.settings import ApiFootballSettings, FootballDataSettings
 from app.database.calendar_event_mappings_repository import (
     CalendarEventMappingsRepository,
 )
-from app.database.competitions_catalog import initialize_competitions_catalog
 from app.database.competitions_repository import CompetitionsRepository
 from app.database.data_sources_repository import DataSourcesRepository
-from app.database.database import Database
 from app.database.fixture_import_repository import FixtureImportRepository
-from app.database.participants_catalog import initialize_participants_catalog
 from app.database.participants_repository import ParticipantsRepository
 from app.database.season_participants_repository import SeasonParticipantsRepository
-from app.database.seasons_catalog import initialize_seasons_catalog
 from app.database.seasons_repository import SeasonsRepository
 from app.database.source_assignments_repository import (
     SourceAssignmentsRepository,
     SourceAssignmentWrite,
 )
 from app.database.source_mappings_repository import SourceMappingsRepository
-from app.database.sports_catalog import initialize_sports_catalog
 from app.database.sports_events_repository import SportsEventsRepository
 from app.database.sports_repository import SportsRepository
 from app.database.sync_runs_repository import SyncRunsRepository
@@ -49,6 +44,7 @@ from app.synchronization.event_synchronizer import EventSynchronizer
 from app.synchronization.outlook_event_payload_builder import OutlookEventPayloadBuilder
 from app.synchronization.synchronization_orchestrator import SynchronizationOrchestrator
 
+from tests.catalog_support import CatalogInitializer
 from tests.integration.provider_outlook_support import (
     CapturedGraphOperation,
     RecordingGraphClient,
@@ -78,8 +74,13 @@ def graph_body_content(operation: CapturedGraphOperation) -> str:
     return content
 
 
-def create_harness(database_path, *, persist_source_assignment: bool = True):
-    Database(database_path).initialize()
+def create_harness(
+    database_path,
+    *,
+    persist_source_assignment: bool = True,
+    initialize_test_catalog: CatalogInitializer,
+):
+    initialize_test_catalog(database_path)
     sports = SportsRepository(database_path)
     competitions = CompetitionsRepository(database_path)
     seasons = SeasonsRepository(database_path)
@@ -88,12 +89,6 @@ def create_harness(database_path, *, persist_source_assignment: bool = True):
     sources = DataSourcesRepository(database_path)
     mappings = SourceMappingsRepository(database_path)
     runs = SyncRunsRepository(database_path)
-    initialize_sports_catalog(sports)
-    initialize_competitions_catalog(competitions, sports)
-    initialize_seasons_catalog(seasons, competitions, sports)
-    initialize_participants_catalog(
-        participants, memberships, sports, competitions, seasons
-    )
     settings = FootballDataSettings(enabled=True, api_key="test-token")
     football_data_source = register_football_data_source(settings, sources)
 
@@ -196,7 +191,9 @@ def create_harness(database_path, *, persist_source_assignment: bool = True):
     )
 
 
-def test_adding_authoritative_attribution_updates_existing_event_once(tmp_path) -> None:
+def test_adding_authoritative_attribution_updates_existing_event_once(
+    tmp_path, *, initialize_test_catalog: CatalogInitializer
+) -> None:
     database_path = tmp_path / "attribution-upgrade.db"
     (
         _,
@@ -207,7 +204,11 @@ def test_adding_authoritative_attribution_updates_existing_event_once(tmp_path) 
         _,
         _,
         api_fixture_mapping,
-    ) = create_harness(database_path, persist_source_assignment=False)
+    ) = create_harness(
+        database_path,
+        persist_source_assignment=False,
+        initialize_test_catalog=initialize_test_catalog,
+    )
 
     first_sync = calendar.synchronize(CALENDAR_ID, 100)
     mappings = CalendarEventMappingsRepository(database_path)
@@ -255,7 +256,7 @@ def test_adding_authoritative_attribution_updates_existing_event_once(tmp_path) 
 
 
 def test_complete_snapshot_is_idempotent_and_kickoff_correction_updates_graph(
-    tmp_path,
+    tmp_path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
     database_path = tmp_path / "football-data.db"
     (
@@ -267,7 +268,7 @@ def test_complete_snapshot_is_idempotent_and_kickoff_correction_updates_graph(
         mappings,
         api_mapping,
         api_fixture_mapping,
-    ) = create_harness(database_path)
+    ) = create_harness(database_path, initialize_test_catalog=initialize_test_catalog)
 
     first_import = provider.import_current_premier_league()
     first_sync_batches = tuple(calendar.synchronize(CALENDAR_ID, 100) for _ in range(4))
