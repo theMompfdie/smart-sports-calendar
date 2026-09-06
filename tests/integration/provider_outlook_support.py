@@ -30,19 +30,14 @@ from app.config.settings import ApiFootballSettings
 from app.database.calendar_event_mappings_repository import (
     CalendarEventMappingsRepository,
 )
-from app.database.competitions_catalog import initialize_competitions_catalog
 from app.database.competitions_repository import CompetitionsRepository
 from app.database.data_sources_repository import DataSourcesRepository
-from app.database.database import Database
 from app.database.event_participants_repository import EventParticipantsRepository
 from app.database.fixture_import_repository import FixtureImportRepository
-from app.database.participants_catalog import initialize_participants_catalog
 from app.database.participants_repository import ParticipantsRepository
 from app.database.season_participants_repository import SeasonParticipantsRepository
-from app.database.seasons_catalog import initialize_seasons_catalog
 from app.database.seasons_repository import SeasonsRepository
 from app.database.source_mappings_repository import SourceMappingsRepository
-from app.database.sports_catalog import initialize_sports_catalog
 from app.database.sports_events_repository import SportsEvent, SportsEventsRepository
 from app.database.sports_repository import SportsRepository
 from app.database.sync_runs_repository import SyncRunsRepository
@@ -67,6 +62,8 @@ from app.synchronization.synchronization_orchestrator import (
 from app.synchronization.synchronization_runtime_service import (
     SynchronizationRuntimeService,
 )
+
+from tests.catalog_support import CatalogInitializer
 
 FIXTURE_DIRECTORY = Path(__file__).parents[1] / "fixtures" / "api_football"
 CALENDAR_ID = "smart-sports-calendar-e2e"
@@ -321,8 +318,10 @@ class ProviderOutlookHarness:
     _clock_reference: list[datetime] = field(init=False, repr=False)
 
     @classmethod
-    def create(cls, database_path: Path) -> "ProviderOutlookHarness":
-        Database(database_path).initialize()
+    def create(
+        cls, database_path: Path, *, initialize_test_catalog: CatalogInitializer
+    ) -> "ProviderOutlookHarness":
+        initialize_test_catalog(database_path)
         sports = SportsRepository(database_path)
         competitions = CompetitionsRepository(database_path)
         seasons = SeasonsRepository(database_path)
@@ -335,16 +334,6 @@ class ProviderOutlookHarness:
         calendar_mappings = CalendarEventMappingsRepository(database_path)
         sync_runs = SyncRunsRepository(database_path)
 
-        initialize_sports_catalog(sports)
-        initialize_competitions_catalog(competitions, sports)
-        initialize_seasons_catalog(seasons, competitions, sports)
-        initialize_participants_catalog(
-            participants,
-            season_participants,
-            sports,
-            competitions,
-            seasons,
-        )
         provider_settings = ApiFootballSettings(
             enabled=True,
             api_key=PROVIDER_SECRET,

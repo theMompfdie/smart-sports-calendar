@@ -12,17 +12,11 @@ from app.application.openligadb_import_orchestrator import (
     OpenLigaDBImportOrchestrator,
 )
 from app.config.settings import OpenLigaDBSettings
-from app.database.competitions_catalog import initialize_competitions_catalog
 from app.database.competitions_repository import CompetitionsRepository
 from app.database.data_sources_repository import DataSourcesRepository
-from app.database.database import Database
 from app.database.fixture_import_repository import FixtureImportRepository
-from app.database.participants_catalog import initialize_participants_catalog
 from app.database.participants_repository import ParticipantsRepository
-from app.database.season_participants_repository import SeasonParticipantsRepository
-from app.database.seasons_catalog import initialize_seasons_catalog
 from app.database.seasons_repository import SeasonsRepository
-from app.database.sports_catalog import initialize_sports_catalog
 from app.database.sports_repository import SportsRepository
 from app.database.sync_runs_repository import SyncRunsRepository
 from app.domain.competition_lifecycle import CompetitionFormat, TournamentStageKind
@@ -39,6 +33,8 @@ from app.providers.openligadb.profiles import (
     DFB_POKAL_PROFILE,
     NATIONS_LEAGUE_A_PROFILE,
 )
+
+from tests.catalog_support import CatalogInitializer
 
 OBSERVED_AT = datetime(2026, 8, 18, 20, 0, tzinfo=UTC)
 
@@ -173,21 +169,10 @@ def create_nations_league_batch(database_path: Path) -> NormalizedFixtureBatch:
 
 
 def test_missing_fixture_in_later_partial_observation_is_preserved(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
     database_path = tmp_path / "sports.db"
-    Database(database_path).initialize()
-    sports = SportsRepository(database_path)
-    competitions = CompetitionsRepository(database_path)
-    seasons = SeasonsRepository(database_path)
-    participants = ParticipantsRepository(database_path)
-    memberships = SeasonParticipantsRepository(database_path)
-    initialize_sports_catalog(sports)
-    initialize_competitions_catalog(competitions, sports)
-    initialize_seasons_catalog(seasons, competitions, sports)
-    initialize_participants_catalog(
-        participants, memberships, sports, competitions, seasons
-    )
+    initialize_test_catalog(database_path)
     settings = OpenLigaDBSettings(enabled=True)
     sources = DataSourcesRepository(database_path)
     register_openligadb_source(settings, sources)
@@ -241,20 +226,11 @@ def test_missing_fixture_in_later_partial_observation_is_preserved(
     assert metadata["removal_eligible"] is False
 
 
-def test_nations_league_scope_records_filtered_hybrid_stage(tmp_path: Path) -> None:
+def test_nations_league_scope_records_filtered_hybrid_stage(
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
+) -> None:
     database_path = tmp_path / "nations-league.db"
-    Database(database_path).initialize()
-    sports = SportsRepository(database_path)
-    competitions = CompetitionsRepository(database_path)
-    seasons = SeasonsRepository(database_path)
-    participants = ParticipantsRepository(database_path)
-    memberships = SeasonParticipantsRepository(database_path)
-    initialize_sports_catalog(sports)
-    initialize_competitions_catalog(competitions, sports)
-    initialize_seasons_catalog(seasons, competitions, sports)
-    initialize_participants_catalog(
-        participants, memberships, sports, competitions, seasons
-    )
+    initialize_test_catalog(database_path)
     sources = DataSourcesRepository(database_path)
     register_openligadb_source(OpenLigaDBSettings(enabled=True), sources)
     batch = create_nations_league_batch(database_path)

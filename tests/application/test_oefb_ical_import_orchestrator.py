@@ -10,17 +10,11 @@ from app.application.api_football_fixture_import_service import (
 from app.application.oefb_ical_competition_service import register_oefb_ical_source
 from app.application.oefb_ical_import_orchestrator import OefbIcalImportOrchestrator
 from app.config.settings import OefbIcalSettings
-from app.database.competitions_catalog import initialize_competitions_catalog
 from app.database.competitions_repository import CompetitionsRepository
 from app.database.data_sources_repository import DataSourcesRepository
-from app.database.database import Database
 from app.database.fixture_import_repository import FixtureImportRepository
-from app.database.participants_catalog import initialize_participants_catalog
 from app.database.participants_repository import ParticipantsRepository
-from app.database.season_participants_repository import SeasonParticipantsRepository
-from app.database.seasons_catalog import initialize_seasons_catalog
 from app.database.seasons_repository import SeasonsRepository
-from app.database.sports_catalog import initialize_sports_catalog
 from app.database.sports_repository import SportsRepository
 from app.database.sync_runs_repository import SyncRunsRepository
 from app.domain.competition_lifecycle import CompetitionFormat
@@ -34,6 +28,8 @@ from app.providers.contracts import (
     SourceScope,
 )
 
+from tests.catalog_support import CatalogInitializer
+
 OBSERVED_AT = datetime(2026, 8, 28, 12, 0, tzinfo=UTC)
 
 
@@ -43,21 +39,6 @@ class SnapshotService:
 
     def fetch_normalized_snapshot(self) -> NormalizedFixtureBatch:
         return self._batches.pop(0)
-
-
-def initialize_catalog(database_path: Path) -> None:
-    Database(database_path).initialize()
-    sports = SportsRepository(database_path)
-    competitions = CompetitionsRepository(database_path)
-    seasons = SeasonsRepository(database_path)
-    participants = ParticipantsRepository(database_path)
-    memberships = SeasonParticipantsRepository(database_path)
-    initialize_sports_catalog(sports)
-    initialize_competitions_catalog(competitions, sports)
-    initialize_seasons_catalog(seasons, competitions, sports)
-    initialize_participants_catalog(
-        participants, memberships, sports, competitions, seasons
-    )
 
 
 def create_batch(database_path: Path) -> NormalizedFixtureBatch:
@@ -132,10 +113,10 @@ def create_batch(database_path: Path) -> NormalizedFixtureBatch:
 
 
 def test_missing_fixture_in_later_partial_observation_is_preserved(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
     database_path = tmp_path / "sports.db"
-    initialize_catalog(database_path)
+    initialize_test_catalog(database_path)
     settings = OefbIcalSettings(
         enabled=True,
         feed_url="https://www.fussballoesterreich.at/private.ics",
@@ -193,10 +174,10 @@ def test_missing_fixture_in_later_partial_observation_is_preserved(
 
 
 def test_observation_identity_is_stable_for_reordered_fixtures(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
     database_path = tmp_path / "sports.db"
-    initialize_catalog(database_path)
+    initialize_test_catalog(database_path)
     batch = create_batch(database_path)
 
     first = OefbIcalImportOrchestrator._scope(batch)

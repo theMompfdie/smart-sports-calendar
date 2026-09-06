@@ -17,22 +17,17 @@ from app.application.oefb_ical_import_orchestrator import OefbIcalImportOrchestr
 from app.database.calendar_event_mappings_repository import (
     CalendarEventMappingsRepository,
 )
-from app.database.competitions_catalog import initialize_competitions_catalog
 from app.database.competitions_repository import CompetitionsRepository
 from app.database.data_sources_repository import DataSourcesRepository
-from app.database.database import Database
 from app.database.fixture_import_repository import FixtureImportRepository
-from app.database.participants_catalog import initialize_participants_catalog
 from app.database.participants_repository import ParticipantsRepository
 from app.database.season_participants_repository import SeasonParticipantsRepository
-from app.database.seasons_catalog import initialize_seasons_catalog
 from app.database.seasons_repository import SeasonsRepository
 from app.database.source_assignments_repository import (
     SourceAssignmentsRepository,
     SourceAssignmentWrite,
 )
 from app.database.source_mappings_repository import SourceMappingsRepository
-from app.database.sports_catalog import initialize_sports_catalog
 from app.database.sports_repository import SportsRepository
 from app.database.sync_runs_repository import SyncRunsRepository
 from app.database.synchronization_query_repository import (
@@ -44,6 +39,7 @@ from app.synchronization.event_synchronizer import EventSynchronizer
 from app.synchronization.outlook_event_payload_builder import OutlookEventPayloadBuilder
 from app.synchronization.synchronization_orchestrator import SynchronizationOrchestrator
 
+from tests.catalog_support import CatalogInitializer
 from tests.integration.provider_outlook_support import RecordingGraphClient
 from tests.providers.oefb_ical.support import (
     FETCHED_AT,
@@ -81,8 +77,8 @@ class SnapshotAdapter:
         return self.snapshot
 
 
-def create_harness(database_path):
-    Database(database_path).initialize()
+def create_harness(database_path, *, initialize_test_catalog: CatalogInitializer):
+    initialize_test_catalog(database_path)
     sports = SportsRepository(database_path)
     competitions = CompetitionsRepository(database_path)
     seasons = SeasonsRepository(database_path)
@@ -91,12 +87,6 @@ def create_harness(database_path):
     sources = DataSourcesRepository(database_path)
     source_mappings = SourceMappingsRepository(database_path)
     runs = SyncRunsRepository(database_path)
-    initialize_sports_catalog(sports)
-    initialize_competitions_catalog(competitions, sports)
-    initialize_seasons_catalog(seasons, competitions, sports)
-    initialize_participants_catalog(
-        participants, memberships, sports, competitions, seasons
-    )
     provider_settings = settings()
     source = register_oefb_ical_source(provider_settings, sources)
     adapter = SnapshotAdapter()
@@ -160,8 +150,12 @@ def create_harness(database_path):
     return provider, calendar, adapter, graph
 
 
-def test_oefb_cup_import_is_idempotent_and_renders_attribution(tmp_path) -> None:
-    provider, calendar, adapter, graph = create_harness(tmp_path / "oefb-cup.db")
+def test_oefb_cup_import_is_idempotent_and_renders_attribution(
+    tmp_path, *, initialize_test_catalog: CatalogInitializer
+) -> None:
+    provider, calendar, adapter, graph = create_harness(
+        tmp_path / "oefb-cup.db", initialize_test_catalog=initialize_test_catalog
+    )
 
     first_import = provider.import_current_competition()
     first_sync = calendar.synchronize(CALENDAR_ID, 100)
@@ -200,15 +194,19 @@ def test_oefb_cup_import_is_idempotent_and_renders_attribution(tmp_path) -> None
     assert graph.operations[-1].method == "PATCH"
 
 
-def test_oefb_cup_provider_failure_preserves_outlook_identity(tmp_path) -> None:
+def test_oefb_cup_provider_failure_preserves_outlook_identity(
+    tmp_path, *, initialize_test_catalog: CatalogInitializer
+) -> None:
     database_path = tmp_path / "oefb-cup-recovery.db"
-    provider, calendar, _, graph = create_harness(database_path)
+    provider, calendar, _, graph = create_harness(
+        database_path, initialize_test_catalog=initialize_test_catalog
+    )
     assert provider.import_current_competition().items_created == 1
     assert calendar.synchronize(CALENDAR_ID, 100).items_created == 1
     assert len(graph.operations) == 1
 
     restarted_provider, restarted_calendar, restarted_adapter, restarted_graph = (
-        create_harness(database_path)
+        create_harness(database_path, initialize_test_catalog=initialize_test_catalog)
     )
     assert restarted_provider.import_current_competition().items_unchanged == 1
     assert restarted_calendar.synchronize(CALENDAR_ID, 100).items_unchanged == 1

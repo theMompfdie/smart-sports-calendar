@@ -486,11 +486,9 @@ python -m ruff format --check .
 docker compose config
 ```
 
-Expected automated test result for the current development state:
-
-```text
-898 passed
-```
+The complete pytest suite must pass without failures. See
+[pytest runtime measurements](docs/pytest-runtime.md) for the baseline,
+fixture isolation strategy, and reproducible timing commands.
 
 ## Development Workflow
 
