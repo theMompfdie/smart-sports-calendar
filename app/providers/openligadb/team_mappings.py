@@ -75,7 +75,7 @@ DFB_POKAL_TEAM_MAPPINGS: dict[int, OpenLigaDBTeamMapping] = {
     4762: OpenLigaDBTeamMapping(
         "ssv_jeddeloh",
         "SSV Jeddeloh II",
-        provider_name_aliases=("SSV Jeddeloh 2",),
+        provider_name_aliases=("SSV Jeddeloh 2", "SSV Jeddeloh"),
     ),
     5276: OpenLigaDBTeamMapping("wuerzburger_kickers", "Würzburger Kickers"),
     5712: OpenLigaDBTeamMapping("sc_st_toenis", "SC St. Tönis"),
