@@ -20,6 +20,12 @@ EXPECTED_TABLES = {
     "event_statistics",
     "fixture_reconciliation_state",
     "media_assets",
+    "manual_import_instance",
+    "manual_import_profiles",
+    "import_batches",
+    "manual_import_receipts",
+    "manual_review_plans",
+    "manual_review_appointments",
     "participants",
     "reminder_rules",
     "schema_migrations",
@@ -108,6 +114,8 @@ def test_migrations_are_registered_once(
         ("010_add_presentation_sync_revisions",),
         ("011_create_media_assets",),
         ("012_create_calendar_event_asset_attachments",),
+        ("013_manual_import_persistence",),
+        ("014_manual_review_appointments",),
     ]
 
 

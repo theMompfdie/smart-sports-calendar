@@ -1,0 +1,1 @@
+"""Manual import contract tests."""

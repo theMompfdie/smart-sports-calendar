@@ -113,6 +113,101 @@ CHAMPIONSHIP_2026_27_TEAMS = (
     ("wrexham", "Wrexham", "Wrexham", "GB-WLS"),
 )
 
+EFL_CUP_2026_27_TEAMS = (
+    ("afc_wimbledon", "AFC Wimbledon", "AFC Wimbledon", "GB-ENG"),
+    ("accrington_stanley", "Accrington Stanley", "Accrington Stanley", "GB-ENG"),
+    ("arsenal", "Arsenal", "Arsenal", "GB-ENG"),
+    ("aston_villa", "Aston Villa", "Aston Villa", "GB-ENG"),
+    ("barnet", "Barnet", "Barnet", "GB-ENG"),
+    ("barnsley", "Barnsley", "Barnsley", "GB-ENG"),
+    ("birmingham_city", "Birmingham City", "Birmingham", "GB-ENG"),
+    ("blackburn_rovers", "Blackburn Rovers", "Blackburn", "GB-ENG"),
+    ("blackpool", "Blackpool", "Blackpool", "GB-ENG"),
+    ("bolton_wanderers", "Bolton Wanderers", "Bolton", "GB-ENG"),
+    ("bournemouth", "AFC Bournemouth", "Bournemouth", "GB-ENG"),
+    ("bradford_city", "Bradford City", "Bradford City", "GB-ENG"),
+    ("brentford", "Brentford", "Brentford", "GB-ENG"),
+    ("brighton_and_hove_albion", "Brighton & Hove Albion", "Brighton", "GB-ENG"),
+    ("bristol_city", "Bristol City", "Bristol City", "GB-ENG"),
+    ("bristol_rovers", "Bristol Rovers", "Bristol Rovers", "GB-ENG"),
+    ("bromley", "Bromley", "Bromley", "GB-ENG"),
+    ("burnley", "Burnley", "Burnley", "GB-ENG"),
+    ("burton_albion", "Burton Albion", "Burton Albion", "GB-ENG"),
+    ("cambridge_united", "Cambridge United", "Cambridge United", "GB-ENG"),
+    ("cardiff_city", "Cardiff City", "Cardiff", "GB-WLS"),
+    ("charlton_athletic", "Charlton Athletic", "Charlton", "GB-ENG"),
+    ("chelsea", "Chelsea", "Chelsea", "GB-ENG"),
+    ("cheltenham_town", "Cheltenham Town", "Cheltenham Town", "GB-ENG"),
+    ("chesterfield", "Chesterfield", "Chesterfield", "GB-ENG"),
+    ("colchester_united", "Colchester United", "Colchester United", "GB-ENG"),
+    ("coventry_city", "Coventry City", "Coventry", "GB-ENG"),
+    ("crawley_town", "Crawley Town", "Crawley Town", "GB-ENG"),
+    ("crewe_alexandra", "Crewe Alexandra", "Crewe Alexandra", "GB-ENG"),
+    ("crystal_palace", "Crystal Palace", "Crystal Palace", "GB-ENG"),
+    ("derby_county", "Derby County", "Derby County", "GB-ENG"),
+    ("doncaster_rovers", "Doncaster Rovers", "Doncaster Rovers", "GB-ENG"),
+    ("everton", "Everton", "Everton", "GB-ENG"),
+    ("exeter_city", "Exeter City", "Exeter City", "GB-ENG"),
+    ("fleetwood_town", "Fleetwood Town", "Fleetwood Town", "GB-ENG"),
+    ("fulham", "Fulham", "Fulham", "GB-ENG"),
+    ("gillingham", "Gillingham", "Gillingham", "GB-ENG"),
+    ("grimsby_town", "Grimsby Town", "Grimsby Town", "GB-ENG"),
+    ("huddersfield_town", "Huddersfield Town", "Huddersfield Town", "GB-ENG"),
+    ("hull_city", "Hull City", "Hull", "GB-ENG"),
+    ("ipswich_town", "Ipswich Town", "Ipswich", "GB-ENG"),
+    ("leeds_united", "Leeds United", "Leeds", "GB-ENG"),
+    ("leicester_city", "Leicester City", "Leicester City", "GB-ENG"),
+    ("leyton_orient", "Leyton Orient", "Leyton Orient", "GB-ENG"),
+    ("lincoln_city", "Lincoln City", "Lincoln City", "GB-ENG"),
+    ("liverpool", "Liverpool", "Liverpool", "GB-ENG"),
+    ("luton_town", "Luton Town", "Luton Town", "GB-ENG"),
+    ("manchester_city", "Manchester City", "Man City", "GB-ENG"),
+    ("manchester_united", "Manchester United", "Man Utd", "GB-ENG"),
+    ("mansfield_town", "Mansfield Town", "Mansfield Town", "GB-ENG"),
+    ("middlesbrough", "Middlesbrough", "Middlesbrough", "GB-ENG"),
+    ("millwall", "Millwall", "Millwall", "GB-ENG"),
+    ("milton_keynes_dons", "Milton Keynes Dons", "Milton Keynes Dons", "GB-ENG"),
+    ("newcastle_united", "Newcastle United", "Newcastle", "GB-ENG"),
+    ("newport_county", "Newport County", "Newport County", "GB-WLS"),
+    ("northampton_town", "Northampton Town", "Northampton Town", "GB-ENG"),
+    ("norwich_city", "Norwich City", "Norwich", "GB-ENG"),
+    ("nottingham_forest", "Nottingham Forest", "Nott'm Forest", "GB-ENG"),
+    ("notts_county", "Notts County", "Notts County", "GB-ENG"),
+    ("oldham_athletic", "Oldham Athletic", "Oldham Athletic", "GB-ENG"),
+    ("oxford_united", "Oxford United", "Oxford United", "GB-ENG"),
+    ("peterborough_united", "Peterborough United", "Peterborough United", "GB-ENG"),
+    ("plymouth_argyle", "Plymouth Argyle", "Plymouth Argyle", "GB-ENG"),
+    ("port_vale", "Port Vale", "Port Vale", "GB-ENG"),
+    ("portsmouth", "Portsmouth", "Portsmouth", "GB-ENG"),
+    ("preston_north_end", "Preston North End", "Preston NE", "GB-ENG"),
+    ("queens_park_rangers", "Queens Park Rangers", "QPR", "GB-ENG"),
+    ("reading", "Reading", "Reading", "GB-ENG"),
+    ("rochdale", "Rochdale", "Rochdale", "GB-ENG"),
+    ("rotherham_united", "Rotherham United", "Rotherham United", "GB-ENG"),
+    ("salford_city", "Salford City", "Salford City", "GB-ENG"),
+    ("sheffield_united", "Sheffield United", "Sheffield Utd", "GB-ENG"),
+    ("sheffield_wednesday", "Sheffield Wednesday", "Sheffield Wednesday", "GB-ENG"),
+    ("shrewsbury_town", "Shrewsbury Town", "Shrewsbury Town", "GB-ENG"),
+    ("southampton", "Southampton", "Southampton", "GB-ENG"),
+    ("stevenage", "Stevenage", "Stevenage", "GB-ENG"),
+    ("stockport_county", "Stockport County", "Stockport County", "GB-ENG"),
+    ("stoke_city", "Stoke City", "Stoke", "GB-ENG"),
+    ("sunderland", "Sunderland", "Sunderland", "GB-ENG"),
+    ("swansea_city", "Swansea City", "Swansea", "GB-WLS"),
+    ("swindon_town", "Swindon Town", "Swindon Town", "GB-ENG"),
+    ("tottenham_hotspur", "Tottenham Hotspur", "Spurs", "GB-ENG"),
+    ("tranmere_rovers", "Tranmere Rovers", "Tranmere Rovers", "GB-ENG"),
+    ("walsall", "Walsall", "Walsall", "GB-ENG"),
+    ("watford", "Watford", "Watford", "GB-ENG"),
+    ("west_bromwich_albion", "West Bromwich Albion", "West Brom", "GB-ENG"),
+    ("west_ham_united", "West Ham United", "West Ham", "GB-ENG"),
+    ("wigan_athletic", "Wigan Athletic", "Wigan Athletic", "GB-ENG"),
+    ("wolverhampton_wanderers", "Wolverhampton Wanderers", "Wolverhampton", "GB-ENG"),
+    ("wrexham", "Wrexham", "Wrexham", "GB-WLS"),
+    ("wycombe_wanderers", "Wycombe Wanderers", "Wycombe Wanderers", "GB-ENG"),
+    ("york_city", "York City", "York City", "GB-ENG"),
+)
+
 SECOND_BUNDESLIGA_2026_27_TEAMS = (
     ("vfl_osnabrueck", "VfL Osnabrück", "Osnabrück"),
     ("hertha_bsc", "Hertha BSC", "Hertha"),
@@ -304,6 +399,21 @@ OEFB_CUP_2026_27_TEAMS = (
     ("wolfsberger_ac", "RZ Pellets WAC", "Wolfsberger AC"),
 )
 
+AUSTRIAN_BUNDESLIGA_2026_27_TEAMS = (
+    ("lask", "LASK", "LASK"),
+    ("sk_sturm_graz", "SK Puntigamer Sturm Graz", "Sturm Graz"),
+    ("fc_red_bull_salzburg", "FC Red Bull Salzburg", "Salzburg"),
+    ("fk_austria_wien", "FK Austria Wien", "Austria Wien"),
+    ("sk_rapid", "SK Rapid", "SK Rapid"),
+    ("tsv_hartberg", "TSV Egger Glas Hartberg", "TSV Hartberg"),
+    ("sv_ried", "SV Oberbank Ried", "SV Ried"),
+    ("wolfsberger_ac", "RZ Pellets WAC", "Wolfsberger AC"),
+    ("scr_altach", "SCR Altach", "SCR Altach"),
+    ("grazer_ak_1902", "Grazer AK 1902", "Grazer AK"),
+    ("wsg_tirol", "WSG Tirol", "WSG Tirol"),
+    ("sc_austria_lustenau", "SC Austria Lustenau", "Austria Lustenau"),
+)
+
 NATIONS_LEAGUE_A_2026_27_TEAMS = (
     ("france", "France", "France", "FR"),
     ("italy", "Italy", "Italy", "IT"),
@@ -321,6 +431,121 @@ NATIONS_LEAGUE_A_2026_27_TEAMS = (
     ("denmark", "Denmark", "Denmark", "DK"),
     ("norway", "Norway", "Norway", "NO"),
     ("wales_national_team", "Wales", "Wales", "GB-WLS"),
+)
+
+NATIONS_LEAGUE_B_C_D_2026_27_TEAMS = (
+    ("slovenia", "Slovenia", "Slovenia", "SI"),
+    ("scotland", "Scotland", "Scotland", "GB-SCT"),
+    ("north_macedonia", "North Macedonia", "North Macedonia", "MK"),
+    ("switzerland", "Switzerland", "Switzerland", "CH"),
+    ("georgia", "Georgia", "Georgia", "GE"),
+    ("northern_ireland", "Northern Ireland", "Northern Ireland", "GB-NIR"),
+    ("hungary", "Hungary", "Hungary", "HU"),
+    ("ukraine", "Ukraine", "Ukraine", "UA"),
+    ("austria", "Austria", "Austria", "AT"),
+    ("israel", "Israel", "Israel", "IL"),
+    ("kosovo", "Kosovo", "Kosovo", "XK"),
+    ("republic_of_ireland", "Republic of Ireland", "Republic of Ireland", "IE"),
+    ("poland", "Poland", "Poland", "PL"),
+    (
+        "bosnia_and_herzegovina",
+        "Bosnia and Herzegovina",
+        "Bosnia and Herzegovina",
+        "BA",
+    ),
+    ("sweden", "Sweden", "Sweden", "SE"),
+    ("romania", "Romania", "Romania", "RO"),
+    ("albania", "Albania", "Albania", "AL"),
+    ("finland", "Finland", "Finland", "FI"),
+    ("belarus", "Belarus", "Belarus", "BY"),
+    ("san_marino", "San Marino", "San Marino", "SM"),
+    ("montenegro", "Montenegro", "Montenegro", "ME"),
+    ("armenia", "Armenia", "Armenia", "AM"),
+    ("cyprus", "Cyprus", "Cyprus", "CY"),
+    ("latvia", "Latvia", "Latvia", "LV"),
+    ("kazakhstan", "Kazakhstan", "Kazakhstan", "KZ"),
+    ("slovakia", "Slovakia", "Slovakia", "SK"),
+    ("faroe_islands", "Faroe Islands", "Faroe Islands", "FO"),
+    ("moldova", "Moldova", "Moldova", "MD"),
+    ("bulgaria", "Bulgaria", "Bulgaria", "BG"),
+    ("luxembourg", "Luxembourg", "Luxembourg", "LU"),
+    ("iceland", "Iceland", "Iceland", "IS"),
+    ("estonia", "Estonia", "Estonia", "EE"),
+    ("andorra", "Andorra", "Andorra", "AD"),
+    ("malta", "Malta", "Malta", "MT"),
+    ("gibraltar", "Gibraltar", "Gibraltar", "GI"),
+    ("lithuania", "Lithuania", "Lithuania", "LT"),
+    ("azerbaijan", "Azerbaijan", "Azerbaijan", "AZ"),
+    ("liechtenstein", "Liechtenstein", "Liechtenstein", "LI"),
+)
+
+CONFERENCE_LEAGUE_2026_27_TEAMS = (
+    ("fc_lugano", "FC Lugano", "Lugano", "CH"),
+    ("crvena_zvezda", "FK Crvena Zvezda", "Crvena Zvezda", "RS"),
+    ("hajduk_split", "HNK Hajduk Split", "Hajduk Split", "HR"),
+    ("ajax", "AFC Ajax", "Ajax", "NL"),
+    ("gent", "KAA Gent", "Gent", "BE"),
+    ("aarhus", "AGF Aarhus", "Aarhus", "DK"),
+    ("egnatia", "KF Egnatia", "Egnatia", "AL"),
+    ("midtjylland", "FC Midtjylland", "Midtjylland", "DK"),
+    ("kups_kuopio", "KuPS Kuopio", "KuPS Kuopio", "FI"),
+    ("trabzonspor", "Trabzonspor", "Trabzonspor", "TR"),
+    ("mjallby", "Mjällby AIF", "Mjällby", "SE"),
+    (
+        "inter_escaldes",
+        "Inter Club d'Escaldes",
+        "Inter Escaldes",
+        "AD",
+    ),
+    ("panathinaikos", "Panathinaikos FC", "Panathinaikos", "GR"),
+    ("borac_banja_luka", "FK Borac Banja Luka", "Borac", "BA"),
+    ("cska_sofia", "PFC CSKA Sofia", "CSKA Sofia", "BG"),
+    ("monaco", "AS Monaco", "Monaco", "MC"),
+    ("riga", "Riga FC", "Riga", "LV"),
+    ("kairat_almaty", "FC Kairat Almaty", "Kairat Almaty", "KZ"),
+    (
+        "universitatea_craiova",
+        "Universitatea Craiova",
+        "Universitatea Craiova",
+        "RO",
+    ),
+    ("getafe", "Getafe CF", "Getafe", "ES"),
+    ("atalanta", "Atalanta BC", "Atalanta", "IT"),
+    ("pafos", "Pafos FC", "Pafos", "CY"),
+    (
+        "brighton_and_hove_albion",
+        "Brighton & Hove Albion",
+        "Brighton",
+        "GB-ENG",
+    ),
+    ("kauno_zalgiris", "FK Kauno Žalgiris", "Kauno Žalgiris", "LT"),
+    ("copenhagen", "FC Copenhagen", "Copenhagen", "DK"),
+    ("braga", "SC Braga", "Braga", "PT"),
+    ("twente", "FC Twente", "Twente", "NL"),
+    ("thun", "FC Thun", "Thun", "CH"),
+    (
+        "heart_of_midlothian",
+        "Heart of Midlothian FC",
+        "Hearts",
+        "GB-SCT",
+    ),
+    ("nordsjaelland", "FC Nordsjælland", "Nordsjælland", "DK"),
+    (
+        "sint_truidense",
+        "Sint-Truidense VV",
+        "Sint-Truidense",
+        "BE",
+    ),
+    ("iberia_tbilisi", "FC Iberia 1999", "Iberia Tbilisi", "GE"),
+    ("sc_freiburg", "SC Freiburg", "Freiburg", "DE"),
+    ("jablonec", "FK Jablonec", "Jablonec", "CZ"),
+    ("brann", "SK Brann", "Brann", "NO"),
+    (
+        "lincoln_red_imps",
+        "Lincoln Red Imps FC",
+        "Lincoln Red Imps",
+        "GI",
+    ),
 )
 
 CHAMPIONS_LEAGUE_2026_27_TEAMS = (
@@ -428,6 +653,20 @@ SEASON_PARTICIPANTS_CATALOG = (
     ),
     SeasonParticipantsCatalogEntry(
         sport_key="football",
+        competition_key="austrian_bundesliga",
+        season_key="2026_27",
+        country_code="AT",
+        participants=tuple(
+            ParticipantCatalogEntry(
+                participant_key=participant_key,
+                name=name,
+                short_name=short_name,
+            )
+            for participant_key, name, short_name in (AUSTRIAN_BUNDESLIGA_2026_27_TEAMS)
+        ),
+    ),
+    SeasonParticipantsCatalogEntry(
+        sport_key="football",
         competition_key="championship",
         season_key="2026_27",
         country_code="GB-ENG",
@@ -440,6 +679,23 @@ SEASON_PARTICIPANTS_CATALOG = (
             )
             for participant_key, name, short_name, country_code in (
                 CHAMPIONSHIP_2026_27_TEAMS
+            )
+        ),
+    ),
+    SeasonParticipantsCatalogEntry(
+        sport_key="football",
+        competition_key="efl_cup",
+        season_key="2026_27",
+        country_code="GB-ENG",
+        participants=tuple(
+            ParticipantCatalogEntry(
+                participant_key=participant_key,
+                name=name,
+                short_name=short_name,
+                country_code=country_code,
+            )
+            for participant_key, name, short_name, country_code in (
+                EFL_CUP_2026_27_TEAMS
             )
         ),
     ),
@@ -498,7 +754,24 @@ SEASON_PARTICIPANTS_CATALOG = (
                 country_code=country_code,
             )
             for participant_key, name, short_name, country_code in (
-                NATIONS_LEAGUE_A_2026_27_TEAMS
+                NATIONS_LEAGUE_A_2026_27_TEAMS + NATIONS_LEAGUE_B_C_D_2026_27_TEAMS
+            )
+        ),
+    ),
+    SeasonParticipantsCatalogEntry(
+        sport_key="football",
+        competition_key="uefa_conference_league",
+        season_key="2026_27",
+        country_code="INT",
+        participants=tuple(
+            ParticipantCatalogEntry(
+                participant_key=participant_key,
+                name=name,
+                short_name=short_name,
+                country_code=country_code,
+            )
+            for participant_key, name, short_name, country_code in (
+                CONFERENCE_LEAGUE_2026_27_TEAMS
             )
         ),
     ),

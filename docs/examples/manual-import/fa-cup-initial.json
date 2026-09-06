@@ -1,0 +1,101 @@
+{
+  "import_type": "fixture_schedule",
+  "schema_version": 1,
+  "submission_id": "demo-fa-cup-initial",
+  "namespace": "demo-fa-cup-2030",
+  "scope": {
+    "sport_key": "football",
+    "competition_key": "fa_cup",
+    "season_key": "demo_2030_31",
+    "observation_scope": "partial"
+  },
+  "boundaries": [
+    {
+      "stage": "MAIN",
+      "round_name": "ROUND_3",
+      "stage_kind": null
+    },
+    {
+      "stage": "MAIN",
+      "round_name": "ROUND_4",
+      "stage_kind": null
+    }
+  ],
+  "provenance": {
+    "issuer": "Synthetic example author",
+    "document_ref": "synthetic-001",
+    "rights_ref": "synthetic-owned",
+    "attribution": "Fictional fixtures for parser tests only",
+    "document_sha256": null,
+    "checksum_unavailable_reason": "Hand-authored synthetic example",
+    "observed_at": "2030-09-01T10:00:00Z",
+    "prepared_at": "2030-09-01T11:00:00Z"
+  },
+  "fixtures": [
+    {
+      "fixture_id": "m001",
+      "boundary": {
+        "stage": "MAIN",
+        "round_name": "ROUND_3",
+        "stage_kind": null
+      },
+      "home": {
+        "resolution": "resolved",
+        "participant_key": "demo-home"
+      },
+      "away": {
+        "resolution": "resolved",
+        "participant_key": "demo-away"
+      },
+      "kickoff": "2030-09-14T18:00:00+02:00",
+      "timezone": "Europe/Vienna",
+      "kickoff_confirmed": true,
+      "status": "scheduled",
+      "group": null,
+      "tie_key": null,
+      "leg": null,
+      "venue": null,
+      "city": null
+    },
+    {
+      "fixture_id": "m002",
+      "boundary": {
+        "stage": "MAIN",
+        "round_name": "ROUND_4",
+        "stage_kind": null
+      },
+      "home": {
+        "resolution": "resolved",
+        "participant_key": "demo-home"
+      },
+      "away": {
+        "resolution": "unresolved",
+        "participant_key": null
+      },
+      "kickoff": "2030-09-14T18:00:00+02:00",
+      "timezone": "Europe/Vienna",
+      "kickoff_confirmed": true,
+      "status": "scheduled",
+      "group": null,
+      "tie_key": null,
+      "leg": null,
+      "venue": null,
+      "city": null
+    }
+  ],
+  "review_plan": {
+    "state": "active",
+    "completion_note": null,
+    "tasks": [
+      {
+        "task_id": "next-publication",
+        "due_at": "2030-09-08T08:00:00Z",
+        "reason": "next_round_draw",
+        "target_stage": "MAIN",
+        "target_round": null,
+        "note": "Review the next synthetic publication; do not infer fixtures.",
+        "reminder_minutes": 60
+      }
+    ]
+  }
+}

@@ -163,3 +163,17 @@ resumes. Never publish the leaked value in the remediation issue.
 
 This policy is an engineering and operational control, not legal advice.
 Source-specific licensing questions still require a source-specific review.
+
+## Phase 9 accepted private import boundary
+
+Issue #254 accepts the operator-reviewed staging imports and attribution
+records. That does not authorize redistribution of fixture inventories.
+Keep real manifests, trusted profiles, approvals, inbox results, source
+documents and whole-state backups private; use only synthetic examples in Git.
+The CLI transports files and the owning worker applies reviewed data.
+
+See the [workflow](manual-import-workflow.md) and
+[release checklist](v0.9.0-beta.1-release-checklist.md).
+The broader v1.0 tracked-file audit and release-note reorganization are #270.
+Development dependency manifests remain valid repository tooling; current
+publication-safety checks are not a complete historical secret audit.

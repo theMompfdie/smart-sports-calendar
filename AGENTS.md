@@ -156,6 +156,64 @@ The user performs every merge. The assistant must never merge locally or on
 GitHub. It may instruct the user to merge only after the pull request is fully
 verified and merge-ready.
 
+### Phase 9 operator-controlled Git and GitHub workflow
+
+For all Phase 9 (`v0.9.0-beta.1`, master issue #200) work, the user performs
+every commit and every merge. The assistant must never run `git commit`,
+create commits through another interface, merge locally or on GitHub, or
+enable automatic merging. Every commit must be GPG-signed by the user;
+never bypass signing or recommend an unsigned fallback.
+
+Before each commit handoff, inspect the actual branch, working-tree status,
+staged and unstaged diffs, and relevant untracked files. State exactly which
+files belong in the next logical commit, which changed files must remain
+outside it, and how the scope relates to the active issue. Provide the exact
+signed commit command with an English Conventional Commit message. After the
+user creates the commit, verify its contents and GPG signature before pushing.
+
+The user explicitly authorizes the assistant to create and maintain Phase 9
+issues, set and repair their complete metadata and relationships, push verified
+user-signed commits on the relevant working branches, create draft pull
+requests, maintain PR descriptions and metadata, and mark PRs ready for review
+once the applicable verification gates pass. This is standing authorization
+for these actions within the active Phase 9 scope; it does not authorize
+commits, merges, branch deletion, tags, releases, or production deployment.
+
+Use the existing master issue #200 and check for existing issues and PRs
+before creating new ones. Maintain assignees, labels, the Phase 9 milestone,
+parent/child and dependency relationships where supported, issue references,
+the correct base branch, and draft/readiness state. Report any metadata that
+the available GitHub interface cannot set instead of implying it was set.
+
+After pushing, inspect the actual remote branch, pushed commits, PR diff, and
+CI state. Before marking a PR ready or recommending the user's merge, verify
+acceptance criteria, applicable Ruff and pytest checks, required CI, merge
+conflicts, unresolved review comments, documentation impact, and known
+regressions. GitHub's ready-for-review state does not itself establish merge
+readiness. The final merge always remains with the user.
+
+### Phase 9 manual import planning boundary
+
+Master issue #200 tracks a planned, operator-controlled manual fixture import
+for competitions without a qualified usable automated source. Text, PDF, or
+other lawfully obtained fixture documents may be prepared in a separate
+operator-side job into a reviewed, schema-versioned import file. Document
+extraction stays outside the scheduled runtime and never writes directly to
+SQLite or Outlook.
+
+The intended Docker-host workflow validates and previews that file before
+applying it through the existing provider-neutral canonical import and
+synchronization architecture. Stable manual fixture IDs must survive schedule
+changes and corrections; repeated unchanged imports must be idempotent.
+Missing entries in a partial manual import do not imply cancellation or
+deletion. Periodic operator-reviewed updates maintain the data until an
+explicitly qualified provider transition is available, with one authoritative
+writer per competition/season or explicitly disjoint stage boundary, as defined
+in ADR 0015. Legacy broad grants must never be narrowed implicitly.
+The optional Docker-host inbox workflow is implemented under #252; live
+qualification and release gates remain in #200. CLI commands only publish
+transport files; the owning application performs canonical and Graph writes.
+
 ## PRs and Issues
 
 PRs should state what changed, why, key decisions, tests, related issue, and limitations if applicable.
@@ -335,6 +393,25 @@ Commands should be copy-paste usable where practical.
 
 Document important architecture decisions.
 
+### Markdown validation
+
+For every Markdown change, run markdownlint on all changed Markdown files
+before handing work to the user for review or a signed commit. Follow the
+repository's Markdown configuration and applicable editor rules. Fix all
+reported violations in the changed content; do not disable rules to hide
+warnings. Inspect and report pre-existing violations separately instead of
+silently expanding the issue to unrelated document cleanup.
+
+Keep blank lines around headings, lists and fenced code blocks. Avoid bare
+issue references at the beginning of a line where they can be parsed as ATX
+headings; write "Issue #168" or use a Markdown link. Do not wrap prose so a
+number such as "1." starts a line and becomes an unintended list item.
+
+Report the lint command, configuration and result with the handoff. If the
+checker cannot run, say so explicitly; visual inspection or git diff --check
+is not a substitute for markdownlint. Never describe unchecked Markdown as
+lint-clean.
+
 ## Collaboration
 
 Act as a senior software engineer, not merely a code generator.
@@ -416,6 +493,9 @@ chore:
 ci:
 
 Do not commit, push, merge, delete branches, create releases, or mutate GitHub objects unless the user explicitly requests that action.
+
+For Phase 9, the standing authorization and operator-only restrictions in
+"Phase 9 operator-controlled Git and GitHub workflow" above apply.
 
 When an authorized commit cannot be signed non-interactively, hand the commit
 step to the user instead of bypassing GPG signing. Continue only after verifying

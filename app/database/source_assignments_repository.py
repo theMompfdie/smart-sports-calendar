@@ -1,8 +1,10 @@
+import json
 import sqlite3
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from app.imports.manual_manifest import IDENTIFIER
 from app.providers.contracts import SourceRole
 
 
@@ -14,10 +16,12 @@ class SourceAssignment:
     competition_id: int
     season_id: int
     role: SourceRole
-    interval_seconds: int
+    interval_seconds: int | None
     is_enabled: bool
     created_at: str
     updated_at: str
+    namespace: str | None = None
+    stages: frozenset[str] | None = None
 
 
 @dataclass(frozen=True)
@@ -27,7 +31,9 @@ class SourceAssignmentWrite:
     competition_id: int
     season_id: int
     role: SourceRole
-    interval_seconds: int
+    interval_seconds: int | None
+    namespace: str | None = None
+    stages: frozenset[str] | None = None
 
 
 class SourceAssignmentsRepository:
@@ -35,96 +41,144 @@ class SourceAssignmentsRepository:
         self.database_path = database_path
 
     def synchronize(
-        self,
-        assignments: tuple[SourceAssignmentWrite, ...],
+        self, assignments: tuple[SourceAssignmentWrite, ...]
     ) -> list[SourceAssignment]:
         timestamp = datetime.now(UTC).isoformat()
-        assignments_by_job_key = {
-            assignment.job_key: assignment for assignment in assignments
-        }
+        by_key = {item.job_key: item for item in assignments}
+        if len(by_key) != len(assignments):
+            raise ValueError("Duplicate source assignment job key.")
         with self._connect() as connection:
-            existing_rows = connection.execute(
-                """
-                SELECT job_key, source_id, competition_id, season_id, role,
-                       is_enabled
-                FROM source_assignments
-                """
-            ).fetchall()
-            for row in existing_rows:
-                assignment = assignments_by_job_key.get(row["job_key"])
-                enabled = (
-                    assignment is not None
-                    and assignment.role is not SourceRole.DISABLED
-                )
-                identity_changed = assignment is not None and (
-                    row["source_id"] != assignment.source_id
-                    or row["competition_id"] != assignment.competition_id
-                    or row["season_id"] != assignment.season_id
-                    or row["role"] != assignment.role.value
-                )
-                if row["is_enabled"] and (not enabled or identity_changed):
-                    connection.execute(
-                        """
-                        UPDATE source_assignments
-                        SET is_enabled = 0, updated_at = ?
-                        WHERE job_key = ?
-                        """,
-                        (timestamp, row["job_key"]),
-                    )
-            for assignment in assignments:
-                enabled = assignment.role is not SourceRole.DISABLED
-                connection.execute(
-                    """
-                    INSERT INTO source_assignments (
-                        job_key, source_id, competition_id, season_id, role,
-                        interval_seconds, is_enabled, created_at, updated_at
-                    )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT (job_key)
-                    DO UPDATE SET
-                        source_id = excluded.source_id,
-                        competition_id = excluded.competition_id,
-                        season_id = excluded.season_id,
-                        role = excluded.role,
-                        interval_seconds = excluded.interval_seconds,
-                        is_enabled = excluded.is_enabled,
-                        updated_at = excluded.updated_at
-                    WHERE source_assignments.source_id IS NOT excluded.source_id
-                       OR source_assignments.competition_id
-                          IS NOT excluded.competition_id
-                       OR source_assignments.season_id IS NOT excluded.season_id
-                       OR source_assignments.role IS NOT excluded.role
-                       OR source_assignments.interval_seconds
-                          IS NOT excluded.interval_seconds
-                       OR source_assignments.is_enabled IS NOT excluded.is_enabled
-                    """,
+            connection.execute("BEGIN IMMEDIATE")
+            for row in connection.execute(
+                "SELECT * FROM source_assignments"
+            ).fetchall():
+                item = by_key.get(row["job_key"])
+                # Automated bootstrap never disables operator-owned manual grants.
+                if item is None and row["namespace"] is not None:
+                    continue
+                disabled = item is None or item.role is SourceRole.DISABLED
+                changed = item is not None and any(
                     (
-                        assignment.job_key,
-                        assignment.source_id,
-                        assignment.competition_id,
-                        assignment.season_id,
-                        assignment.role.value,
-                        assignment.interval_seconds,
-                        int(enabled),
-                        timestamp,
-                        timestamp,
-                    ),
+                        row["source_id"] != item.source_id,
+                        row["competition_id"] != item.competition_id,
+                        row["season_id"] != item.season_id,
+                        row["role"] != item.role.value,
+                        row["stages_json"] != self._stages_json(item),
+                    )
                 )
+                if row["is_enabled"] and (disabled or changed):
+                    connection.execute(
+                        """UPDATE source_assignments
+                        SET is_enabled=0,updated_at=? WHERE id=?""",
+                        (timestamp, row["id"]),
+                    )
+            for item in assignments:
+                self.write_connection(connection, item, timestamp)
         return self.get_all()
 
+    @staticmethod
+    def _stages_json(item: SourceAssignmentWrite) -> str | None:
+        if item.stages is None:
+            return None
+        if not item.stages or any(
+            not IDENTIFIER.fullmatch(stage) for stage in item.stages
+        ):
+            raise ValueError("Authority requires explicit nonempty stage identifiers.")
+        return json.dumps(sorted(item.stages))
+
+    @staticmethod
+    def write_connection(
+        connection: sqlite3.Connection, item: SourceAssignmentWrite, timestamp: str
+    ) -> None:
+        if not connection.in_transaction:
+            raise ValueError("Source assignment requires a caller-owned transaction.")
+        stages = SourceAssignmentsRepository._stages_json(item)
+        existing = connection.execute(
+            "SELECT * FROM source_assignments WHERE job_key=?", (item.job_key,)
+        ).fetchone()
+        if existing is not None and existing["namespace"] != item.namespace:
+            raise ValueError("Cannot repurpose a manual assignment identity.")
+        if (
+            existing is not None
+            and item.namespace is not None
+            and any(
+                existing[key] != getattr(item, key)
+                for key in ("source_id", "competition_id", "season_id")
+            )
+        ):
+            raise ValueError("Cannot move an established manual namespace.")
+        if item.namespace is not None:
+            if (
+                not IDENTIFIER.fullmatch(item.namespace)
+                or item.interval_seconds is not None
+                or item.stages is None
+            ):
+                raise ValueError(
+                    "Manual grants require a namespace, stages and no timer."
+                )
+            source = connection.execute(
+                "SELECT source_key FROM data_sources WHERE id=?", (item.source_id,)
+            ).fetchone()
+            if source is None or source["source_key"] != "manual":
+                raise ValueError("Manual namespace requires the manual data source.")
+        if item.stages is not None and item.role is SourceRole.AUTHORITATIVE:
+            rows = connection.execute(
+                """SELECT e.stage FROM sports_events AS e
+                JOIN source_mappings AS m ON m.internal_id=e.id
+                    AND m.object_type='event'
+                WHERE m.source_id=? AND e.competition_id=? AND e.season_id=?
+                  AND (? IS NULL OR substr(m.external_id,1,length(?)+1)=? || ':')""",
+                (
+                    item.source_id,
+                    item.competition_id,
+                    item.season_id,
+                    item.namespace,
+                    item.namespace,
+                    item.namespace,
+                ),
+            ).fetchall()
+            if any(row["stage"] not in item.stages for row in rows):
+                raise ValueError(
+                    "Existing source mappings exceed the proposed stage grant."
+                )
+        connection.execute(
+            """INSERT INTO source_assignments
+            (job_key,source_id,competition_id,season_id,role,interval_seconds,
+             is_enabled,created_at,updated_at,namespace,stages_json)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(job_key) DO UPDATE SET
+            source_id=excluded.source_id, competition_id=excluded.competition_id,
+            season_id=excluded.season_id, role=excluded.role,
+            interval_seconds=excluded.interval_seconds,is_enabled=excluded.is_enabled,
+            updated_at=excluded.updated_at,namespace=excluded.namespace,
+            stages_json=excluded.stages_json
+            WHERE source_assignments.source_id IS NOT excluded.source_id
+               OR source_assignments.competition_id IS NOT excluded.competition_id
+               OR source_assignments.season_id IS NOT excluded.season_id
+               OR source_assignments.role IS NOT excluded.role
+               OR source_assignments.interval_seconds IS NOT excluded.interval_seconds
+               OR source_assignments.is_enabled IS NOT excluded.is_enabled
+               OR source_assignments.stages_json IS NOT excluded.stages_json""",
+            (
+                item.job_key,
+                item.source_id,
+                item.competition_id,
+                item.season_id,
+                item.role.value,
+                item.interval_seconds,
+                int(item.role is not SourceRole.DISABLED),
+                timestamp,
+                timestamp,
+                item.namespace,
+                stages,
+            ),
+        )
+
     def get_all(self, *, enabled_only: bool = False) -> list[SourceAssignment]:
-        query = """
-            SELECT id, job_key, source_id, competition_id, season_id, role,
-                   interval_seconds, is_enabled, created_at, updated_at
-            FROM source_assignments
-        """
-        parameters: tuple[object, ...] = ()
+        query = "SELECT * FROM source_assignments"
         if enabled_only:
-            query += " WHERE is_enabled = ?"
-            parameters = (1,)
-        query += " ORDER BY job_key"
+            query += " WHERE is_enabled=1"
         with self._connect() as connection:
-            rows = connection.execute(query, parameters).fetchall()
+            rows = connection.execute(query + " ORDER BY job_key").fetchall()
         return [
             SourceAssignment(
                 id=row["id"],
@@ -137,6 +191,10 @@ class SourceAssignmentsRepository:
                 is_enabled=bool(row["is_enabled"]),
                 created_at=row["created_at"],
                 updated_at=row["updated_at"],
+                namespace=row["namespace"],
+                stages=None
+                if row["stages_json"] is None
+                else frozenset(json.loads(row["stages_json"])),
             )
             for row in rows
         ]

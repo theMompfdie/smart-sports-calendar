@@ -1,5 +1,6 @@
 import json
 import sqlite3
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -120,40 +121,112 @@ class FixtureImportRepository:
         fixtures: tuple[FixtureImportRecord, ...],
         scope: FixtureImportScopeRecord,
     ) -> FixtureImportResult:
-        timestamp = scope.observed_at_utc.isoformat()
-        results: list[FixtureImportItemResult] = []
-        observed_event_ids: set[int] = set()
-
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             try:
-                self._validate_scope(connection, scope)
-                for fixture in fixtures:
-                    result = self._import_fixture(
-                        connection=connection,
-                        source_id=source_id,
-                        fixture=fixture,
-                        timestamp=timestamp,
-                    )
-                    results.append(result)
-                    if result.event_id is not None:
-                        observed_event_ids.add(result.event_id)
-
-                if scope.removal_eligible:
-                    results.extend(
-                        self._reconcile_missing(
-                            connection=connection,
-                            source_id=source_id,
-                            observed_event_ids=observed_event_ids,
-                            scope=scope,
-                        )
-                    )
+                result = self.import_in_transaction(
+                    connection, source_id, fixtures, scope
+                )
                 connection.commit()
             except Exception:
                 connection.rollback()
                 raise
+        return result
 
-        return FixtureImportResult(items=tuple(results))
+    def import_in_transaction(
+        self,
+        connection: sqlite3.Connection,
+        source_id: int,
+        fixtures: tuple[FixtureImportRecord, ...],
+        scope: FixtureImportScopeRecord,
+        *,
+        namespace: str | None = None,
+    ) -> FixtureImportResult:
+        """Caller owns commit/rollback, allowing manual receipt atomicity."""
+        if not connection.in_transaction:
+            raise FixtureImportConflictError("Import requires an active transaction.")
+        self._validate_scope(connection, scope)
+        stages = self._authority_stages(connection, source_id, scope, namespace)
+        if stages is not None:
+            if any(fixture.stage not in stages for fixture in fixtures):
+                raise FixtureImportConflictError(
+                    "Fixture exceeds source stage authority."
+                )
+            if scope.removal_eligible and (
+                scope.lifecycle.scope_kind
+                is FixtureObservationScopeKind.COMPLETE_SEASON
+                or scope.lifecycle.stage not in stages
+            ):
+                raise FixtureImportConflictError(
+                    "Removal exceeds source stage authority."
+                )
+        timestamp = scope.observed_at_utc.isoformat()
+        results: list[FixtureImportItemResult] = []
+        observed: set[int] = set()
+        for fixture in fixtures:
+            mapping = connection.execute(
+                """SELECT e.* FROM source_mappings AS m
+                JOIN sports_events AS e ON e.id=m.internal_id
+                WHERE m.source_id=? AND m.object_type='event' AND m.external_id=?""",
+                (source_id, fixture.external_id),
+            ).fetchone()
+            if mapping is not None and (
+                mapping["competition_id"] != scope.competition_id
+                or mapping["season_id"] != scope.season_id
+                or (stages is not None and mapping["stage"] not in stages)
+            ):
+                raise FixtureImportConflictError(
+                    "Mapped event exceeds source authority."
+                )
+            result = self._import_fixture(
+                connection,
+                source_id,
+                fixture,
+                timestamp,
+                allow_correlation=namespace is None,
+                authority_stages=stages,
+            )
+            results.append(result)
+            if result.event_id is not None:
+                observed.add(result.event_id)
+        if scope.removal_eligible:
+            results.extend(
+                self._reconcile_missing(connection, source_id, observed, scope)
+            )
+        return FixtureImportResult(tuple(results))
+
+    @staticmethod
+    def _authority_stages(
+        connection: sqlite3.Connection,
+        source_id: int,
+        scope: FixtureImportScopeRecord,
+        namespace: str | None,
+    ) -> frozenset[str] | None:
+        rows = connection.execute(
+            """SELECT source_id,namespace,stages_json,is_enabled
+            FROM source_assignments WHERE competition_id=? AND season_id=?
+            AND role='authoritative'""",
+            (scope.competition_id, scope.season_id),
+        ).fetchall()
+        own = [
+            row
+            for row in rows
+            if row["source_id"] == source_id
+            and row["namespace"] == namespace
+            and row["is_enabled"]
+        ]
+        if not own:
+            if rows or namespace is not None:
+                raise FixtureImportConflictError("No active authoritative assignment.")
+            # Preserve standalone provider repository usage without assignments.
+            return None
+        if len(own) != 1:
+            raise FixtureImportConflictError("Ambiguous authoritative assignment.")
+        return (
+            None
+            if own[0]["stages_json"] is None
+            else frozenset(json.loads(own[0]["stages_json"]))
+        )
 
     @staticmethod
     def _validate_scope(
@@ -241,6 +314,9 @@ class FixtureImportRepository:
         source_id: int,
         fixture: FixtureImportRecord,
         timestamp: str,
+        *,
+        allow_correlation: bool = True,
+        authority_stages: frozenset[str] | None = None,
     ) -> FixtureImportItemResult:
         mapping = connection.execute(
             """
@@ -258,9 +334,16 @@ class FixtureImportRepository:
                 decision=FixtureImportDecision.DEFER,
             )
 
-        if mapping is None:
+        if mapping is None and allow_correlation:
             cross_source_event_id = self._find_cross_source_event(connection, fixture)
             if cross_source_event_id is not None:
+                if authority_stages is not None:
+                    candidate = connection.execute(
+                        "SELECT stage FROM sports_events WHERE id=?",
+                        (cross_source_event_id,),
+                    ).fetchone()
+                    if candidate["stage"] not in authority_stages:
+                        raise FixtureImportConflictError("Cross-source stage conflict.")
                 try:
                     connection.execute(
                         """
@@ -337,7 +420,7 @@ class FixtureImportRepository:
                 f"external_id={fixture.external_id}, event_id={event_id}."
             )
 
-        target = self._target_values(event, fixture)
+        target = self.target_values(event, fixture)
         was_cancelled = event["status"] == "cancelled"
         is_cancelled = target["status"] == "cancelled"
         if is_cancelled:
@@ -487,9 +570,9 @@ class FixtureImportRepository:
             raise RuntimeError("SQLite did not return an ID for the created event.")
         return event_id
 
-    def _target_values(
-        self,
-        event: sqlite3.Row,
+    @staticmethod
+    def target_values(
+        event: Mapping[str, Any] | sqlite3.Row,
         fixture: FixtureImportRecord,
     ) -> dict[str, object]:
         start_time = event["start_time"]
@@ -500,9 +583,11 @@ class FixtureImportRepository:
             if event["metadata_json"] is None
             else json.loads(event["metadata_json"])
         )
-        event_metadata = self._event_metadata(fixture, persisted_metadata)
+        event_metadata = FixtureImportRepository._event_metadata(
+            fixture, persisted_metadata
+        )
         metadata_json = (
-            self._serialize_metadata(event_metadata)
+            FixtureImportRepository._serialize_metadata(event_metadata)
             if event_metadata is not None
             or (
                 persisted_metadata is not None
@@ -538,7 +623,7 @@ class FixtureImportRepository:
             "city": fixture.city if fixture.city is not None else event["city"],
             "status": fixture.status,
             "source_updated_at": (
-                self._isoformat(fixture.source_updated_at)
+                FixtureImportRepository._isoformat(fixture.source_updated_at)
                 if fixture.source_updated_at is not None
                 else event["source_updated_at"]
             ),

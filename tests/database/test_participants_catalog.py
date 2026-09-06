@@ -42,8 +42,8 @@ def test_catalog_creates_and_assigns_reviewed_competition_teams(
 ) -> None:
     repositories, result = initialize(tmp_path)
     database_path = repositories[0]
-    assert len(result.participants) == 292
-    assert len(result.season_participants) == 292
+    assert len(result.participants) == 470
+    assert len(result.season_participants) == 470
     assert {item.participant_key for item in result.participants} >= {
         "arsenal",
         "coventry_city",
@@ -58,6 +58,8 @@ def test_catalog_creates_and_assigns_reviewed_competition_teams(
         "birmingham_city",
         "cardiff_city",
         "wrexham",
+        "newport_county",
+        "york_city",
         "fk_austria_wien",
         "sk_rapid",
         "wolfsberger_ac",
@@ -68,6 +70,10 @@ def test_catalog_creates_and_assigns_reviewed_competition_teams(
         "aek_athens",
         "paris_saint_germain",
         "sabah",
+        "austria",
+        "liechtenstein",
+        "mjallby",
+        "lincoln_red_imps",
         "arizona_cardinals",
         "kansas_city_chiefs",
         "washington_commanders",
@@ -85,15 +91,18 @@ def test_catalog_creates_and_assigns_reviewed_competition_teams(
             """
         ).fetchall()
     assert membership_counts == [
+        ("austrian_bundesliga", 12),
         ("bundesliga", 18),
         ("championship", 24),
         ("dfb_pokal", 64),
+        ("efl_cup", 92),
         ("nfl", 32),
         ("oefb_cup", 64),
         ("premier_league", 20),
         ("second_bundesliga", 18),
         ("uefa_champions_league", 36),
-        ("uefa_nations_league", 16),
+        ("uefa_conference_league", 36),
+        ("uefa_nations_league", 54),
     ]
     countries_by_key = {
         participant.participant_key: participant.country_code
@@ -104,12 +113,18 @@ def test_catalog_creates_and_assigns_reviewed_competition_teams(
     assert countries_by_key["cardiff_city"] == "GB-WLS"
     assert countries_by_key["swansea_city"] == "GB-WLS"
     assert countries_by_key["wrexham"] == "GB-WLS"
+    assert countries_by_key["newport_county"] == "GB-WLS"
     assert countries_by_key["birmingham_city"] == "GB-ENG"
     assert countries_by_key["fk_austria_wien"] == "AT"
     assert countries_by_key["france"] == "FR"
     assert countries_by_key["england_national_team"] == "GB-ENG"
     assert countries_by_key["aek_athens"] == "GR"
     assert countries_by_key["sabah"] == "AZ"
+    assert countries_by_key["austria"] == "AT"
+    assert countries_by_key["scotland"] == "GB-SCT"
+    assert countries_by_key["kosovo"] == "XK"
+    assert countries_by_key["mjallby"] == "SE"
+    assert countries_by_key["lincoln_red_imps"] == "GI"
 
 
 def test_catalog_assigns_relegated_teams_to_championship(tmp_path: Path) -> None:
@@ -138,8 +153,8 @@ def test_catalog_can_run_repeatedly(tmp_path: Path) -> None:
         membership_count = connection.execute(
             "SELECT COUNT(*) FROM season_participants"
         ).fetchone()
-    assert participant_count == (246,)
-    assert membership_count == (292,)
+    assert participant_count == (366,)
+    assert membership_count == (470,)
     assert [item.id for item in second.participants] == [
         item.id for item in first.participants
     ]

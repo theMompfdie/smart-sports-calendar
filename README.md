@@ -10,18 +10,19 @@
 
 **Development stage:** Beta
 
-**Completed phases:** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, and Phase 7
+**Completed releases:** Phases 1-8.
 
-**Latest delivery track:** Phase 8 Outlook presentation, runtime reminders,
-and rights-controlled media for `v0.8.0-beta.1`
-([tracker #199](https://github.com/theMompfdie/smart-sports-calendar/issues/199)).
-Implementation, isolated staging acceptance, and beta publication are complete.
-The publication and qualification record is tracked in
-[#214](https://github.com/theMompfdie/smart-sports-calendar/issues/214).
+**Current preparation:** Phase 9, `v0.9.0-beta.1`, under
+[master #200](https://github.com/theMompfdie/smart-sports-calendar/issues/200).
+Implementation and all seven bounded staging targets are accepted in
+[#254](https://github.com/theMompfdie/smart-sports-calendar/issues/254).
+Final documentation, signed integration and publication remain in
+[#255](https://github.com/theMompfdie/smart-sports-calendar/issues/255).
+This candidate has not yet been published.
 
-**Automated tests:** 1,249 passed for the accepted Phase 8 candidate tree. See
-the [Phase 8 release checklist](docs/v0.8.0-beta.1-release-checklist.md) for
-validation, signed tag, and publication evidence.
+**Accepted implementation tests:** 1,516 passed on the staging candidate.
+Final preparation/main checks are tracked separately in the
+[Phase 9 release checklist](docs/v0.9.0-beta.1-release-checklist.md).
 
 The application foundation, persistent domain model, repository layer,
 Microsoft Graph integration, Outlook synchronization engine, and scheduled
@@ -714,9 +715,60 @@ media replacement/recovery, backup/restore, full-calendar inventory, and
 write-free convergence are accepted. The recurring Championship provider
 response-contract violation remains open in #233 as a documented beta-only
 limitation; strict parsing and last-known-good data retention remain active.
-Phase 9 stays blocked until the signed Phase 8 beta is verified and published.
+The signed Phase 8 beta is published; the Phase 9 prerequisite is satisfied.
+
+### Phase 9 - Reviewed manual fixture imports
+
+**Status:** _Implementation and bounded staging accepted; release preparation._
+
+The `v0.9.0-beta.1` candidate adds operator-reviewed manual imports for
+Austrian Bundesliga, EFL Cup, UEFA Conference League and Nations League B/C/D.
+Their accepted published scopes contain 388 fixtures. FA Cup is accepted as a
+review-only First Round Proper publication check, with no invented fixtures.
+Eight dedicated Outlook update-review appointments cover all seven targets.
+
+The [manual import ADR](docs/adr/0015-import-reviewed-manual-fixture-manifests.md)
+defines stable fixture IDs, source provenance, write-free preview, exact
+detached approval, atomic canonical apply and durable receipts.
+Partial omissions never delete games. Extraction from source documents stays
+outside the scheduled runtime; version 1 imports schedules, not results.
+
+Use the [preparation guide](docs/manual-import-preparation.md),
+[preview contract](docs/manual-import-preview.md),
+[atomic backend guide](docs/manual-import-apply.md) and
+[Docker-host workflow](docs/manual-import-workflow.md).
+Trusted profiles require qualified catalogs and explicit authority.
+Nations League B/C/D own disjoint group stages alongside existing League A;
+a broad grant is never narrowed implicitly.
+
+Enable the optional inbox on one owning instance with
+`MANUAL_IMPORT_ROOT=/data/manual-import`, `MANUAL_IMPORT_INTERVAL=60` and
+`MANUAL_IMPORT_LIMIT=10`. Submit reviewed input, inspect AWAITING_APPROVAL,
+approve the exact preview, then verify APPLIED and actual Outlook convergence.
+QUEUED alone is not import success. Later updates retain fixture IDs and use
+new submission IDs.
+
+Review plans supply due dates and reminder lead times for future publications,
+draws and kickoff checks. The worker creates separate Outlook appointments;
+the operator still obtains and reviews the next source update.
+Task completion retires only those appointments, not fixture history.
+
+See the [release notes](RELEASE_NOTES_v0.9.0-beta.1.md) for the accepted
+scope, recovery evidence and known limitations. The DFB-Pokal alias issue
+[#268](https://github.com/theMompfdie/smart-sports-calendar/issues/268)
+affects source freshness. Production remains separately approved and blocked
+by [#233](https://github.com/theMompfdie/smart-sports-calendar/issues/233).
+
+Competition retirement, UEL delivery and the general README/repository audit
+are v1.0 follow-ups #267, #269 and #270. UEL requires provider requalification
+or a reviewed manual fallback after Phase 9. The operator selected this beta
+as the last planned pre-release; stable v1.0.0 still requires all final gates.
 
 ## Release History
+
+Prepared Phase 9 notes are available in
+[RELEASE_NOTES_v0.9.0-beta.1.md](RELEASE_NOTES_v0.9.0-beta.1.md).
+Publication is pending; the current published release remains v0.8.0-beta.1.
 
 Phase 8 candidate notes are available in
 [`RELEASE_NOTES_v0.8.0-beta.1.md`](RELEASE_NOTES_v0.8.0-beta.1.md).
