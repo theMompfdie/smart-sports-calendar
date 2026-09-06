@@ -47,6 +47,16 @@ are used. Brief editing and lint commands ran during the baseline, so these
 are representative development measurements, not an isolated hardware
 benchmark.
 
+## CI repeat and variability
+
+The documentation-only commit `3c1bdc0` leaves the tested Python code
+unchanged. Its [CI repeat][repeat-ci] passes all five jobs and all 1,519 tests,
+but pytest takes 511.17 seconds. This is 1.30% slower than the original
+504.63-second baseline. The first optimized result of 227.83 seconds is
+therefore not a reproducible CI speedup claim. The cause of the variation
+has not been established. Repeated comparable baseline and optimized runs
+are needed before claiming the CI target is consistently achieved.
+
 ## Local duration evidence
 
 Measurements were taken on 2026-09-06 with pytest 9.1.1. These are the
@@ -65,7 +75,7 @@ The unchanged bootstrap module also ran faster, showing host/cache variation.
 These single-run totals do not isolate every environmental effect. The
 API-Football fixture-import group drops from 224.10 to 11.17 seconds, which
 provides direct evidence for the targeted removal of repeated setup. The
-independent CI comparison above also exceeds the 50% reduction target.
+first CI comparison exceeds the 50% target, but its repeat does not.
 
 The five slowest baseline test calls compare as follows:
 
@@ -124,6 +134,66 @@ between copies and the template, and preservation of existing rows during
 reinitialization. All original test names, parametrizations and assertions in
 the converted files are retained.
 
+## Integration profiling follow-up
+
+A focused `cProfile` run of the three Second Bundesliga integration tests
+on the same Windows host passes in 58.00 seconds (58.97 seconds including
+profiler/module startup). SQLite execution accounts for 31.02 seconds,
+connection context exit for 11.51 seconds, and connection creation for
+10.19 seconds of internal time. The run opens 12,735 SQLite connections.
+`CalendarEventMappingsRepository.mark_checked` accounts for 14.58 seconds
+of cumulative time across 1,835 unchanged-event checks. These categories
+must not be added to the cumulative repository timings because they overlap.
+The measurements locate database work, not real sleeps, as the main cost
+in this selection. They do not establish the cause of CI variability.
+
+The PL/Bundesliga/Championship test harness previously normalized all three
+provider snapshots before every test solely to obtain competition and season
+IDs for source assignments. Read those IDs from the initialized catalog
+instead. Keep all three configured providers and assignments, all full-season
+imports, real SQLite transactions, pagination, lifecycle checks and Graph
+operation assertions. The first tested import now also creates its own
+provider mappings without a preliminary normalization warming them up.
+
+Comparable profiled runs of the three tests give:
+
+| Measurement | Before | After |
+| --- | --- | --- |
+| Passing tests | 3 | 3 |
+| Pytest wall time | 70.05 s | 66.90 s |
+| Harness cumulative time | 5.76 s | 0.30 s |
+| Snapshot normalization calls | 20 | 11 |
+| SQLite connections | 15,795 | 14,191 |
+
+All three test functions, decorators and assertions are AST-equivalent to
+the previous revision. Nine redundant snapshot normalizations and 1,604
+connection creations are removed. The observed module wall-time reduction
+is 4.50%; single-run host variation and profiling overhead still apply.
+This is a focused setup improvement, not another measured full-suite
+50% reduction. No production persistence settings or code are changed.
+
+The subsequent unprofiled full Windows suite passes all 1,519 tests in
+494.20 seconds, with no failures, errors or skips. Ruff lint and formatting,
+publication safety and Markdownlint for this report pass. The full-suite
+time difference from the preceding 510.95-second run includes host variation
+and must not be attributed entirely to this small harness change. CI for
+this follow-up remains pending until the operator-signed commit is pushed.
+
+To profile this selection on either revision, use a fresh output directory
+and the same options (PowerShell):
+
+```powershell
+$profileRoot = Join-Path $env:TEMP ('ssc-profile-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $profileRoot | Out-Null
+python -m cProfile -o "$profileRoot/tests.prof" -m pytest `
+    tests/integration/test_bundesliga_football_data_to_outlook.py `
+    -p no:cacheprovider --basetemp "$profileRoot/tests" --durations=10
+python -m pstats "$profileRoot/tests.prof"
+```
+
+In the pstats prompt, use `sort cumulative`, `stats 30`, then `quit`.
+Use the Second Bundesliga test file instead to reproduce the first profile.
+
 ## Reproduce a measurement
 
 Install the pinned development requirements and use the same Python version,
@@ -181,9 +251,11 @@ not needed to run this suite. A container benchmark is optional additional
 evidence and must not be compared directly with native Windows timings.
 
 The implementation commit has passed the local and CI verification gates
-for [PR #275][pull-request] against `develop`. This documentation update
-records that measured result. Further optimization, including parallel
-execution, should be evaluated separately; merging remains an operator action.
+for [PR #275][pull-request] against `develop`. The CI repeat above qualifies
+the initial performance result. Repeated comparable CI measurements remain
+outstanding.
+Parallel execution and production transaction changes require separate
+evaluation; merging remains an operator action.
 
 [issue]: https://github.com/theMompfdie/smart-sports-calendar/issues/265
 [baseline-ci]: https://github.com/theMompfdie/smart-sports-calendar/actions/runs/34037762727
@@ -197,3 +269,4 @@ execution, should be evaluated separately; merging remains an operator action.
 [cl-e2e]: ../tests/integration/test_openligadb_champions_league_to_outlook.py
 [verified-ci]: https://github.com/theMompfdie/smart-sports-calendar/actions/runs/34043888040
 [pull-request]: https://github.com/theMompfdie/smart-sports-calendar/pull/275
+[repeat-ci]: https://github.com/theMompfdie/smart-sports-calendar/actions/runs/34044321033

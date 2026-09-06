@@ -104,10 +104,6 @@ def create_harness(database_path, *, initialize_test_catalog: CatalogInitializer
             CHAMPIONSHIP_PROFILE,
         )
     }
-    batches = {
-        competition_key: service.fetch_normalized_snapshot()
-        for competition_key, service in services.items()
-    }
     jobs = {
         competition_key: SourceJobDefinition(
             job_key=f"football-data-{competition_key.replace('_', '-')}",
@@ -118,19 +114,26 @@ def create_harness(database_path, *, initialize_test_catalog: CatalogInitializer
         )
         for competition_key in services
     }
-    SourceAssignmentsRepository(database_path).synchronize(
-        tuple(
+    # Resolve assignment IDs without normalizing provider snapshots during setup.
+    football = sports.get_by_key("football")
+    assert football is not None
+    assignments = []
+    for competition_key, job in jobs.items():
+        competition = competitions.get_by_key(football.id, competition_key)
+        assert competition is not None
+        season = seasons.get_by_key(competition.id, job.scope.season_key)
+        assert season is not None
+        assignments.append(
             SourceAssignmentWrite(
                 job_key=job.job_key,
                 source_id=source.id,
-                competition_id=batches[competition_key].competition_id,
-                season_id=batches[competition_key].season_id,
+                competition_id=competition.id,
+                season_id=season.id,
                 role=job.role,
                 interval_seconds=job.interval_seconds,
             )
-            for competition_key, job in jobs.items()
         )
-    )
+    SourceAssignmentsRepository(database_path).synchronize(tuple(assignments))
     providers = {
         competition_key: FootballDataImportOrchestrator(
             competition_service=service,
