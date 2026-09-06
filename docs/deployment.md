@@ -4,6 +4,14 @@ This document describes how to build, deploy, and maintain the SMART Sports Cale
 
 ---
 
+## Phase 9 upgrade boundary
+
+For the accepted manual-import candidate, use the
+[v0.9.0-beta.1 checklist](v0.9.0-beta.1-release-checklist.md#upgrade-and-rollback)
+for full-state backup, migrations 013/014, private profiles, fresh target
+approval and rollback. Do not migrate staging Outlook mappings into production.
+Publishing the beta does not clear production blocker #233.
+
 ## Architecture
 
 The application is designed to run as a Docker container.

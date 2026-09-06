@@ -1,23 +1,17 @@
 # Phase 9 staging preparation for the Docker host
 
-## Status and next gate
+## Status and reuse of accepted evidence
 
-Prepared for issues #253/#254. The operator reported this healthy container:
+The operator accepted all seven bounded targets under #254 on 2026-09-06,
+against `39caf0441bade383b68abd470d79d3d835d9313f` and image
+`smart-calendar-staging-calendar-sync:phase9-39caf04`.
+The existing Portainer Git stack and its isolated persistent storage were used.
 
-- container: `smart-calendar-staging-calendar-sync-1`;
-- current image: `smart-calendar-staging-calendar-sync:phase9-fe13e9c`;
-- management: existing Portainer stack connected to its Git repository;
-- access: root shell through PuTTY.
-
-This is operator-reported inventory, not a remotely verified deployment record.
-The operator updated the stack to the #252 merge, which includes the manual
-workflow but not the #253 recovery fix. This preparation has not remotely
-verified that update or performed a source import, Outlook operation or release.
-
-The #253 change must be operator-signed, pass PR CI and be operator-merged before
-freezing the next staging candidate. It includes a required Graph PATCH 404
-classification fix found by tests through the real Graph HTTP adapter. Do not
-select the previous #252 image as the final candidate for that recovery test.
+This guide remains a procedure for a new or materially changed candidate.
+It is not a request to repeat accepted imports, lifecycle, backup or restart
+checks. See the [release checklist](v0.9.0-beta.1-release-checklist.md)
+and [accepted evidence](https://github.com/theMompfdie/smart-sports-calendar/issues/254).
+Final documentation and publication are #255; production blocker #233 remains.
 
 ## 1. Read-only inventory in PuTTY
 
@@ -73,7 +67,7 @@ external writer on another host or an unconfigured application using the tenant.
 
 ## 2. Freeze the verified candidate
 
-Record the full merge SHA and green CI from the completed #253 PR. Do not use an
+Record the full candidate SHA and its green integration CI. Do not use an
 invented SHA, an unmerged working tree, a floating image tag or an automatic
 latest build as qualification evidence. Keep the old image ID from preflight.
 
@@ -216,24 +210,22 @@ startup logs too. No import starts merely because this preflight passes.
 
 ## 5. Qualify data before importing
 
-The repository seed does not provision Austrian Bundesliga, FA Cup, EFL Cup or
-UECL automatically. Nations League B/C/D share the existing Nations League
-competition; exact stage grants and season participants still need verification.
-A false target-catalog flag requires controlled catalog preparation, not dummy
-rows or a manifest that grants its own authority. An existing competition row
-alone does not qualify its season, participants, source rights or stage boundary.
+The seed now includes the reviewed 2026/27 target catalogs. Catalog presence
+does not qualify source rights, trusted profiles or stage authority.
+FA Cup participant membership remains pending until the First Round Proper
+draw; use an active review-only manifest until its fixtures are published.
 
-All seven target rows start unqualified:
+The accepted #254 matrix is:
 
-| Target | Required qualification | Current evidence |
-| --- | --- | --- |
-| Austrian Bundesliga | Season, phases, rounds, participants | Pending |
-| FA Cup | Season, round/leg scope, participants | Pending |
-| EFL Cup | Season, round/leg scope, participants | Pending |
-| UEFA Conference League | Season, league/knockout stage scope | Pending |
-| Nations League B | Season, disjoint B stages, participants | Pending |
-| Nations League C | Season, disjoint C stages, participants | Pending |
-| Nations League D | Season, disjoint D stages, participants | Pending |
+| Target | Accepted boundary | Fixtures | Reviews |
+| --- | --- | ---: | ---: |
+| Austrian Bundesliga | Regular-season rounds 1-16 | 96 | 2 |
+| FA Cup | First Round Proper publication check | 0 | 1 |
+| EFL Cup | Preliminary through third round | 76 | 1 |
+| UEFA Conference League | League phase | 108 | 1 |
+| Nations League B | League B group phase | 48 | 1 |
+| Nations League C | League C group phase | 48 | 1 |
+| Nations League D | League D group phase | 12 | 1 |
 
 For each target retain a private permitted source document, observation time,
 rights/attribution record, stable fixture IDs, trusted profile, normalized
@@ -243,7 +235,8 @@ must not be submitted to the existing staging calendar as if they were real.
 
 Preserve existing Nations League A and its mappings. A broad League A grant
 must be explicitly reviewed before narrowing; B/C/D imports cannot silently
-acquire its stages. Europa League remains on the later API track.
+acquire its stages. Europa League follows #269 after Phase 9, with provider
+requalification or a reviewed manual fallback.
 
 ## 6. Live validation sequence
 
@@ -260,8 +253,9 @@ preview and detached-approval commands. One small qualified scope goes first:
    no duplicates or unnecessary Outlook updates.
 6. Qualify an actual correction/partial update and an explicitly completed task;
    confirm other scopes and normal sports reminders remain unchanged.
-7. Verify controlled failure/recovery and an isolated restore before accepting
-   #254. Do not disrupt real source connectivity without the agreed test window.
+7. Reference accepted automated interruption/Graph recovery in #253 and the
+   live stopped-backup, isolated-readback and restart evidence in #254.
+   No additional forced live interruption is required for the accepted tree.
 8. Repeat source/scope qualification and evidence for the other six targets.
 
 The immutable receipt proves canonical commit, not current Outlook convergence.

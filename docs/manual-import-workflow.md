@@ -2,9 +2,11 @@
 
 Issue #252 adds an optional inbox worker and dedicated Outlook update-review
 appointments. It reuses the [atomic backend](manual-import-apply.md) and
-[reviewed manifest contract](manual-import-preparation.md). The implementation
-still requires cross-component and seven-scope live staging qualification in
-issues #253/#254 before release and separately approved production promotion.
+[reviewed manifest contract](manual-import-preparation.md).
+Automated qualification #253 and bounded seven-target staging #254 are
+accepted. Final publication is tracked in
+[the Phase 9 checklist](v0.9.0-beta.1-release-checklist.md); production remains
+separately approved and blocked by #233.
 
 ## Enable one owning instance
 
@@ -226,6 +228,6 @@ intent can be retired, preventing an orphan after a mapping-write failure.
 
 Observe `Manual review appointment pending` logs for Graph recovery. Receipt
 status is historical and does not assert reminder delivery. Live tenant
-behavior,
-backup/restore and all seven target scopes remain qualification work in
-issues #253/#254.
+behavior and host backup/restore were accepted in #254, complemented by
+automated recovery in #253. Reuse those records for the accepted candidate.
+New scopes and materially changed deployments still require qualification.
