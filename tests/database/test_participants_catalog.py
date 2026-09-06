@@ -42,8 +42,8 @@ def test_catalog_creates_and_assigns_reviewed_competition_teams(
 ) -> None:
     repositories, result = initialize(tmp_path)
     database_path = repositories[0]
-    assert len(result.participants) == 470
-    assert len(result.season_participants) == 470
+    assert len(result.participants) == 506
+    assert len(result.season_participants) == 506
     assert {item.participant_key for item in result.participants} >= {
         "arsenal",
         "coventry_city",
@@ -102,6 +102,7 @@ def test_catalog_creates_and_assigns_reviewed_competition_teams(
         ("second_bundesliga", 18),
         ("uefa_champions_league", 36),
         ("uefa_conference_league", 36),
+        ("uefa_europa_league", 36),
         ("uefa_nations_league", 54),
     ]
     countries_by_key = {
@@ -153,8 +154,8 @@ def test_catalog_can_run_repeatedly(tmp_path: Path) -> None:
         membership_count = connection.execute(
             "SELECT COUNT(*) FROM season_participants"
         ).fetchone()
-    assert participant_count == (366,)
-    assert membership_count == (470,)
+    assert participant_count == (395,)
+    assert membership_count == (506,)
     assert [item.id for item in second.participants] == [
         item.id for item in first.participants
     ]

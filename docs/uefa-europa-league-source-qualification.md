@@ -1,24 +1,164 @@
 # UEFA Europa League Source Qualification
 
-## Status
+## Current Version 1.0 checkpoint - 2026-09-06
 
-**Deferred from `v0.6.0-beta.1`: no authoritative writer is assigned. A
-2026-08-31 re-observation confirmed that the zero-cost OpenLigaDB candidate is
-still structurally incomplete and that a configured free football-data.org
-account cannot access `EL` / 2146. A separate Footballdata.io free account
-includes the Europa League and exposes the current 2026/27 season, but its
-league-phase fixtures have not propagated yet. Footballdata.io remains the
-preferred zero-cost re-evaluation candidate; no paid source is approved for
-this release.**
+Issue [#269](https://github.com/theMompfdie/smart-sports-calendar/issues/269)
+now owns delivery of the main 2026/27 competition, league phase through final.
+Phase 9 issue #200 is closed and the non-draft `v0.9.0-beta.1` release was
+published on 2026-09-06. Its recorded signed-release and integration evidence
+satisfies the prerequisite to begin this requalification.
 
-This record was reviewed on 2026-08-29 and re-observed on 2026-08-31 for issue
- #158. It applies the hybrid tournament contract completed in #151. It does not
-start a trial, approve payment, assign an authority, enable a catalog entry,
-or authorize runtime collection.
+**Select reviewed manual import for Version 1.0 preparation.** Current
+observations do not qualify either evaluated zero-cost automated candidate
+for the required league phase. No live manual import or authority assignment
+has occurred. Earlier Phase 6 observations remain historical evidence.
 
-Qualification remains fail-closed. Public catalog observations recorded here
-contain no credentials, private payloads, team names, or individual provider
-fixture IDs.
+### Manual league-phase catalog and staging preparation
+
+The application catalog now contains the UEL hybrid competition and the
+2026/27 league-phase season, 16 September 2026 through 28 January 2027, with
+36 reviewed participants. Seven existing club identities and their metadata
+are reused; 29 additional club identities are registered. Startup uses the
+existing idempotent catalog initialization; no schema migration is needed.
+Catalog presence alone does not activate a source or import fixtures.
+
+The operator-side schedule was prepared from Wikipedia contributors'
+[fixed revision 1373338629][uel-wiki] under [CC BY-SA 4.0][uel-license].
+The private package retains attribution, the saved revision and its checksum,
+an identity ledger, 144 league-phase records and a review CSV. Match dates
+and pairings stay outside the public repository. The checked-in participant
+catalog contains identity metadata only. No knockout schedule is inferred.
+
+The private `uel-2026-27-staging-profile.json` targets instance `staging`,
+namespace `manual-uel-2026-27`, and exactly rounds 1 through 8 of
+`LEAGUE_PHASE` (`league_phase`). The manifest and profile must be transferred
+separately; copying the manifest alone cannot provision the trusted profile.
+Keep the namespace and frozen fixture IDs on corrections and use a new
+submission ID for each revised package.
+
+Before live use, merge the tested catalog change into `develop`, deploy its
+verified revision through the existing staging stack, and preserve the
+existing database, inbox and other profiles. Install the reviewed profile
+and restart the owning application as described in the
+[manual inbox workflow](manual-import-workflow.md). Submit the private
+manifest, inspect its actual staging preview and approve that exact preview
+before applying. Confirm 144 fixtures and eight review tasks, then check
+unchanged replay, Outlook convergence and stable canonical identities.
+Offline validation is not evidence of this deployed acceptance.
+
+During the same isolated staging window, record the deployed revision,
+successful DFB-Pokal import, preserved identity/mapping state and independent
+scheduler-job success for issue #268. The UEL file does not test that provider.
+The later API transition remains a separately reviewed identity reconciliation
+and authority handover under ADR 0015; this change enables no API writer.
+
+[uel-wiki]: https://en.wikipedia.org/w/index.php?oldid=1373338629
+[uel-license]: https://creativecommons.org/licenses/by-sa/4.0/
+
+### Public documentation reviewed today
+
+The current [API documentation](https://footballdata.io/documentation/)
+requires Bearer authentication. The
+[season contract](https://footballdata.io/documentation/seasons/) documents
+league-scoped season discovery and season match/team endpoints, with date
+filters and pagination for the latter. The documented season year distinguishes
+2026/27 using `20262027`. League `46` and season `90443` are historical
+observed IDs to reconfirm, not blindly trusted current configuration.
+
+The [usage contract](https://footballdata.io/documentation/rate-limits/)
+provides account-specific quota inspection. Its examples are not evidence
+of this operator's remaining quota or current entitlement. API documentation
+alone does not establish current league-phase publication, complete pagination,
+stable identities, update freshness or cancellation semantics.
+
+The [terms](https://footballdata.io/terms/), displaying an update date of
+2026-05-03, allow reasonable caching and plan-dependent derived applications.
+They also state that long-term storage may require written permission and
+restrict raw dataset redistribution. Therefore durable canonical SQLite state,
+backups and retained private Outlook events still need a use-specific rights
+and attribution decision. This review neither accepts account terms nor
+establishes a blanket prohibition on private use.
+
+### Current observations - 2026-09-06
+
+Two Python HTTP requests to the account endpoint returned HTTP 403. The
+operator then obtained HTTP 200 using PowerShell, reporting a free account
+with 2,000 monthly requests and 1,998 remaining. The same PowerShell method
+worked with the locally configured staging key: free plan, 2,000 limit and
+1,997 remaining at that observation. No key change was required. The exact
+cause of the earlier transport-dependent rejection remains unestablished;
+it is not evidence of disabled credentials or missing data entitlement.
+
+Five successful assistant requests checked quota, seasons, date-filtered
+matches, teams and unfiltered matches. Including the two rejected attempts
+and the operator's one successful check, eight Footballdata.io requests were
+attempted within the agreed maximum of twelve. No raw responses or secrets
+were stored. Quota was not re-read after the data requests.
+
+| Footballdata.io observation | Result |
+| --- | --- |
+| League / season / year | `46` / `90443` / `20262027` |
+| Matches, 2026-09-01 through 2027-01-31 | 0; reported pagination total 0 |
+| All season matches | 80; one page, limit 100, reported total 80 |
+| Unfiltered match-date bounds | 2026-07-09 through 2026-08-27 |
+| Reported match status | All `complete` |
+| Distinct round IDs | 4 |
+| Season team directory | 86 entries; one page, reported total 86 |
+
+The season directory marks multiple historical entries as current. Selection
+must verify the explicit year and league/season identities, not rely solely
+on `is_current`. The unfiltered July/August match dates confirm that the empty
+September-to-January result is not sufficient main-scope coverage hidden by
+the requested date window. No stable-identity or lifecycle qualification is
+claimed; the required main-competition schedule is absent in this observation.
+A second identity-stability observation cannot qualify missing fixtures.
+
+One additional unauthenticated GET to the documented OpenLigaDB route
+`/getmatchdata/uel2026/2026` reports league `6000`, season `2026`, 16 distinct
+fixture IDs and 15 distinct participant IDs. Kickoffs span
+2026-09-16T19:00:00Z through 2026-10-22T19:00:00Z.
+All entries have group order 1.
+This is insufficient for 36 participants and 144 league-phase fixtures.
+Only aggregate evidence was retained; this request does not use the
+Footballdata.io account or its quota.
+
+The current public football-data.org
+[free coverage](https://www.football-data.org/coverage) still excludes UEL.
+Its [pricing](https://www.football-data.org/pricing) does not establish a new
+free UEL entitlement. No other credential, paid plan or trial was used.
+This is a decision on the reviewed candidates, not a claim that every possible
+supplier has been exhaustively tested.
+
+### Dated delivery decision and next manual gate
+
+The operator selected manual import if the candidate and other suitable
+automated sources cannot qualify. Apply that decision to the current evidence:
+prepare the main UEL competition through the existing reviewed manual workflow.
+Do not implement or enable either incomplete automated feed, combine their
+partial datasets or infer cancellations from omitted fixtures.
+
+The initial preparation needs a lawfully obtained, operator-reviewed 2026/27
+league-phase schedule with provenance and the applicable private-use rights
+record. UEFA's published fixture overview is a source reference, not permission
+to scrape or redistribute its dataset. Use the existing schema, private stable
+fixture-ID ledger, exact-file preview/approval and durable import receipts.
+Verify the canonical competition, season and all participant keys before
+creating a trusted profile; the generic parser is not proof of UEL delivery.
+
+Start with all eight league-phase matchdays once the reviewed source is
+available. Keep knockout play-offs through final in the delivery scope, with
+new reviewed packages after each draw and whenever a correction is published.
+A concrete review cadence and reminder appointments must accompany the first
+package. Qualifying rounds remain outside the main scope. Staging, replay,
+correction, recovery, backup/restore, documentation and release acceptance
+remain open in #269. No live authority grant or deployment has occurred.
+
+## Historical Phase 6 status - 2026-08-31
+
+UEL was deferred from `v0.6.0-beta.1`. The observations and candidate analysis
+below describe the evidence on 2026-08-29 and 2026-08-31 under issue #158.
+They apply the hybrid tournament contract from #151. They do not establish
+current availability, approve payments or authorize runtime collection.
 
 ## Operator scope decision
 
