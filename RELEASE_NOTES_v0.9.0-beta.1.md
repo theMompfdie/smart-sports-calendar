@@ -7,7 +7,8 @@ The signed `v0.9.0-beta.1` tag points to verified main commit
 `36bd6fe505ff79f97aa8816f6735339af0538c68`. Main CI run 34032123139
 passed all five jobs, including 1,516 tests in 528.26 seconds.
 This is the last planned pre-release before the separately qualified v1.0.0.
-Production promotion remains blocked by #233.
+At publication, production promotion was blocked by #233. Its subsequent
+requalification completed on 2026-09-06; the immutable release tag is unchanged.
 
 ## Scope and changes
 
@@ -93,8 +94,9 @@ prepare subsequent imports. A reminder never imports new data automatically.
 
 ## Known limitations and stable-release follow-up
 
-- Production promotion remains blocked by #233: recurring timestamp-shaped
-  football-data.org match status values require separate qualification.
+- At publication, #233 blocked production due to malformed provider statuses.
+  Later valid provider runs and retained-state/Outlook evidence resolved this
+  incident gate on 2026-09-06. Strict parsing and rollout checks remain required.
 - DFB-Pokal source freshness is affected by the reviewed-name mismatch for
   OpenLigaDB team 4762. Exact alias correction and requalification are #268.
 - Manual v1 imports schedules, not scores, results or finished status.

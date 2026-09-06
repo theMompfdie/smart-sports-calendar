@@ -8,7 +8,9 @@
 [v0.9.0-beta.1](https://github.com/theMompfdie/smart-sports-calendar/releases/tag/v0.9.0-beta.1)
 (GitHub pre-release)
 
-**Production promotion:** blocked by [#233](https://github.com/theMompfdie/smart-sports-calendar/issues/233).
+**Production promotion:** provider requalification completed in
+[#233](https://github.com/theMompfdie/smart-sports-calendar/issues/233).
+The production upgrade and target-specific imports remain operator-controlled.
 
 **Development stage:** Beta
 
@@ -712,8 +714,8 @@ The nine qualified authorities and provider lifecycle boundaries are unchanged.
 Visual presentation, runtime reminder mutation/restart, synthetic cleanup,
 media replacement/recovery, backup/restore, full-calendar inventory, and
 write-free convergence are accepted. The recurring Championship provider
-response-contract violation remains open in #233 as a documented beta-only
-limitation; strict parsing and last-known-good data retention remain active.
+response-contract violation was a documented beta limitation. Requalification
+completed in #233 on 2026-09-06; strict parsing and data retention remain active.
 The signed Phase 8 beta is published; the Phase 9 prerequisite is satisfied.
 
 ### Phase 9 - Reviewed manual fixture imports
@@ -755,8 +757,9 @@ Task completion retires only those appointments, not fixture history.
 See the [release notes](RELEASE_NOTES_v0.9.0-beta.1.md) for the accepted
 scope, recovery evidence and known limitations. The DFB-Pokal alias issue
 [#268](https://github.com/theMompfdie/smart-sports-calendar/issues/268)
-affects source freshness. Production remains separately approved and blocked
-by [#233](https://github.com/theMompfdie/smart-sports-calendar/issues/233).
+affects source freshness. The provider gate in
+[#233](https://github.com/theMompfdie/smart-sports-calendar/issues/233) is resolved;
+production backup, upgrade and target-specific import checks remain required.
 
 Competition retirement, UEL delivery and the general README/repository audit
 are v1.0 follow-ups #267, #269 and #270. UEL requires provider requalification
