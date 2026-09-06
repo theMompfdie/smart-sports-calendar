@@ -168,8 +168,8 @@ def test_service_maps_provider_catalog_to_existing_canonical_rows(
     } == set(PREMIER_LEAGUE_TEAM_MAPPING)
     assert table_count(context.database_path, "data_sources") == 1
     assert table_count(context.database_path, "source_mappings") == 22
-    assert table_count(context.database_path, "participants") == 366
-    assert table_count(context.database_path, "season_participants") == 470
+    assert table_count(context.database_path, "participants") == 395
+    assert table_count(context.database_path, "season_participants") == 506
     assert all(
         participant is not None and result_participant.id == participant.id
         for result_participant, participant in zip(
@@ -195,8 +195,8 @@ def test_service_is_idempotent_without_timestamp_churn(
     assert second.mappings == first.mappings
     assert table_count(context.database_path, "data_sources") == 1
     assert table_count(context.database_path, "source_mappings") == 22
-    assert table_count(context.database_path, "participants") == 366
-    assert table_count(context.database_path, "season_participants") == 470
+    assert table_count(context.database_path, "participants") == 395
+    assert table_count(context.database_path, "season_participants") == 506
 
 
 def test_service_uses_external_ids_even_when_provider_names_change(

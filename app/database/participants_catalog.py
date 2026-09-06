@@ -587,6 +587,45 @@ CHAMPIONS_LEAGUE_2026_27_TEAMS = (
     ("sabah", "Sabah FC", "Sabah", "AZ"),
 )
 
+EUROPA_LEAGUE_2026_27_TEAMS = (
+    ("az_alkmaar", "AZ", "AZ", "NL"),
+    ("anderlecht", "Anderlecht", "Anderlecht", "BE"),
+    ("ararat_armenia", "Ararat-Armenia", "Ararat-Armenia", "AM"),
+    ("bayer_04_leverkusen", "Bayer 04 Leverkusen", "Leverkusen", "DE"),
+    ("benfica", "Benfica", "Benfica", "PT"),
+    ("besiktas", "Beşiktaş", "Beşiktaş", "TR"),
+    ("bournemouth", "AFC Bournemouth", "Bournemouth", "GB-ENG"),
+    ("celje", "Celje", "Celje", "SI"),
+    ("celta_vigo", "Celta Vigo", "Celta Vigo", "ES"),
+    ("celtic", "Celtic", "Celtic", "GB-SCT"),
+    ("crystal_palace", "Crystal Palace", "Crystal Palace", "GB-ENG"),
+    ("dinamo_zagreb", "Dinamo Zagreb", "Dinamo Zagreb", "HR"),
+    ("ferencvaros", "Ferencváros", "Ferencváros", "HU"),
+    ("hapoel_beer_sheva", "Hapoel Be'er Sheva", "Hapoel Be'er Sheva", "IL"),
+    ("jagiellonia_bialystok", "Jagiellonia Białystok", "Jagiellonia Białystok", "PL"),
+    ("juventus", "Juventus", "Juventus", "IT"),
+    ("lech_poznan", "Lech Poznań", "Lech Poznań", "PL"),
+    ("levski_sofia", "Levski Sofia", "Levski Sofia", "BG"),
+    ("lillestrom", "Lillestrøm", "Lillestrøm", "NO"),
+    ("olympique_lyonnais", "Lyon", "Lyon", "FR"),
+    ("olympique_marseille", "Marseille", "Marseille", "FR"),
+    ("ac_milan", "Milan", "Milan", "IT"),
+    ("nec_nijmegen", "NEC", "NEC", "NL"),
+    ("ofi_crete", "OFI", "OFI", "GR"),
+    ("olympiacos", "Olympiacos", "Olympiacos", "GR"),
+    ("omonia", "Omonia", "Omonia", "CY"),
+    ("real_sociedad", "Real Sociedad", "Real Sociedad", "ES"),
+    ("fc_red_bull_salzburg", "FC Red Bull Salzburg", "Salzburg", "AT"),
+    ("stade_rennais", "Rennes", "Rennes", "FR"),
+    ("sparta_prague", "Sparta Prague", "Sparta Prague", "CZ"),
+    ("sk_sturm_graz", "SK Puntigamer Sturm Graz", "Sturm Graz", "AT"),
+    ("sunderland", "Sunderland", "Sunderland", "GB-ENG"),
+    ("tsg_hoffenheim", "TSG 1899 Hoffenheim", "Hoffenheim", "DE"),
+    ("torreense", "Torreense", "Torreense", "PT"),
+    ("union_saint_gilloise", "Union Saint-Gilloise", "Union Saint-Gilloise", "BE"),
+    ("viktoria_plzen", "Viktoria Plzeň", "Viktoria Plzeň", "CZ"),
+)
+
 NFL_2026_TEAMS = (
     ("arizona_cardinals", "Arizona Cardinals", "Cardinals", "ARI"),
     ("atlanta_falcons", "Atlanta Falcons", "Falcons", "ATL"),
@@ -789,6 +828,23 @@ SEASON_PARTICIPANTS_CATALOG = (
             )
             for participant_key, name, short_name, country_code in (
                 CHAMPIONS_LEAGUE_2026_27_TEAMS
+            )
+        ),
+    ),
+    SeasonParticipantsCatalogEntry(
+        sport_key="football",
+        competition_key="uefa_europa_league",
+        season_key="2026_27",
+        country_code="INT",
+        participants=tuple(
+            ParticipantCatalogEntry(
+                participant_key=participant_key,
+                name=name,
+                short_name=short_name,
+                country_code=country_code,
+            )
+            for participant_key, name, short_name, country_code in (
+                EUROPA_LEAGUE_2026_27_TEAMS
             )
         ),
     ),
