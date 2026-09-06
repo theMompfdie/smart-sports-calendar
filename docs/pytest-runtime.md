@@ -16,8 +16,16 @@ interchangeable. The local target is at most 644.45 seconds.
 
 | Environment | Before | After | Result |
 | --- | --- | --- | --- |
-| Ubuntu CI, Python 3.13 | 504.63 s | Pending CI | 1,516 passed before |
+| Ubuntu CI, Python 3.13 | 504.63 s | 227.83 s | 1,519 passed |
 | Windows 11, Python 3.13.15 | 1,288.90 s | 510.95 s | 1,519 passed |
+
+The verified [PR CI run][verified-ci] on commit `f7fbb3a` reports 1,519
+passing tests in 227.83 seconds. This saves 276.80 seconds (54.85%) against
+the 504.63-second CI baseline and meets the 252.32-second target. All five
+CI jobs passed: code quality, publication safety, unit tests, Python
+validation and Docker validation. The longest reported test call is 10.27
+seconds (Second Bundesliga restart/provider failure); initial catalog
+template setup is 3.71 seconds. No teardown appears in the top 40 phases.
 
 The verified local run saves 777.95 seconds (60.36%) and
 meets the local target. All 1,516 original cases pass, with three additional
@@ -56,8 +64,8 @@ largest baseline module totals from JUnit, including setup, call and teardown:
 The unchanged bootstrap module also ran faster, showing host/cache variation.
 These single-run totals do not isolate every environmental effect. The
 API-Football fixture-import group drops from 224.10 to 11.17 seconds, which
-provides direct evidence for the targeted removal of repeated setup. Repeat
-measurements on CI before treating the reduction as a cross-platform result.
+provides direct evidence for the targeted removal of repeated setup. The
+independent CI comparison above also exceeds the 50% reduction target.
 
 The five slowest baseline test calls compare as follows:
 
@@ -172,9 +180,10 @@ timings; Linux CI results must be measured independently. Docker Desktop is
 not needed to run this suite. A container benchmark is optional additional
 evidence and must not be compared directly with native Windows timings.
 
-The optimized CI measurement and required CI checks remain pending until the
-changes are committed, pushed and verified in a pull request against
-`develop`. Issue #265 is not complete solely because local checks pass.
+The implementation commit has passed the local and CI verification gates
+for [PR #275][pull-request] against `develop`. This documentation update
+records that measured result. Further optimization, including parallel
+execution, should be evaluated separately; merging remains an operator action.
 
 [issue]: https://github.com/theMompfdie/smart-sports-calendar/issues/265
 [baseline-ci]: https://github.com/theMompfdie/smart-sports-calendar/actions/runs/34037762727
@@ -186,3 +195,5 @@ changes are committed, pushed and verified in a pull request against
 [second-e2e]: ../tests/integration/test_openligadb_second_bundesliga_to_outlook.py
 [pl-e2e]: ../tests/integration/test_football_data_to_outlook_end_to_end.py
 [cl-e2e]: ../tests/integration/test_openligadb_champions_league_to_outlook.py
+[verified-ci]: https://github.com/theMompfdie/smart-sports-calendar/actions/runs/34043888040
+[pull-request]: https://github.com/theMompfdie/smart-sports-calendar/pull/275
