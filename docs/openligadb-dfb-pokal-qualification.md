@@ -78,6 +78,42 @@ correlation remain rejected. Integrity diagnostics expose only the configured
 competition key and numeric provider team ID so future drift can be located
 without logging credentials or raw provider payloads.
 
+## Reviewed Jeddeloh alias on 2026-09-06
+
+Issue [#268](https://github.com/theMompfdie/smart-sports-calendar/issues/268)
+records a staging integrity failure for provider team ID `4762` at 11:51:39
+staging log time on candidate `39caf0441bade383b68abd470d79d3d835d9313f`.
+The operator's subsequent permitted public API probe reported `SSV Jeddeloh`.
+This spelling was absent from the two previously reviewed names.
+
+The [DFB club record](https://datencenter.dfb.de/vereine/ssv-jeddeloh) names
+`SSV Jeddeloh`. The club's own
+[history](https://www.ssv-regionalliga.de/der-ssv.html) uses both
+`SSV Jeddeloh` and `SSV Jeddeloh II` for that club. These primary identity
+sources were reviewed on 2026-09-06; they support the bounded alias decision,
+not automated scraping or a new authoritative fixture source.
+
+Accept `SSV Jeddeloh` as one additional explicit alias alongside
+`SSV Jeddeloh II` and `SSV Jeddeloh 2`, solely for DFB-Pokal provider ID `4762`.
+Keep canonical participant `ssv_jeddeloh`, its database identity and existing
+source/event mappings. The existing whitespace trimming contract remains;
+case folding, fuzzy matching, automatic learning, wrong IDs and unreviewed
+names remain rejected. Source ownership and permanent non-destructive
+`partial` semantics are unchanged.
+
+Synthetic regression coverage checks all three aliases, rejection boundaries,
+and alias transitions through the actual importer and SQLite into mocked
+Graph. Rejected identities must preserve canonical and mapping rows while
+recording a failed audit run; recovery must retain the same Outlook event.
+No raw live fixture payloads are stored in this evidence.
+
+Live requalification remains pending: an isolated deployed staging run must
+successfully import DFB-Pokal, preserve current canonical/mapping state, and
+show that independent scheduler jobs still succeed. Unit and integration
+tests do not substitute for this operating gate. Issue #268 stays open until
+that evidence and the required signed-candidate CI are complete; independent
+production blocker #233 remains unchanged.
+
 ## Read-only qualification command
 
 The command makes three bounded, unauthenticated HTTPS GET requests. It does
@@ -107,7 +143,8 @@ The qualifier rejects non-200, non-JSON, malformed, oversized, or non-list
 responses; missing or duplicate league/round/fixture identities; the wrong
 sport, league, shortcut, or season; unknown fixture groups; duplicate teams in
 one fixture; missing team identity; non-UTC kickoff values; unexpected or
-malformed non-empty provider timezone declarations; invalid update timestamps; dates outside the season;
+malformed non-empty provider timezone declarations; invalid update timestamps;
+dates outside the season;
 empty fixture collections; and a round count above the DFB-Pokal capacity.
 
 Normal CI uses synthetic payloads and remains network-free.

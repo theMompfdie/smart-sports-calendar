@@ -1,3 +1,4 @@
+import pytest
 from app.providers.openligadb.team_mappings import (
     CHAMPIONS_LEAGUE_TEAM_MAPPINGS,
     DFB_POKAL_TEAM_MAPPINGS,
@@ -54,10 +55,30 @@ def test_dfb_pokal_mapping_accepts_only_reviewed_jeddeloh_aliases() -> None:
     assert resolve_team_key("dfb_pokal", 4762, "  SSV Jeddeloh II  ") == (
         "ssv_jeddeloh"
     )
-    assert resolve_team_key("dfb_pokal", 4762, "SSV Jeddeloh") is None
+    assert resolve_team_key("dfb_pokal", 4762, "SSV Jeddeloh") == "ssv_jeddeloh"
     assert resolve_team_key("second_bundesliga", 4762, "SSV Jeddeloh II") is None
 
 
 def test_dfb_pokal_mapping_accepts_only_reviewed_saarbruecken_name() -> None:
     assert resolve_team_key("dfb_pokal", 3078, "1. FC Saarbrücken") == "fc_saarbruecken"
     assert resolve_team_key("dfb_pokal", 3078, "1.FC Saarbrücken") is None
+
+
+@pytest.mark.parametrize(
+    ("competition", "team_id", "name"),
+    [
+        ("dfb_pokal", 4762, "SSV Jeddeloh III"),
+        ("dfb_pokal", 4762, "ssv jeddeloh"),
+        ("dfb_pokal", 4762, "SSV  Jeddeloh"),
+        ("dfb_pokal", 4762, "Unknown club"),
+        ("dfb_pokal", 5712, "SSV Jeddeloh"),
+        ("dfb_pokal", 999999, "SSV Jeddeloh"),
+        ("second_bundesliga", 4762, "SSV Jeddeloh"),
+        ("uefa_champions_league", 4762, "SSV Jeddeloh"),
+        ("uefa_nations_league", 4762, "SSV Jeddeloh"),
+    ],
+)
+def test_jeddeloh_alias_does_not_relax_identity_boundaries(
+    competition: str, team_id: int, name: str
+) -> None:
+    assert resolve_team_key(competition, team_id, name) is None
