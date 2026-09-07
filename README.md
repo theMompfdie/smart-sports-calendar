@@ -1,25 +1,23 @@
-# SMART Sports Calendar
+# SMART Sports Calendar - v1.0.0
 
 Sports fixtures in a dedicated Microsoft Outlook calendar, kept current by
 qualified providers and reviewed manual imports. The service runs in Docker,
 stores identities in SQLite and writes appointments through Microsoft Graph.
 
-<!-- Mit tatkrÃƒÆ’Ã‚Â¤ftiger UnterstÃƒÆ’Ã‚Â¼tzung meines JARVIS. -->
+<!-- Mit tatkräftiger Unterstützung meines JARVIS. -->
 
-## Release status
+## Version 1.0.0
 
-The latest published release is [v0.9.0-beta.1][latest]. This branch prepares
-**v1.0.0**; it is not yet a published stable release. Version 1 adds the
-reviewed
-Europa League delivery, completed-season retirement and safer provider
-failure diagnostics. Their staging acceptance is complete. Documentation,
-final candidate validation and the operator's release steps remain tracked in
-[the release checklist](docs/v1.0.0-release-checklist.md).
+Version 1.0.0 combines qualified automated sports schedules with reviewed
+manual imports, including the bounded Europa League delivery. Completed-season
+retirement preserves calendar history, and strict provider validation keeps
+last-known-good data on failures.
 
 Start with the [installation and upgrade guide](docs/installation.md).
-See [versioned release notes](docs/releases/README.md) for changes and
-historical
-releases. Production promotion is a separate operator action.
+Read the [v1.0.0 release notes](docs/releases/v1.0.0.md) for changes, accepted
+scope and deployment considerations. The [release index](docs/releases/README.md)
+and [GitHub releases][releases] provide the version history.
+Production promotion is a separate operator action.
 
 ## What it does
 
@@ -177,6 +175,6 @@ Do not publish a release until its documented gates pass.
 
 [MIT](LICENSE). Provider and asset rights are reviewed separately.
 
-[latest]: https://github.com/theMompfdie/smart-sports-calendar/releases/tag/v0.9.0-beta.1
+[releases]: https://github.com/theMompfdie/smart-sports-calendar/releases
 
 [recovery]: docs/football-data-status-recovery.md

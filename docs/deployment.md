@@ -197,7 +197,7 @@ The complete provider settings are:
 - `NFLVERSE_MINIMUM_POLL_INTERVAL_SECONDS`: Default: `21600`; Validation and
   purpose: Enforces the qualified minimum six-hour polling interval.
 - `OEFB_ICAL_ENABLED`: Default: `false`; Validation and purpose: Enables the
-  private official Ã–FB-Cup iCalendar authority; requires its matching
+  private official ÖFB-Cup iCalendar authority; requires its matching
   authoritative job.
 - `OEFB_ICAL_FEED_URL`: Default: empty; Validation and purpose: Required only
   when enabled; opaque HTTPS subscription URL supplied through the deployment
@@ -223,10 +223,10 @@ the authoritative 2026/27 Premier League and Bundesliga complete-season scopes
 and the Championship `REGULAR_SEASON` complete-stage scope. `openligadb`
 supports the authoritative 2026/27 DFB-Pokal and 2. Bundesliga scopes and
 requires no credential. `oefb_ical` supports only the private, permanently
-partial 2026/27 Ã–FB-Cup scope and never derives removal evidence from absence.
+partial 2026/27 ÖFB-Cup scope and never derives removal evidence from absence.
 `nflverse` supports exactly one authoritative NFL 2026 regular-season job,
 requires no credential, and remains permanently partial and removal-ineligible.
-Keep the football-data.org token and opaque Ã–FB feed URL in Portainer or another
+Keep the football-data.org token and opaque ÖFB feed URL in Portainer or another
 ignored operator secret store. See
 [source orchestration](source-orchestration.md).
 
@@ -451,7 +451,7 @@ promotion remains a separate explicit operator decision.
 8. Verify startup health, schema `008_add_calendar_sync_revisions`, and exactly
    nine enabled candidate authorities. Phase 7 adds no database migration.
 9. Require the NFL scope to contain exactly 272 active regular-season fixtures,
-   32 participant mappings, weeks 1â€“18, 272 synchronized calendar mappings,
+   32 participant mappings, weeks 1–18, 272 synchronized calendar mappings,
    and zero pending revisions.
 10. Require a completed unchanged nflverse run with 272 unchanged items and a
     write-free calendar cycle. Validate with

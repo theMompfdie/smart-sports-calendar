@@ -27,7 +27,7 @@ needed).
    `OUTLOOK_CALENDAR_ID`; store the matching name in `OUTLOOK_CALENDAR_NAME`.
    The [calendar API documentation][calendars] describes this read operation.
 6. Acquire a football-data.org token if selecting that adapter, or the private
-   official subscription URL for Ã–FB-Cup. OpenLigaDB and nflverse need no token.
+   official subscription URL for ÖFB-Cup. OpenLigaDB and nflverse need no token.
    Reconfirm the documented source/season qualification for the target.
 
 Do not grant mail-sending or directory-write permissions for this service.
