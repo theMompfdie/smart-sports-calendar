@@ -235,6 +235,13 @@ Phase 8 design and implementation documentation:
 - [Phase 8 release checklist](docs/v0.8.0-beta.1-release-checklist.md)
 - [Phase 8 candidate release notes](RELEASE_NOTES_v0.8.0-beta.1.md)
 
+For optional real logos, use the
+[logo rights preparation workflow](docs/logo-rights-workflow.md),
+[rights catalog template](docs/templates/logo-rights-catalog.md), and
+[permission email template](docs/templates/logo-permission-request.md).
+These prepare later private-use reviews; they do not clear individual logos.
+Unresolved rights retain text-only or reviewed project-owned artwork.
+
 ### Database and Persistence
 
 - versioned SQLite schema migrations
