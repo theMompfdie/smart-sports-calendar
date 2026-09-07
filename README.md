@@ -628,9 +628,11 @@ delivery order and operational boundaries.
   [#158](https://github.com/theMompfdie/smart-sports-calendar/issues/158): the
   competition is deferred from `v0.6.0-beta.1`; Footballdata.io free access,
   UEL league 46, and current season 90443 are confirmed, but only qualifying
-  and play-off fixtures are currently available. Footballdata.io remains the
+  and play-off fixtures were available in that historical observation.
+  Footballdata.io remains the
   preferred zero-cost re-evaluation candidate for the later league-phase
-  integration; no authority is assigned
+  integration. No authority was assigned for Phase 6; the later manual
+  staging delivery is described in the Version 1.0 checkpoint below
 - UEFA Conference League 2026/27 delivery tracked by
   [#160](https://github.com/theMompfdie/smart-sports-calendar/issues/160),
   with completed source qualification in
@@ -760,9 +762,31 @@ affects source freshness. The provider gate in
 production backup, upgrade and target-specific import checks remain required.
 
 Competition retirement, UEL delivery and the general README/repository audit
-are v1.0 follow-ups #267, #269 and #270. UEL requires provider requalification
-or a reviewed manual fallback after Phase 9. The operator selected this beta
+are v1.0 follow-ups #267, #269 and #270. The operator selected this beta
 as the last planned pre-release; stable v1.0.0 still requires all final gates.
+
+### Version 1.0 Europa League checkpoint - 2026-09-07
+
+After Phase 9, issue [#269][uel-delivery] requalified the automated candidates
+and selected reviewed manual import. PR #277 delivered the 2026/27 UEL
+catalog. The isolated staging import contains **144 league-phase fixtures**
+and initially eight review appointments. The accepted review-only extension
+brings the total to **26 converged review appointments**, including weekly
+Monday checks through May 31, 2027, at 09:00 Europe/Vienna. The operator
+confirmed the fixture appointments; unchanged replay returned 144 SKIP without
+canonical duplicates.
+
+The delivered boundary is league-phase rounds 1-8. Later knockout rounds
+through the final require new reviewed packages, explicit authority/profile
+extensions under the accepted publication-review cadence. No automated UEL
+writer or production deployment is claimed. Post-import backup, isolated
+restore and staging restart passed; final UEL acceptance and release gates
+remain open. See the dated
+[UEL qualification and operations record][uel-qualification] for evidence,
+remaining checks and the applied future-stage review cadence.
+
+[uel-delivery]: https://github.com/theMompfdie/smart-sports-calendar/issues/269
+[uel-qualification]: docs/uefa-europa-league-source-qualification.md
 
 ## Release History
 
