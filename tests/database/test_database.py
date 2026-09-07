@@ -33,6 +33,8 @@ EXPECTED_TABLES = {
     "seasons",
     "source_mappings",
     "source_assignments",
+    "scope_retirements",
+    "scope_retirement_audit",
     "sports",
     "sports_events",
     "sync_runs",
@@ -116,6 +118,7 @@ def test_migrations_are_registered_once(
         ("012_create_calendar_event_asset_attachments",),
         ("013_manual_import_persistence",),
         ("014_manual_review_appointments",),
+        ("015_scope_retirement",),
     ]
 
 

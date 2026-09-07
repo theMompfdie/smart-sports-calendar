@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from app.database.scope_retirement_repository import ScopeRetirementRepository
 from app.imports.manual_manifest import ManualManifest, ManualReviewPlan, _review_plan
 
 
@@ -46,6 +47,8 @@ class ManualPreviewRepository:
         conn: sqlite3.Connection, manifest: ManualManifest, database_identity: str
     ) -> ManualPreviewState:
         """Also usable inside the future apply transaction; performs only reads."""
+
+        ScopeRetirementRepository.require_manual_active(conn, manifest.namespace)
 
         def rows(
             sql: str, params: tuple[object, ...] = ()
