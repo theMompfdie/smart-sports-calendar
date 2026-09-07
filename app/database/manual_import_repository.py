@@ -11,6 +11,7 @@ from app.database.fixture_import_repository import (
     FixtureImportScopeRecord,
 )
 from app.database.manual_preview_repository import ManualPreviewRepository
+from app.database.scope_retirement_repository import ScopeRetirementRepository
 from app.database.source_assignments_repository import (
     SourceAssignmentsRepository,
     SourceAssignmentWrite,
@@ -71,6 +72,9 @@ class ManualImportTransaction:
             ):
                 raise ValueError("Submission ID is already bound to different bytes.")
             return row["state"]
+        ScopeRetirementRepository.require_manual_active(
+            self._connection, manifest.namespace
+        )
         self._connection.execute(
             """INSERT INTO import_batches
             (submission_id,namespace,import_type,schema_version,payload,manifest_sha256,
@@ -89,6 +93,7 @@ class ManualImportTransaction:
         return "RECEIVED"
 
     def profile(self, namespace: str) -> bytes:
+        ScopeRetirementRepository.require_manual_active(self._connection, namespace)
         row = self._connection.execute(
             """SELECT configuration_json
             FROM manual_import_profiles WHERE namespace=?""",

@@ -12,6 +12,16 @@ for full-state backup, migrations 013/014, private profiles, fresh target
 approval and rollback. Do not migrate staging Outlook mappings into production.
 Publishing the beta does not clear production blocker #233.
 
+## Completed-season maintenance (unreleased Version 1.0)
+
+Migration 015 adds durable effective retirement without changing historical
+source grants or fixture data. Follow the
+[retirement cookbook](season-retirement-cookbook.md) for the stopped-owner
+preview/deactivate/reactivate workflow, pending-work recovery, retained-history
+checks and rollback boundary. Keep the original source configuration and manual
+profiles present across restart. Do not downgrade an image on a retired database:
+older images ignore this gate. Live staging remains a Version 1.0 release gate.
+
 ## Architecture
 
 The application is designed to run as a Docker container.

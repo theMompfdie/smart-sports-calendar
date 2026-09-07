@@ -81,6 +81,7 @@ from app.database.media_assets_repository import MediaAssetsRepository
 from app.database.participants_catalog import initialize_participants_catalog
 from app.database.participants_repository import ParticipantsRepository
 from app.database.reminder_rules_repository import ReminderRulesRepository
+from app.database.scope_retirement_repository import ScopeRetirementRepository
 from app.database.season_participants_repository import SeasonParticipantsRepository
 from app.database.seasons_catalog import initialize_seasons_catalog
 from app.database.seasons_repository import SeasonsRepository
@@ -782,8 +783,18 @@ class ApplicationContainer:
             if self.manual_import_worker is not None
             else None
         )
-        self.source_scheduled_jobs = self.source_registry.build_scheduled_jobs(
-            self.settings.source_jobs
+        self.scope_retirement_repository = ScopeRetirementRepository(
+            self.settings.database_path
+        )
+        self.source_scheduled_jobs = tuple(
+            ScheduledJob(
+                job.job_key,
+                job.interval_seconds,
+                self._retirement_guard(job.job_key, job.task),
+            )
+            for job in self.source_registry.build_scheduled_jobs(
+                self.settings.source_jobs
+            )
         )
         self.scheduled_jobs = (
             *self.source_scheduled_jobs,
@@ -939,6 +950,15 @@ class ApplicationContainer:
             signal_name,
         )
         self.stop_event.set()
+
+    def _retirement_guard(self, job_key: str, task: SourceJobTask) -> SourceJobTask:
+        def run() -> object | None:
+            if self.scope_retirement_repository.blocked(job_key):
+                self.logger.debug("Source job skipped: retired scope job=%s", job_key)
+                return None
+            return task()
+
+        return run
 
     def _run_manual_import(self) -> None:
         if self.manual_import_worker is not None:

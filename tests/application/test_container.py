@@ -244,6 +244,9 @@ def test_container_builds_isolated_competition_runtimes_with_shared_client(
         "football-data-championship"
     ]
     with (
+        patch.object(
+            container.scope_retirement_repository, "blocked", return_value=False
+        ),
         patch.object(premier_league_runtime, "run") as premier_league_run,
         patch.object(bundesliga_runtime, "run") as bundesliga_run,
         patch.object(championship_runtime, "run") as championship_run,
@@ -348,6 +351,9 @@ def test_container_builds_isolated_openligadb_competition_runtimes(
         "openligadb-uefa-champions-league"
     ]
     with (
+        patch.object(
+            container.scope_retirement_repository, "blocked", return_value=False
+        ),
         patch.object(dfb_runtime, "run") as dfb_run,
         patch.object(second_bundesliga_runtime, "run") as second_bundesliga_run,
         patch.object(nations_league_runtime, "run") as nations_league_run,
@@ -902,6 +908,9 @@ def test_source_jobs_and_calendar_sync_are_scheduled_independently(
     source_job, calendar_job = container.scheduled_jobs
 
     with (
+        patch.object(
+            container.scope_retirement_repository, "blocked", return_value=False
+        ),
         patch.object(runtime, "run", return_value=None) as import_run,
         patch.object(
             container.synchronization_runtime_service,
