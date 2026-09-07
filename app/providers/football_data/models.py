@@ -205,13 +205,17 @@ def _parse_match(
     away_id = _positive_int(_mapping(payload, "awayTeam"), "id")
     if home_id == away_id or home_id not in team_ids or away_id not in team_ids:
         raise FootballDataIntegrityError("A match contains invalid participants.")
+    match_id = _positive_int(payload, "id")
     provider_status = _string(payload, "status")
     try:
         status = STATUS_MAPPING[provider_status]
-    except KeyError as error:
+    except KeyError:
+        # Never include untrusted status content through exception chaining.
         raise FootballDataSchemaError(
-            "Provider returned an unsupported match status."
-        ) from error
+            "Provider returned an unsupported match status "
+            f"(competition_id={competition_id}, season_id={season_id}, "
+            f"match_id={match_id})."
+        ) from None
     stage = _optional_string(payload, "stage")
     matchday = _optional_positive_int(payload, "matchday")
     if stage != "REGULAR_SEASON":
@@ -219,7 +223,7 @@ def _parse_match(
     if matchday is None or matchday > expected_matchdays:
         raise FootballDataIntegrityError("A match belongs to an invalid matchday.")
     return FootballDataMatch(
-        id=_positive_int(payload, "id"),
+        id=match_id,
         competition_id=competition_id,
         season_id=season_id,
         home_team_id=home_id,

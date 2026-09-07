@@ -1,5 +1,6 @@
 from copy import deepcopy
 from datetime import timedelta
+from traceback import format_exception
 
 import pytest
 from app.providers.contracts import RateLimitSnapshot
@@ -170,3 +171,46 @@ def test_stale_and_future_updated_snapshots_fail_closed() -> None:
         match["lastUpdated"] = future.isoformat().replace("+00:00", "Z")
     with pytest.raises(FootballDataIntegrityError, match="future"):
         parse(competition, teams, matches)
+
+
+@pytest.mark.parametrize(
+    "invalid_status",
+    [
+        "2026-09-08 18:45:00Z",
+        "PRIVATE_TOKEN_SENTINEL\nAuthorization: secret",
+        "UNKNOWN",
+    ],
+)
+def test_invalid_status_identifies_match_without_exposing_raw_value(invalid_status):
+    competition, teams, matches = payloads(CHAMPIONSHIP_PROFILE)
+    fixture = matches["matches"][-1]
+    fixture["status"] = invalid_status
+    with pytest.raises(FootballDataSchemaError) as error:
+        parse(competition, teams, matches, profile=CHAMPIONSHIP_PROFILE)
+    assert str(error.value) == (
+        "Provider returned an unsupported match status "
+        f"(competition_id=2016, season_id=2509, match_id={fixture['id']})."
+    )
+    rendered = "".join(format_exception(error.value))
+    assert invalid_status not in rendered
+    assert "KeyError:" not in rendered
+
+
+def test_valid_rescheduling_preserves_identity_and_reads_kickoff_separately():
+    competition, teams, matches = payloads(CHAMPIONSHIP_PROFILE)
+    fixture = matches["matches"][0]
+    fixture["status"] = "POSTPONED"
+    fixture["utcDate"] = "2026-09-09T00:00:00Z"
+    before = parse(competition, teams, matches, profile=CHAMPIONSHIP_PROFILE)
+    fixture["status"] = "TIMED"
+    fixture["utcDate"] = "2026-10-20T18:45:00Z"
+    after = parse(competition, teams, matches, profile=CHAMPIONSHIP_PROFILE)
+    old = next(match for match in before.matches if match.id == fixture["id"])
+    new = next(match for match in after.matches if match.id == fixture["id"])
+    assert old.status == "postponed"
+    assert new.status == "scheduled"
+    assert new.kickoff_utc.isoformat() == "2026-10-20T18:45:00+00:00"
+    assert len(after.matches) == len(before.matches) == 552
+    assert {match.id for match in before.matches} == {
+        match.id for match in after.matches
+    }
