@@ -46,7 +46,7 @@ class SafeAuthoritySummary:
     competition_key: str
     season_key: str
     role: str
-    interval_seconds: int
+    interval_seconds: int | None
 
 
 @dataclass(frozen=True)
@@ -364,7 +364,11 @@ def collect_staging_evidence(
                 competition_key=str(row["competition_key"]),
                 season_key=str(row["season_key"]),
                 role=str(row["role"]),
-                interval_seconds=int(row["interval_seconds"]),
+                interval_seconds=(
+                    None
+                    if row["interval_seconds"] is None
+                    else int(row["interval_seconds"])
+                ),
             )
             for row in authority_rows
         ),
