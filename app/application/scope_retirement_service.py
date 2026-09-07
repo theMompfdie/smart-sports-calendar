@@ -178,11 +178,6 @@ class ScopeRetirementService:
             for r in appointments
         ):
             blockers.append("review_work_in_another_calendar")
-        pending_reviews = [
-            r
-            for r in appointments
-            if r["event_id"] is not None or r["desired_hash"] != r["applied_hash"]
-        ]
         transport = []
         if namespaces:
             if self.inbox_root is None:
@@ -210,11 +205,9 @@ class ScopeRetirementService:
             "unresolved_event_ids": unresolved,
             "batches_to_reject": batches,
             "inbox_transport_in_boundary": transport,
-            "review_plans_to_complete": plans,
+            "review_plans_to_preserve": plans,
             "review_appointments": appointments,
-            "status": ("retiring" if pending_reviews else "retired")
-            if inactive
-            else "active",
+            "status": "retired" if inactive else "active",
             "blockers": sorted(set(blockers)),
         }
         report["preview_sha256"] = hashlib.sha256(encoded(report).encode()).hexdigest()
@@ -272,12 +265,6 @@ class ScopeRetirementService:
             tx.deactivate(job_key, encoded(decision), now)
             for namespace in report["namespaces"]:
                 tx.reject_batches(now, namespace)
-                plan = {
-                    "state": "complete",
-                    "tasks": [],
-                    "completion_note": "Scope retired: " + decision["evidence_ref"],
-                }
-                tx.complete_review_plan(encoded(plan), now, namespace)
             self._audit(tx, job_key, "deactivate", decision, now)
             result = self._preview(tx, job_key, decision)
         self._log(job_key, "deactivate", decision, now)
@@ -298,11 +285,6 @@ class ScopeRetirementService:
                 )
             if row["reactivated_at"] is not None:
                 return
-            report = self._preview(tx, job_key, json.loads(row["decision_json"]))
-            if report["status"] != "retired":
-                raise ValueError(
-                    "Complete pending review retirement before reactivation."
-                )
             # Authority stayed enabled and reserved throughout retirement. Existing
             # SQL overlap validation therefore remains in force, even after restart.
             now = self._now().isoformat()

@@ -46,7 +46,7 @@ automated ingestion.
 Version 1.0 development adds reviewed preview, deactivation and reactivation of
 completed competition seasons or existing disjoint stage grants. Retirement
 survives restart, preserves historical SQLite/Outlook fixtures and stable
-mappings, and explicitly ends only matching manual review appointments.
+mappings, and preserves matching manual review appointments unchanged.
 See the [operator cookbook](docs/season-retirement-cookbook.md) for completion
 evidence, grace periods, pending imports, Docker maintenance and late corrections.
 The published v0.9.0-beta.1 image does not include this feature. Isolated live

@@ -20,11 +20,14 @@ preview/apply rejects their new work, and routine sports-event synchronization
 excludes their historical fixtures. Other seasons and disjoint stages continue.
 Retirement is never fixture cancellation, deletion, or missing-snapshot evidence.
 
-Only matching manual review plans become explicitly complete. Their dedicated
-review appointments are removed by the existing retryable review lifecycle in
-the configured SMART calendar. Fixture events, participant reminder rules,
-source mappings, provenance, immutable import receipts and historical review
-records remain. Reactivation does not automatically restore an old review plan.
+Matching manual review plans and their Outlook appointments remain unchanged.
+The retirement gate excludes both from routine synchronization, including
+pending review writes. No review appointment is created, updated or deleted
+while its scope is retired. This preserves the operator's calendar history of
+manual update reminders for planning the next season. Import payloads, immutable
+receipts and provenance retain the evidence of what was actually imported;
+a reminder appointment alone is not proof that an import happened.
+Explicit reactivation resumes the retained plans and any pending review work.
 
 ## Completion decision and correction period
 
@@ -142,7 +145,7 @@ retirement preview --decision "$decision"
 Inspect the complete preview, keeping it private. It shows the selected
 assignment and stages, affected routine jobs and namespaces, preserved fixture
 IDs, unresolved fixtures, pending Graph work, packages to reject, review plans
-to complete, existing review appointments with their calendar/event IDs, and
+to preserve, existing review appointments with their calendar/event IDs, and
 unprocessed inbox requests in the boundary. An unavailable, mismatched or
 uninspectable manual inbox blocks retirement. Files arriving after the decision
 are rejected by the worker while the scope remains retired.
@@ -164,17 +167,14 @@ Changing relevant database state between preview and deactivate invalidates
 the preview. Restart, resolve the reported blocker, stop again and review a new
 preview as necessary. Do not blindly retry an old approval.
 
-After restart, inspect normal logs and the dedicated review appointments.
-The scope is already inactive for routine imports and fixture synchronization.
-Its status is `retiring` while matching review appointments still have pending
-Graph work; failed removals retry through the normal worker. Keep
-`MANUAL_IMPORT_ROOT` enabled and the trusted profiles present for that recovery.
-When review work has converged, stop briefly and repeat `preview` with the same
-decision file to verify `status: retired`, then start the owner again.
+After restart, inspect normal logs and verify that fixture and review
+appointments retain their IDs and content. The scope becomes `retired` in the
+maintenance transaction; no Graph cleanup is scheduled. Keep trusted profiles
+and the original source configuration present.
 
-Repeating `deactivate` with the same decision is idempotent, including during
-review cleanup. It does not create another audit decision or repeat fixture
-writes. A different decision for an already retired scope is rejected.
+Repeating `deactivate` with the same decision is idempotent. It does not create
+another audit decision or write calendar events. A different decision for an
+already retired scope is rejected.
 
 ## Pending packages and interruption policy
 
@@ -186,7 +186,7 @@ writes. A different decision for an already retired scope is rejected.
 | Inbox transport not processed yet | Reject when processed while retired |
 | Import currently applying | Owner lock refuses concurrent retirement |
 | Fixture Graph work outstanding | Block until recovery and convergence |
-| Matching review appointment | Complete plan; retry removal after restart |
+| Matching review appointment | Preserve unchanged; freeze pending writes |
 
 Old transport files are retained by the existing inbox lifecycle. Redelivery of
 an APPLIED package remains an idempotent receipt lookup. A received/rejected
@@ -194,17 +194,14 @@ package cannot regain approval while the scope is retired. After explicit
 reactivation, a fresh preview and approval are necessary before applying any
 previously rejected package; old approvals were cleared.
 
-The gate, package rejections, plan completion and audit entry commit together.
-A pre-commit failure rolls them all back. A post-commit interruption leaves the
-gate active and review cleanup recoverable. No distributed SQLite/Graph
-transaction is assumed. The immutable accepted receipt retains the originally
-accepted review plan; the current plan and retirement audit record its explicit
-completion separately.
+The gate, package rejections and audit entry commit together. A pre-commit
+failure rolls them all back. A post-commit interruption leaves the gate active
+without scheduling Graph mutations. Current review plans, appointments and
+immutable accepted receipts remain unchanged.
 
 ## Late correction and next season
 
-Complete pending review retirement first. Then stop the owner and reactivate
-the same job with non-secret correction evidence:
+Stop the owner and reactivate the same job with non-secret correction evidence:
 
 ```bash
 retirement reactivate --operator-ref operator-local \
@@ -213,10 +210,10 @@ docker compose --env-file "$env_file" -p "$stack" start calendar-sync
 ```
 
 The existing authority and stable fixture IDs are reused. Automated jobs resume;
-manual corrections require the usual new preview and approval. Submit a reviewed
-active review plan if further update appointments are needed. Old completed
-plans and rejected package approvals are not restored automatically. Retire again
-with a new reviewed decision and correction period after corrections converge.
+manual corrections require the usual new preview and approval. Retained review
+plans and pending review operations resume, so inspect them before reactivation.
+Rejected package approvals remain invalid. Retire again with a new reviewed
+decision and correction period after corrections converge.
 
 A future season is an explicit new configuration/catalogue activation using a
 new job or manual namespace and its qualified season/stage profile, following
@@ -231,7 +228,7 @@ feature does not invent future-season catalogue entries or qualify a provider.
 Before release, use an isolated staging database and SMART calendar to verify:
 
 1. Preview and deactivate an actually completed, reviewed boundary.
-2. Confirm review cleanup, retained fixture Outlook IDs and historical content.
+2. Confirm unchanged fixture and review Outlook IDs and historical content.
 3. Restart and repeat unchanged deactivation without new Graph writes.
 4. Verify another season or disjoint stage continues importing normally.
 5. Reactivate, apply a reviewed correction with retained IDs, and converge.
@@ -242,7 +239,7 @@ Automated tests use synthetic data and mocked Graph. They do not replace this
 live release gate. No live retirement or production deployment is performed by
 implementing the feature or running its unit tests.
 
-Normal undo is explicit reactivation after review cleanup. An older application
+Normal undo is explicit reactivation. An older application
 image does not understand migration 015's effective gate and must not run on
 this database after retirement. For a version rollback, stop the owner and
 restore the complete matching pre-upgrade backup using the existing rollback

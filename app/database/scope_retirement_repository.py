@@ -188,17 +188,6 @@ class ScopeRetirementTransaction:
             (timestamp, namespace),
         )
 
-    def complete_review_plan(
-        self, plan_json: str, timestamp: str, namespace: str
-    ) -> sqlite3.Cursor:
-        return self._connection.execute(
-            """
-            UPDATE manual_review_plans SET plan_json=?,updated_at=? WHERE
-            namespace=?
-            """,
-            (plan_json, timestamp, namespace),
-        )
-
     def reactivate(self, timestamp: str, job_key: str) -> sqlite3.Cursor:
         return self._connection.execute(
             "UPDATE scope_retirements SET reactivated_at=? WHERE job_key=?",
