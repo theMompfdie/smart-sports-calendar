@@ -111,7 +111,7 @@ def test_probe_reads_existing_database_without_changing_bytes(tmp_path):
         env=env,
     )
     payload = json.loads(result.stdout)
-    assert payload["schema_version"] == SCHEMA
+    assert payload["schema_version"] == "015_scope_retirement"
     assert payload["quick_check_ok"]
     assert payload["manual_import_profiles_count"] == 0
     assert "private-test-secret" not in result.stdout

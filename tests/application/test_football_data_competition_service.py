@@ -6,17 +6,12 @@ from app.application.football_data_premier_league_service import (
     FootballDataCompetitionService,
 )
 from app.config.settings import FootballDataSettings
-from app.database.competitions_catalog import initialize_competitions_catalog
 from app.database.competitions_repository import CompetitionsRepository
 from app.database.data_sources_repository import DataSourcesRepository
-from app.database.database import Database
-from app.database.participants_catalog import initialize_participants_catalog
 from app.database.participants_repository import ParticipantsRepository
 from app.database.season_participants_repository import SeasonParticipantsRepository
-from app.database.seasons_catalog import initialize_seasons_catalog
 from app.database.seasons_repository import SeasonsRepository
 from app.database.source_mappings_repository import SourceMappingsRepository
-from app.database.sports_catalog import initialize_sports_catalog
 from app.database.sports_repository import SportsRepository
 from app.domain.competition_lifecycle import CompetitionFormat
 from app.providers.football_data.profiles import (
@@ -26,6 +21,7 @@ from app.providers.football_data.profiles import (
     FootballDataCompetitionProfile,
 )
 
+from tests.catalog_support import CatalogInitializer
 from tests.providers.football_data.support import snapshot
 
 
@@ -42,24 +38,16 @@ class SnapshotAdapter:
 def create_service(
     tmp_path: Path,
     profile: FootballDataCompetitionProfile,
+    *,
+    initialize_test_catalog: CatalogInitializer,
 ) -> tuple[FootballDataCompetitionService, Path]:
     database_path = tmp_path / "sports.db"
-    Database(database_path).initialize()
+    initialize_test_catalog(database_path)
     sports = SportsRepository(database_path)
     competitions = CompetitionsRepository(database_path)
     seasons = SeasonsRepository(database_path)
     participants = ParticipantsRepository(database_path)
     memberships = SeasonParticipantsRepository(database_path)
-    initialize_sports_catalog(sports)
-    initialize_competitions_catalog(competitions, sports)
-    initialize_seasons_catalog(seasons, competitions, sports)
-    initialize_participants_catalog(
-        participants,
-        memberships,
-        sports,
-        competitions,
-        seasons,
-    )
     return (
         FootballDataCompetitionService(
             settings=FootballDataSettings(enabled=True, api_key="test-token"),
@@ -90,8 +78,12 @@ def test_service_normalizes_reviewed_competition_profile(
     profile: FootballDataCompetitionProfile,
     expected_fixtures: int,
     expected_mappings: int,
+    *,
+    initialize_test_catalog: CatalogInitializer,
 ) -> None:
-    service, database_path = create_service(tmp_path, profile)
+    service, database_path = create_service(
+        tmp_path, profile, initialize_test_catalog=initialize_test_catalog
+    )
 
     batch = service.fetch_normalized_snapshot()
 
@@ -109,8 +101,14 @@ def test_service_normalizes_reviewed_competition_profile(
     assert mapping_types == [("competition",), ("participant",), ("season",)]
 
 
-def test_service_rejects_adapter_for_another_competition(tmp_path: Path) -> None:
-    _, database_path = create_service(tmp_path, PREMIER_LEAGUE_PROFILE)
+def test_service_rejects_adapter_for_another_competition(
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
+) -> None:
+    _, database_path = create_service(
+        tmp_path,
+        PREMIER_LEAGUE_PROFILE,
+        initialize_test_catalog=initialize_test_catalog,
+    )
 
     with pytest.raises(ValueError, match="profiles differ"):
         FootballDataCompetitionService(

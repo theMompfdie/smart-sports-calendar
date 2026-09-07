@@ -11,6 +11,7 @@ from app.application.api_football_import_orchestrator import (
 from app.graph.client import GraphClientError
 from app.providers.api_football.transport import HttpResponse
 
+from tests.catalog_support import CatalogInitializer
 from tests.integration.provider_outlook_support import (
     CALENDAR_ID,
     PROVIDER_SECRET,
@@ -20,14 +21,19 @@ from tests.integration.provider_outlook_support import (
 )
 
 
-def create_harness(tmp_path: Path) -> ProviderOutlookHarness:
-    return ProviderOutlookHarness.create(tmp_path / "provider-outlook-e2e.db")
+def create_harness(
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
+) -> ProviderOutlookHarness:
+    return ProviderOutlookHarness.create(
+        tmp_path / "provider-outlook-e2e.db",
+        initialize_test_catalog=initialize_test_catalog,
+    )
 
 
 def test_payload_to_sqlite_to_graph_is_idempotent_and_updates_in_place(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
-    harness = create_harness(tmp_path)
+    harness = create_harness(tmp_path, initialize_test_catalog=initialize_test_catalog)
     first_fixture = fixture_payload(900001)
     harness.transport.set_fixtures([first_fixture])
 
@@ -138,9 +144,9 @@ def test_payload_to_sqlite_to_graph_is_idempotent_and_updates_in_place(
 
 
 def test_lifecycle_removal_and_reappearance_preserve_stable_identity(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
-    harness = create_harness(tmp_path)
+    harness = create_harness(tmp_path, initialize_test_catalog=initialize_test_catalog)
     scheduled = fixture_payload(900001)
     harness.transport.set_fixtures([scheduled])
     harness.run_cycle()
@@ -244,8 +250,10 @@ def test_lifecycle_removal_and_reappearance_preserve_stable_identity(
 def test_failed_collections_do_not_mutate_or_handoff_and_retry_converges(
     tmp_path: Path,
     caplog: pytest.LogCaptureFixture,
+    *,
+    initialize_test_catalog: CatalogInitializer,
 ) -> None:
-    harness = create_harness(tmp_path)
+    harness = create_harness(tmp_path, initialize_test_catalog=initialize_test_catalog)
     caplog.set_level(logging.DEBUG, logger=harness.logger.name)
     first_fixture = fixture_payload(900001)
     second_fixture = fixture_payload(900004)
@@ -352,8 +360,10 @@ def test_persistence_and_finalization_failures_are_terminal_and_retryable(
     trigger_name: str,
     trigger_sql: str,
     persisted_before_retry: int,
+    *,
+    initialize_test_catalog: CatalogInitializer,
 ) -> None:
-    harness = create_harness(tmp_path)
+    harness = create_harness(tmp_path, initialize_test_catalog=initialize_test_catalog)
     harness.transport.set_fixtures([fixture_payload(900001)])
     with sqlite3.connect(harness.database_path) as connection:
         connection.executescript(trigger_sql)
@@ -382,9 +392,9 @@ def test_persistence_and_finalization_failures_are_terminal_and_retryable(
 
 
 def test_graph_failure_keeps_committed_import_and_retries_without_duplicates(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
-    harness = create_harness(tmp_path)
+    harness = create_harness(tmp_path, initialize_test_catalog=initialize_test_catalog)
     harness.transport.set_fixtures([fixture_payload(900001)])
     harness.graph.create_failure = GraphClientError("Mocked Graph unavailable.")
 

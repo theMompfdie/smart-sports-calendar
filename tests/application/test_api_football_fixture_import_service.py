@@ -33,6 +33,7 @@ from app.providers.api_football.exceptions import ProviderIntegrityError
 from tests.application.test_api_football_fixture_normalization_service import (
     create_context,
 )
+from tests.catalog_support import CatalogInitializer
 
 OBSERVED_AT = datetime(2026, 8, 8, 12, tzinfo=UTC)
 
@@ -73,9 +74,9 @@ def scope(
 
 
 def test_import_persists_stable_events_mappings_and_participants(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
-    context = create_context(tmp_path)
+    context = create_context(tmp_path, initialize_test_catalog=initialize_test_catalog)
     fixtures = context.service.normalize_current_premier_league()
 
     result = create_importer(context.database_path).import_fixtures(
@@ -128,8 +129,10 @@ def test_import_persists_stable_events_mappings_and_participants(
     }
 
 
-def test_repeated_identical_import_is_a_write_free_skip(tmp_path: Path) -> None:
-    context = create_context(tmp_path)
+def test_repeated_identical_import_is_a_write_free_skip(
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
+) -> None:
+    context = create_context(tmp_path, initialize_test_catalog=initialize_test_catalog)
     fixtures = context.service.normalize_current_premier_league()
     importer = create_importer(context.database_path)
     initial = scope(context.competition_id, context.season_id)
@@ -154,9 +157,9 @@ def test_repeated_identical_import_is_a_write_free_skip(tmp_path: Path) -> None:
 
 
 def test_import_persists_updates_and_removes_typed_operator_notice(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
-    context = create_context(tmp_path)
+    context = create_context(tmp_path, initialize_test_catalog=initialize_test_catalog)
     fixture = context.service.normalize_current_premier_league()[0]
     importer = create_importer(context.database_path)
     import_scope = scope(context.competition_id, context.season_id)
@@ -194,9 +197,9 @@ def test_import_persists_updates_and_removes_typed_operator_notice(
 
 
 def test_confirmed_kickoff_updates_but_tbd_preserves_known_time(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
-    context = create_context(tmp_path)
+    context = create_context(tmp_path, initialize_test_catalog=initialize_test_catalog)
     fixture = context.service.normalize_current_premier_league()[0]
     importer = create_importer(context.database_path)
     import_scope = scope(context.competition_id, context.season_id)
@@ -229,9 +232,9 @@ def test_confirmed_kickoff_updates_but_tbd_preserves_known_time(
 
 
 def test_canonical_updates_reconcile_participants_without_changing_identity(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
-    context = create_context(tmp_path)
+    context = create_context(tmp_path, initialize_test_catalog=initialize_test_catalog)
     fixtures = context.service.normalize_current_premier_league()
     fixture = fixtures[0]
     replacement_participants = (
@@ -283,9 +286,9 @@ def test_canonical_updates_reconcile_participants_without_changing_identity(
 
 
 def test_unresolved_participant_defers_until_same_fixture_identity_resolves(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
-    context = create_context(tmp_path)
+    context = create_context(tmp_path, initialize_test_catalog=initialize_test_catalog)
     fixture = context.service.normalize_current_premier_league()[0]
     unresolved = replace(
         fixture,
@@ -345,9 +348,9 @@ def test_unresolved_participant_defers_until_same_fixture_identity_resolves(
 
 
 def test_hybrid_fixture_persists_typed_lifecycle_metadata_without_new_identity(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
-    context = create_context(tmp_path)
+    context = create_context(tmp_path, initialize_test_catalog=initialize_test_catalog)
     with sqlite3.connect(context.database_path) as connection:
         connection.execute(
             "UPDATE competitions SET competition_type = ? WHERE id = ?",
@@ -400,9 +403,9 @@ def test_hybrid_fixture_persists_typed_lifecycle_metadata_without_new_identity(
 
 
 def test_provider_metadata_cannot_override_reserved_tournament_lifecycle(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
-    context = create_context(tmp_path)
+    context = create_context(tmp_path, initialize_test_catalog=initialize_test_catalog)
     fixture = replace(
         context.service.normalize_current_premier_league()[0],
         metadata={"tournament_lifecycle": {"leg": "provider-controlled"}},
@@ -421,9 +424,9 @@ def test_provider_metadata_cannot_override_reserved_tournament_lifecycle(
 
 
 def test_provider_metadata_cannot_override_typed_operator_notice(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
-    context = create_context(tmp_path)
+    context = create_context(tmp_path, initialize_test_catalog=initialize_test_catalog)
     fixture = replace(
         context.service.normalize_current_premier_league()[0],
         metadata={"operator_notice": "Unvalidated provider text"},
@@ -442,9 +445,9 @@ def test_provider_metadata_cannot_override_typed_operator_notice(
 
 
 def test_complete_hybrid_round_rejects_mixed_stage_kind_before_writes(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
-    context = create_context(tmp_path)
+    context = create_context(tmp_path, initialize_test_catalog=initialize_test_catalog)
     fixture = replace(
         context.service.normalize_current_premier_league()[0],
         stage="knockout",
@@ -479,9 +482,9 @@ def test_complete_hybrid_round_rejects_mixed_stage_kind_before_writes(
 
 
 def test_complete_hybrid_round_reconciliation_stays_inside_exact_boundary(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
-    context = create_context(tmp_path)
+    context = create_context(tmp_path, initialize_test_catalog=initialize_test_catalog)
     with sqlite3.connect(context.database_path) as connection:
         connection.execute(
             "UPDATE competitions SET competition_type = ? WHERE id = ?",
@@ -557,9 +560,9 @@ def test_complete_hybrid_round_reconciliation_stays_inside_exact_boundary(
 
 
 def test_cancellation_timestamp_is_stable_and_correction_reactivates(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
-    context = create_context(tmp_path)
+    context = create_context(tmp_path, initialize_test_catalog=initialize_test_catalog)
     fixture = context.service.normalize_current_premier_league()[0]
     importer = create_importer(context.database_path)
     import_scope = scope(context.competition_id, context.season_id)
@@ -591,9 +594,9 @@ def test_cancellation_timestamp_is_stable_and_correction_reactivates(
 
 
 def test_authoritative_removal_requires_two_distinct_observations_and_reactivates(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
-    context = create_context(tmp_path)
+    context = create_context(tmp_path, initialize_test_catalog=initialize_test_catalog)
     fixtures = context.service.normalize_current_premier_league()
     imported = tuple(fixture for fixture in fixtures if fixture.kickoff_confirmed)
     importer = create_importer(context.database_path)
@@ -680,8 +683,10 @@ def test_authoritative_removal_requires_two_distinct_observations_and_reactivate
     assert state_count == 0
 
 
-def test_partial_or_filtered_observations_cannot_remove_events(tmp_path: Path) -> None:
-    context = create_context(tmp_path)
+def test_partial_or_filtered_observations_cannot_remove_events(
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
+) -> None:
+    context = create_context(tmp_path, initialize_test_catalog=initialize_test_catalog)
     fixtures = tuple(
         fixture
         for fixture in context.service.normalize_current_premier_league()
@@ -752,9 +757,9 @@ def test_partial_or_filtered_observations_cannot_remove_events(tmp_path: Path) -
 
 
 def test_complete_round_removal_is_bounded_and_requires_distinct_observations(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
-    context = create_context(tmp_path)
+    context = create_context(tmp_path, initialize_test_catalog=initialize_test_catalog)
     fixtures = tuple(
         fixture
         for fixture in context.service.normalize_current_premier_league()
@@ -859,9 +864,9 @@ def test_complete_round_removal_is_bounded_and_requires_distinct_observations(
 
 
 def test_complete_stage_reconciles_all_rounds_inside_only_that_stage(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
-    context = create_context(tmp_path)
+    context = create_context(tmp_path, initialize_test_catalog=initialize_test_catalog)
     fixtures = tuple(
         fixture
         for fixture in context.service.normalize_current_premier_league()
@@ -928,9 +933,9 @@ def test_complete_stage_reconciles_all_rounds_inside_only_that_stage(
 
 
 def test_non_authoritative_complete_round_cannot_create_removal_evidence(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
-    context = create_context(tmp_path)
+    context = create_context(tmp_path, initialize_test_catalog=initialize_test_catalog)
     fixtures = tuple(
         replace(fixture, stage="knockout", round_name="round_of_16")
         for fixture in context.service.normalize_current_premier_league()[:2]
@@ -1026,8 +1031,10 @@ def test_complete_cup_scope_rejects_empty_or_mixed_observations(
     stage: str | None,
     round_name: str | None,
     message: str,
+    *,
+    initialize_test_catalog: CatalogInitializer,
 ) -> None:
-    context = create_context(tmp_path)
+    context = create_context(tmp_path, initialize_test_catalog=initialize_test_catalog)
     fixture = context.service.normalize_current_premier_league()[0]
     supplied = tuple(
         replace(fixture, external_id=f"cup-{value}", stage=value, round_name=value)
@@ -1056,8 +1063,10 @@ def test_complete_cup_scope_rejects_empty_or_mixed_observations(
         )
 
 
-def test_import_scope_format_must_match_canonical_competition(tmp_path: Path) -> None:
-    context = create_context(tmp_path)
+def test_import_scope_format_must_match_canonical_competition(
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
+) -> None:
+    context = create_context(tmp_path, initialize_test_catalog=initialize_test_catalog)
     fixture = context.service.normalize_current_premier_league()[0]
     import_scope = FixtureImportScope(
         competition_id=context.competition_id,
@@ -1077,8 +1086,10 @@ def test_import_scope_format_must_match_canonical_competition(tmp_path: Path) ->
         )
 
 
-def test_mapping_conflict_fails_without_changing_existing_event(tmp_path: Path) -> None:
-    context = create_context(tmp_path)
+def test_mapping_conflict_fails_without_changing_existing_event(
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
+) -> None:
+    context = create_context(tmp_path, initialize_test_catalog=initialize_test_catalog)
     fixture = context.service.normalize_current_premier_league()[0]
     events = SportsEventsRepository(context.database_path)
     existing = events.upsert(
@@ -1102,8 +1113,10 @@ def test_mapping_conflict_fails_without_changing_existing_event(tmp_path: Path) 
     assert events.get_by_id(existing.id) == existing
 
 
-def test_failed_participant_write_rolls_back_event_and_mapping(tmp_path: Path) -> None:
-    context = create_context(tmp_path)
+def test_failed_participant_write_rolls_back_event_and_mapping(
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
+) -> None:
+    context = create_context(tmp_path, initialize_test_catalog=initialize_test_catalog)
     fixture = context.service.normalize_current_premier_league()[0]
     invalid = replace(
         fixture,

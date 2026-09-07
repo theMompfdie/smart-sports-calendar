@@ -58,7 +58,7 @@ def test_initialize_seasons_catalog_creates_reviewed_seasons(
         sports_repository=sports_repository,
     )
 
-    assert len(seasons) == 13
+    assert len(seasons) == 14
     football = sports_repository.get_by_key("football")
 
     assert football is not None

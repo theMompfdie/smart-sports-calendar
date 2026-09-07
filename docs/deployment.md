@@ -1,16 +1,31 @@
 # Deployment Guide
 
-This document describes how to build, deploy, and maintain the SMART Sports Calendar application.
+For Version 1.0 follow the [installation and upgrade guide](installation.md).
+This reference retains detailed configuration and historical phase procedures;
+use the current guide for full-state backup and candidate acceptance.
 
 ---
 
 ## Phase 9 upgrade boundary
 
 For the accepted manual-import candidate, use the
-[v0.9.0-beta.1 checklist](v0.9.0-beta.1-release-checklist.md#upgrade-and-rollback)
+[v0.9.0-beta.1
+checklist](v0.9.0-beta.1-release-checklist.md#upgrade-and-rollback)
 for full-state backup, migrations 013/014, private profiles, fresh target
 approval and rollback. Do not migrate staging Outlook mappings into production.
-Publishing the beta does not clear production blocker #233.
+Issue #233 recovery is accepted; production promotion remains separate.
+
+## Completed-season maintenance (unreleased Version 1.0)
+
+Migration 015 adds durable effective retirement without changing historical
+source grants or fixture data. Follow the
+[retirement cookbook](season-retirement-cookbook.md) for the stopped-owner
+preview/deactivate/reactivate workflow, pending-work recovery, retained-history
+checks and rollback boundary. Keep the original source configuration and manual
+profiles present across restart. Do not downgrade an image on a retired
+database:
+older images ignore this gate. Live lifecycle acceptance completed under #267
+on staging candidate `59dd553`; final release gates remain in #201.
 
 ## Architecture
 
@@ -18,20 +33,20 @@ The application is designed to run as a Docker container.
 
 ```text
 GitHub Repository
-        │
-        ▼
+        â”‚
+        â–¼
 Docker Build
-        │
-        ▼
+        â”‚
+        â–¼
 Docker Image
-        │
-        ▼
+        â”‚
+        â–¼
 Portainer Stack
-        │
-        ▼
+        â”‚
+        â–¼
 Persistent Docker Volume
-        │
-        ▼
+        â”‚
+        â–¼
 SQLite Database
 ```
 
@@ -114,46 +129,92 @@ SOURCE_JOBS_JSON=[{"job_key":"api-football-premier-league","source_key":"api_foo
 
 The complete provider settings are:
 
-| Setting | Default | Validation and purpose |
-| --- | --- | --- |
-| `API_FOOTBALL_ENABLED` | `false` | Explicit opt-in; accepts the documented boolean values |
-| `API_FOOTBALL_API_KEY` | empty | Required only when the provider is enabled; supplied through the deployment secret store |
-| `API_FOOTBALL_BASE_URL` | API-Football v3 HTTPS URL | HTTPS only; credentials, query strings, and fragments are rejected |
-| `API_FOOTBALL_CONNECT_TIMEOUT_SECONDS` | `5` | Positive finite connection timeout |
-| `API_FOOTBALL_READ_TIMEOUT_SECONDS` | `30` | Positive finite response timeout |
-| `API_FOOTBALL_MAX_ATTEMPTS` | `3` | Positive integer, maximum `10` |
-| `API_FOOTBALL_RETRY_BASE_DELAY_SECONDS` | `1` | Positive finite first backoff delay |
-| `API_FOOTBALL_RETRY_MAX_DELAY_SECONDS` | `30` | Positive finite cap, not lower than the base delay |
-| `API_FOOTBALL_IMPORT_INTERVAL_SECONDS` | `3600` | Legacy positive provider interval; an explicit source job's `interval_seconds` is authoritative |
-| `SOURCE_JOBS_JSON` | `[]` | Provider-neutral job array; every active competition/season scope requires exactly one authority and every enabled adapter requires a matching job |
-| `FOOTBALL_DATA_ENABLED` | `false` | Enables the approved API v4 Premier League/Bundesliga adapter; requires at least one matching authoritative job |
-| `FOOTBALL_DATA_API_KEY` | empty | Secret API token; required only when enabled and never stored in Git |
-| `FOOTBALL_DATA_BASE_URL` | `https://api.football-data.org` | HTTPS-only provider origin without credentials, query, or fragment |
-| `FOOTBALL_DATA_MAX_ATTEMPTS` | `3` | Bounded transient retry count, maximum `10` |
-| `FOOTBALL_DATA_REQUESTS_PER_MINUTE` | `10` | Must not exceed the approved free-plan limit |
-| `FOOTBALL_DATA_MINIMUM_REQUEST_INTERVAL_SECONDS` | `6.1` | Enforces the configured per-minute request budget |
-| `OPENLIGADB_ENABLED` | `false` | Enables the public API v1 DFB-Pokal and/or 2. Bundesliga adapters; requires at least one matching authoritative job |
-| `OPENLIGADB_BASE_URL` | `https://api.openligadb.de` | HTTPS-only public provider origin without credentials, query, or fragment |
-| `OPENLIGADB_CONNECT_TIMEOUT_SECONDS` | `5` | Positive finite connection timeout |
-| `OPENLIGADB_READ_TIMEOUT_SECONDS` | `30` | Positive finite response timeout |
-| `OPENLIGADB_MAX_ATTEMPTS` | `3` | Bounded transient retry count, maximum `10` |
-| `OPENLIGADB_RETRY_BASE_DELAY_SECONDS` | `1` | Positive finite first backoff delay |
-| `OPENLIGADB_RETRY_MAX_DELAY_SECONDS` | `30` | Positive finite cap, not lower than the base delay |
-| `OPENLIGADB_MINIMUM_REQUEST_INTERVAL_SECONDS` | `1` | Positive minimum spacing between public provider requests |
-| `NFLVERSE_ENABLED` | `false` | Enables the approved public nflverse NFL 2026 regular-season adapter; requires exactly one matching authoritative job |
-| `NFLVERSE_CONNECT_TIMEOUT_SECONDS` | `5` | Positive finite connection timeout |
-| `NFLVERSE_READ_TIMEOUT_SECONDS` | `30` | Positive finite response timeout |
-| `NFLVERSE_MAX_ATTEMPTS` | `3` | Positive bounded request-attempt count, maximum `10` |
-| `NFLVERSE_MAX_REDIRECTS` | `3` | Non-negative bounded redirect count, maximum `10` |
-| `NFLVERSE_MINIMUM_POLL_INTERVAL_SECONDS` | `21600` | Enforces the qualified minimum six-hour polling interval |
-| `OEFB_ICAL_ENABLED` | `false` | Enables the private official ÖFB-Cup iCalendar authority; requires its matching authoritative job |
-| `OEFB_ICAL_FEED_URL` | empty | Required only when enabled; opaque HTTPS subscription URL supplied through the deployment secret store and never logged |
-| `OEFB_ICAL_CONNECT_TIMEOUT_SECONDS` | `5` | Positive finite connection timeout |
-| `OEFB_ICAL_READ_TIMEOUT_SECONDS` | `30` | Positive finite response timeout |
-| `OEFB_ICAL_MAX_ATTEMPTS` | `3` | Bounded transient retry count, maximum `10` |
-| `OEFB_ICAL_RETRY_BASE_DELAY_SECONDS` | `1` | Positive finite first backoff delay |
-| `OEFB_ICAL_RETRY_MAX_DELAY_SECONDS` | `30` | Positive finite cap, not lower than the base delay |
-| `OEFB_ICAL_MINIMUM_POLL_INTERVAL_SECONDS` | `21600` | Minimum six-hour poll interval required by the qualified feed contract |
+- `API_FOOTBALL_ENABLED`: Default: `false`; Validation and purpose: Explicit
+  opt-in; accepts the documented boolean values.
+- `API_FOOTBALL_API_KEY`: Default: empty; Validation and purpose: Required only
+  when the provider is enabled; supplied through the deployment secret store.
+- `API_FOOTBALL_BASE_URL`: Default: API-Football v3 HTTPS URL; Validation and
+  purpose: HTTPS only; credentials, query strings, and fragments are rejected.
+- `API_FOOTBALL_CONNECT_TIMEOUT_SECONDS`: Default: `5`; Validation and purpose:
+  Positive finite connection timeout.
+- `API_FOOTBALL_READ_TIMEOUT_SECONDS`: Default: `30`; Validation and purpose:
+  Positive finite response timeout.
+- `API_FOOTBALL_MAX_ATTEMPTS`: Default: `3`; Validation and purpose: Positive
+  integer, maximum `10`.
+- `API_FOOTBALL_RETRY_BASE_DELAY_SECONDS`: Default: `1`; Validation and
+  purpose: Positive finite first backoff delay.
+- `API_FOOTBALL_RETRY_MAX_DELAY_SECONDS`: Default: `30`; Validation and
+  purpose: Positive finite cap, not lower than the base delay.
+- `API_FOOTBALL_IMPORT_INTERVAL_SECONDS`: Default: `3600`; Validation and
+  purpose: Legacy positive provider interval; an explicit source job's
+  `interval_seconds` is authoritative.
+- `SOURCE_JOBS_JSON`: Default: `[]`; Validation and purpose: Provider-neutral
+  job array; every active competition/season scope requires exactly one
+  authority and every enabled adapter requires a matching job.
+- `FOOTBALL_DATA_ENABLED`: Default: `false`; Validation and purpose: Enables
+  the approved API v4 Premier League/Bundesliga adapter; requires at least one
+  matching authoritative job.
+- `FOOTBALL_DATA_API_KEY`: Default: empty; Validation and purpose: Secret API
+  token; required only when enabled and never stored in Git.
+- `FOOTBALL_DATA_BASE_URL`: Default: `https://api.football-data.org`;
+  Validation and purpose: HTTPS-only provider origin without credentials,
+  query, or fragment.
+- `FOOTBALL_DATA_MAX_ATTEMPTS`: Default: `3`; Validation and purpose: Bounded
+  transient retry count, maximum `10`.
+- `FOOTBALL_DATA_REQUESTS_PER_MINUTE`: Default: `10`; Validation and purpose:
+  Must not exceed the approved free-plan limit.
+- `FOOTBALL_DATA_MINIMUM_REQUEST_INTERVAL_SECONDS`: Default: `6.1`; Validation
+  and purpose: Enforces the configured per-minute request budget.
+- `OPENLIGADB_ENABLED`: Default: `false`; Validation and purpose: Enables the
+  public API v1 DFB-Pokal and/or 2. Bundesliga adapters; requires at least one
+  matching authoritative job.
+- `OPENLIGADB_BASE_URL`: Default: `https://api.openligadb.de`; Validation and
+  purpose: HTTPS-only public provider origin without credentials, query, or
+  fragment.
+- `OPENLIGADB_CONNECT_TIMEOUT_SECONDS`: Default: `5`; Validation and purpose:
+  Positive finite connection timeout.
+- `OPENLIGADB_READ_TIMEOUT_SECONDS`: Default: `30`; Validation and purpose:
+  Positive finite response timeout.
+- `OPENLIGADB_MAX_ATTEMPTS`: Default: `3`; Validation and purpose: Bounded
+  transient retry count, maximum `10`.
+- `OPENLIGADB_RETRY_BASE_DELAY_SECONDS`: Default: `1`; Validation and purpose:
+  Positive finite first backoff delay.
+- `OPENLIGADB_RETRY_MAX_DELAY_SECONDS`: Default: `30`; Validation and purpose:
+  Positive finite cap, not lower than the base delay.
+- `OPENLIGADB_MINIMUM_REQUEST_INTERVAL_SECONDS`: Default: `1`; Validation and
+  purpose: Positive minimum spacing between public provider requests.
+- `NFLVERSE_ENABLED`: Default: `false`; Validation and purpose: Enables the
+  approved public nflverse NFL 2026 regular-season adapter; requires exactly
+  one matching authoritative job.
+- `NFLVERSE_CONNECT_TIMEOUT_SECONDS`: Default: `5`; Validation and purpose:
+  Positive finite connection timeout.
+- `NFLVERSE_READ_TIMEOUT_SECONDS`: Default: `30`; Validation and purpose:
+  Positive finite response timeout.
+- `NFLVERSE_MAX_ATTEMPTS`: Default: `3`; Validation and purpose: Positive
+  bounded request-attempt count, maximum `10`.
+- `NFLVERSE_MAX_REDIRECTS`: Default: `3`; Validation and purpose: Non-negative
+  bounded redirect count, maximum `10`.
+- `NFLVERSE_MINIMUM_POLL_INTERVAL_SECONDS`: Default: `21600`; Validation and
+  purpose: Enforces the qualified minimum six-hour polling interval.
+- `OEFB_ICAL_ENABLED`: Default: `false`; Validation and purpose: Enables the
+  private official ÖFB-Cup iCalendar authority; requires its matching
+  authoritative job.
+- `OEFB_ICAL_FEED_URL`: Default: empty; Validation and purpose: Required only
+  when enabled; opaque HTTPS subscription URL supplied through the deployment
+  secret store and never logged.
+- `OEFB_ICAL_CONNECT_TIMEOUT_SECONDS`: Default: `5`; Validation and purpose:
+  Positive finite connection timeout.
+- `OEFB_ICAL_READ_TIMEOUT_SECONDS`: Default: `30`; Validation and purpose:
+  Positive finite response timeout.
+- `OEFB_ICAL_MAX_ATTEMPTS`: Default: `3`; Validation and purpose: Bounded
+  transient retry count, maximum `10`.
+- `OEFB_ICAL_RETRY_BASE_DELAY_SECONDS`: Default: `1`; Validation and purpose:
+  Positive finite first backoff delay.
+- `OEFB_ICAL_RETRY_MAX_DELAY_SECONDS`: Default: `30`; Validation and purpose:
+  Positive finite cap, not lower than the base delay.
+- `OEFB_ICAL_MINIMUM_POLL_INTERVAL_SECONDS`: Default: `21600`; Validation and
+  purpose: Minimum six-hour poll interval required by the qualified feed
+  contract.
 
 The JSON value must remain on one line in `.env` or Portainer. Adapter and job
 enablement must agree. The existing API-Football adapter supports only the
@@ -176,22 +237,38 @@ same calendar. Do not target a general-purpose personal calendar.
 
 ### Application and Microsoft Graph configuration
 
-| Setting | Default | Validation and purpose |
-| --- | --- | --- |
-| `TZ` | `Europe/Vienna` in Compose | Operational container timezone; canonical fixture timestamps remain UTC |
-| `DATABASE_PATH` | `/data/sports.db` | SQLite file inside the persistent volume |
-| `MEDIA_ROOT` | `/data/media` | Rights-controlled normalized assets; keep on the same isolated persistent volume as SQLite |
-| `LOG_LEVEL` | `INFO` | Python logging level; never use logs to expose configuration secrets |
-| `HEARTBEAT_INTERVAL` | `300` | Positive interval for the independent Outlook calendar synchronization job |
-| `M365_TENANT_ID` | none | Required deployment secret/reference for Graph authentication |
-| `M365_CLIENT_ID` | none | Required deployment secret/reference for Graph authentication |
-| `M365_CLIENT_SECRET` | none | Required secret; never commit or print it |
-| `M365_USER_ID` | none | Required target mailbox identifier |
-| `OUTLOOK_CALENDAR_NAME` | `SMART Sports Calendar` | Startup reachability lookup; must identify the dedicated target calendar |
-| `OUTLOOK_CALENDAR_ID` | none | Required immutable Graph calendar ID used by synchronization writes |
-| `SYNCHRONIZATION_BATCH_LIMIT` | `100` | Positive maximum per run; unmapped, retry/lifecycle, and revision-pending work runs first, then synced mappings rotate oldest-synchronized-first |
-| `GRAPH_BASE_URL` | Microsoft Graph v1.0 | Graph API root; use the documented production endpoint unless testing an isolated mock |
-| `GRAPH_STARTUP_VALIDATION_ENABLED` | `true` | Boolean; keep enabled for deployed environments |
+- `TZ`: Default: `Europe/Vienna` in Compose; Validation and purpose:
+  Operational container timezone; canonical fixture timestamps remain UTC.
+- `DATABASE_PATH`: Default: `/data/sports.db`; Validation and purpose: SQLite
+  file inside the persistent volume.
+- `MEDIA_ROOT`: Default: `/data/media`; Validation and purpose:
+  Rights-controlled normalized assets; keep on the same isolated persistent
+  volume as SQLite.
+- `LOG_LEVEL`: Default: `INFO`; Validation and purpose: Python logging level;
+  never use logs to expose configuration secrets.
+- `HEARTBEAT_INTERVAL`: Default: `300`; Validation and purpose: Positive
+  interval for the independent Outlook calendar synchronization job.
+- `M365_TENANT_ID`: Default: none; Validation and purpose: Required deployment
+  secret/reference for Graph authentication.
+- `M365_CLIENT_ID`: Default: none; Validation and purpose: Required deployment
+  secret/reference for Graph authentication.
+- `M365_CLIENT_SECRET`: Default: none; Validation and purpose: Required secret;
+  never commit or print it.
+- `M365_USER_ID`: Default: none; Validation and purpose: Required target
+  mailbox identifier.
+- `OUTLOOK_CALENDAR_NAME`: Default: `SMART Sports Calendar`; Validation and
+  purpose: Startup reachability lookup; must identify the dedicated target
+  calendar.
+- `OUTLOOK_CALENDAR_ID`: Default: none; Validation and purpose: Required
+  immutable Graph calendar ID used by synchronization writes.
+- `SYNCHRONIZATION_BATCH_LIMIT`: Default: `100`; Validation and purpose:
+  Positive maximum per run; unmapped, retry/lifecycle, and revision-pending
+  work runs first, then synced mappings rotate oldest-synchronized-first.
+- `GRAPH_BASE_URL`: Default: Microsoft Graph v1.0; Validation and purpose:
+  Graph API root; use the documented production endpoint unless testing an
+  isolated mock.
+- `GRAPH_STARTUP_VALIDATION_ENABLED`: Default: `true`; Validation and purpose:
+  Boolean; keep enabled for deployed environments.
 
 All settings are external. `.env.example` contains placeholders only. Use a
 local ignored `.env` file or Portainer secret/environment configuration for
@@ -426,16 +503,20 @@ The current development Compose definition scopes generated container,
 image, network, and volume names through the Compose project name. Portainer
 uses the stack name as that project boundary.
 
-| Setting | Staging | Production |
-| --- | --- | --- |
-| Portainer stack | `smart-calendar-staging` | `smart-calendar-prod` |
-| Source | `develop` during normal development | approved immutable release tag |
-| GitOps updates | enabled | disabled |
-| Deployment action | automatic | explicit manual promotion |
-| SQLite storage | dedicated staging volume | dedicated production volume |
-| Outlook target | dedicated non-production calendar | dedicated production calendar |
-| Secrets | staging-only Portainer configuration | production-only Portainer configuration |
-| Logs | staging container stream | production container stream |
+- Portainer stack: Staging: `smart-calendar-staging`; Production:
+  `smart-calendar-prod`.
+- Source: Staging: `develop` during normal development; Production: approved
+  immutable release tag.
+- GitOps updates: Staging: enabled; Production: disabled.
+- Deployment action: Staging: automatic; Production: explicit manual promotion.
+- SQLite storage: Staging: dedicated staging volume; Production: dedicated
+  production volume.
+- Outlook target: Staging: dedicated non-production calendar; Production:
+  dedicated production calendar.
+- Secrets: Staging: staging-only Portainer configuration; Production:
+  production-only Portainer configuration.
+- Logs: Staging: staging container stream; Production: production container
+  stream.
 
 Staging and production must not share writable storage, a database, an Outlook
 calendar, or secret configuration. The runtime lock is process-local and does
@@ -532,7 +613,8 @@ Production configuration:
 | `INSTANCE_NAME` | `prod` |
 | `IMAGE_TAG` | approved immutable release tag |
 
-Portainer clones the repository and builds the application locally using the provided Dockerfile.
+Portainer clones the repository and builds the application locally using the
+provided Dockerfile.
 
 ---
 
@@ -547,13 +629,15 @@ UID: 10001
 GID: 10001
 ```
 
-This follows Docker security best practices and limits the impact of a potential container compromise.
+This follows Docker security best practices and limits the impact of a
+potential container compromise.
 
 ---
 
 ## Existing Volumes
 
-When migrating from an older container that was running as root, the database volume may still belong to the root user.
+When migrating from an older container that was running as root, the database
+volume may still belong to the root user.
 
 Typical error:
 
@@ -609,9 +693,9 @@ or through Portainer:
 
 ```text
 Stacks
-→ smart-calendar-staging or smart-calendar-prod
-→ calendar-sync container
-→ Logs
+â†’ smart-calendar-staging or smart-calendar-prod
+â†’ calendar-sync container
+â†’ Logs
 ```
 
 No dedicated log volume is used.
@@ -630,7 +714,8 @@ For the Phase 5 six-authority candidate, follow
 and run the strict read-only profile after convergence:
 
 ```bash
-python -m app.operations.staging_evidence --database /data/sports.db --limit 50 --validate-phase-5-candidate
+python -m app.operations.staging_evidence \
+  --database /data/sports.db --limit 50 --validate-phase-5-candidate
 ```
 
 For the Phase 8 presentation, reminder, and media candidate, follow
@@ -639,7 +724,8 @@ strict read-only profile only after the private reminder and approved media
 tests have converged:
 
 ```bash
-python -m app.operations.staging_evidence --database /data/sports.db --limit 120 --validate-phase-8-candidate
+python -m app.operations.staging_evidence \
+  --database /data/sports.db --limit 120 --validate-phase-8-candidate
 ```
 
 The command opens SQLite in read-only mode and reports only database integrity,
@@ -664,20 +750,20 @@ Current workflow:
 
 ```text
 VS Code
-        │
-        ▼
+        â”‚
+        â–¼
 develop branch
-        │
-        ▼
+        â”‚
+        â–¼
 Git Push
-        │
-        ▼
+        â”‚
+        â–¼
 Portainer Git Stack
-        │
-        ▼
+        â”‚
+        â–¼
 Docker Build
-        │
-        ▼
+        â”‚
+        â–¼
 Container Restart
 ```
 
@@ -689,29 +775,29 @@ The source and release workflow is:
 
 ```text
 VS Code
-        │
-        ▼
+        â”‚
+        â–¼
 develop
-        │
-        ▼
+        â”‚
+        â–¼
 Pull Request
-        │
-        ▼
+        â”‚
+        â–¼
 main
-        │
-        ▼
+        â”‚
+        â–¼
 Git Tag
-        │
-        ▼
+        â”‚
+        â–¼
 GitHub Release
-        │
-        ▼
+        â”‚
+        â–¼
 Portainer source build
-        │
-        ▼
+        â”‚
+        â–¼
 Immutable beta staging qualification
-        │
-        ▼
+        â”‚
+        â–¼
 Controlled manual production promotion
 ```
 
@@ -785,18 +871,17 @@ docker volume inspect smart-calendar-prod_smart_sports_data
 
 ## Current Status
 
-| Component | Status |
-| ----------- | -------- |
-| GitHub Repository | ✅ |
-| Develop Branch | ✅ |
-| Dockerfile | ✅ |
-| Docker Compose | ✅ |
-| Local Build | ✅ |
-| Portainer Git Deployment | ✅ |
-| Concurrent Staging and Production | Implemented; live Portainer validation pending |
-| SQLite Persistence | ✅ |
-| Health Check | ✅ |
-| Non-root Container | ✅ |
-| GitHub Releases | Implemented for versioned pre-releases |
-| GitHub Actions | Implemented |
-| GitHub Container Registry | Planned |
+- GitHub Repository: Status: âœ….
+- Develop Branch: Status: âœ….
+- Dockerfile: Status: âœ….
+- Docker Compose: Status: âœ….
+- Local Build: Status: âœ….
+- Portainer Git Deployment: Status: âœ….
+- Concurrent Staging and Production: Status: Implemented; live Portainer
+  validation pending.
+- SQLite Persistence: Status: âœ….
+- Health Check: Status: âœ….
+- Non-root Container: Status: âœ….
+- GitHub Releases: Status: Implemented for versioned pre-releases.
+- GitHub Actions: Status: Implemented.
+- GitHub Container Registry: Status: Planned.

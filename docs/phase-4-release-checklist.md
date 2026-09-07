@@ -23,7 +23,7 @@ titles, not in the Git branch name.
 - [ ] `pyproject.toml` reports `0.4.0a1`.
 - [ ] README reports `v0.3.0-alpha.1` as the currently published release and
   `v0.4.0-alpha.1` as the next pre-release until publication.
-- [ ] `RELEASE_NOTES_v0.4.0-alpha.1.md` matches the final diff.
+- [ ] `docs/releases/v0.4.0-alpha.1.md` matches the final diff.
 - [ ] `.env.example` contains placeholders only and `.env` remains ignored.
 - [ ] Deployment, upgrade, rollback, and live-validation guidance is reviewed.
 
@@ -103,7 +103,7 @@ git push origin v0.4.0-alpha.1
 gh release create v0.4.0-alpha.1 \
     --prerelease \
     --title "v0.4.0-alpha.1 - Phase 4" \
-    --notes-file RELEASE_NOTES_v0.4.0-alpha.1.md
+    --notes-file docs/releases/v0.4.0-alpha.1.md
 ```
 
 Verify that the tag points to the intended `main` commit and that GitHub marks

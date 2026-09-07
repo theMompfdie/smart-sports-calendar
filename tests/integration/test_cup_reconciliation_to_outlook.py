@@ -33,6 +33,7 @@ from app.synchronization.synchronization_orchestrator import SynchronizationOrch
 from tests.application.test_api_football_fixture_normalization_service import (
     create_context,
 )
+from tests.catalog_support import CatalogInitializer
 from tests.integration.provider_outlook_support import RecordingGraphClient
 
 CALENDAR_ID = "cup-reconciliation-calendar"
@@ -61,9 +62,9 @@ def complete_round_scope(
 
 
 def test_bounded_cup_removal_rolls_back_and_reappears_in_outlook(
-    tmp_path: Path,
+    tmp_path: Path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
-    context = create_context(tmp_path)
+    context = create_context(tmp_path, initialize_test_catalog=initialize_test_catalog)
     with sqlite3.connect(context.database_path) as connection:
         connection.execute(
             "UPDATE competitions SET competition_type = ? WHERE id = ?",

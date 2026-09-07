@@ -12,6 +12,10 @@ SQLite.
 
 ## Rights and publication boundary
 
+Start with the [logo rights workflow and templates](logo-rights-workflow.md)
+for later operator-led rights review and permission requests. They provide
+preparation guidance only; no individual logo is cleared by those documents.
+
 Public availability is not permission to copy or use a logo. Fixture-data
 rights never imply rights to a competition mark, club crest, photograph, or
 other media. Every import therefore requires both a source reference and at

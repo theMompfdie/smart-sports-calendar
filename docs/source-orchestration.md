@@ -230,3 +230,16 @@ flex-scheduling notice. When no provider end time exists, NFL events reserve
 three hours; association football and other generic events retain the two-hour
 fallback. Preseason, postseason, results, scores, standings, statistics,
 rosters, venues, media, and logos are outside the contract.
+
+## Effective retirement of completed scopes (unreleased Version 1.0)
+
+The [retirement cookbook](season-retirement-cookbook.md) documents the explicit
+preview/deactivate/reactivate maintenance CLI. The decision file configures the
+completion evidence and `grace_days`; no new environment variable is required.
+Migration 015 stores an effective inactive gate independently of configured
+source roles. Retain the exact source job/profile and authority boundary on
+restart. The gate skips routine polling/import and historical fixture sync,
+while preserving source attribution and one authoritative writer per boundary.
+Changing or removing a retired grant fails closed until explicit reactivation.
+Future seasons need separate qualified catalogue/configuration entries and job
+keys or manual namespaces. Broad grants are never narrowed implicitly.

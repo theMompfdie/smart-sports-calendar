@@ -88,7 +88,7 @@ jobs:
 
       - name: Run unit tests
         run: |
-          python -m pytest
+          python -m pytest --durations=40
 
   python-validation:
     name: Python validation

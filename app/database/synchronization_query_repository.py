@@ -9,6 +9,7 @@ from app.database.competitions_repository import Competition
 from app.database.event_results_repository import EventResult
 from app.database.event_statistics_repository import EventStatistic
 from app.database.participants_repository import Participant
+from app.database.scope_retirement_repository import RETIRED_EVENT_SQL
 from app.database.seasons_repository import Season
 from app.database.sports_events_repository import SportsEvent
 from app.database.sports_repository import Sport
@@ -65,13 +66,13 @@ class SynchronizationQueryRepository:
 
         with self._connect() as connection:
             rows = connection.execute(
-                """
+                f"""
                 SELECT se.id
                 FROM sports_events AS se
                 LEFT JOIN calendar_event_mappings AS cem
                     ON cem.event_id = se.id
                    AND cem.calendar_id = ?
-                WHERE (
+                WHERE NOT {RETIRED_EVENT_SQL} AND ((
                     cem.id IS NULL
                     AND se.deleted_at IS NULL
                 )
@@ -84,7 +85,7 @@ class SynchronizationQueryRepository:
                 OR (
                     cem.sync_status = 'deleted'
                     AND se.deleted_at IS NULL
-                )
+                ))
                 ORDER BY
                     CASE
                         WHEN cem.id IS NULL THEN 0

@@ -129,6 +129,15 @@ COMPETITION_CATALOG = (
         region="Europe",
     ),
     CompetitionCatalogEntry(
+        sport_key="football",
+        competition_key="uefa_europa_league",
+        name="UEFA Europa League",
+        short_name="UEL",
+        country_code="INT",
+        competition_format=CompetitionFormat.HYBRID_TOURNAMENT,
+        region="Europe",
+    ),
+    CompetitionCatalogEntry(
         sport_key="american_football",
         competition_key="nfl",
         name="National Football League",

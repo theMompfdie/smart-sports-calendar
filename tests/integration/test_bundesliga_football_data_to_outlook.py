@@ -19,22 +19,17 @@ from app.config.settings import FootballDataSettings
 from app.database.calendar_event_mappings_repository import (
     CalendarEventMappingsRepository,
 )
-from app.database.competitions_catalog import initialize_competitions_catalog
 from app.database.competitions_repository import CompetitionsRepository
 from app.database.data_sources_repository import DataSourcesRepository
-from app.database.database import Database
 from app.database.fixture_import_repository import FixtureImportRepository
-from app.database.participants_catalog import initialize_participants_catalog
 from app.database.participants_repository import ParticipantsRepository
 from app.database.season_participants_repository import SeasonParticipantsRepository
-from app.database.seasons_catalog import initialize_seasons_catalog
 from app.database.seasons_repository import SeasonsRepository
 from app.database.source_assignments_repository import (
     SourceAssignmentsRepository,
     SourceAssignmentWrite,
 )
 from app.database.source_mappings_repository import SourceMappingsRepository
-from app.database.sports_catalog import initialize_sports_catalog
 from app.database.sports_events_repository import SportsEventsRepository
 from app.database.sports_repository import SportsRepository
 from app.database.sync_runs_repository import SyncRunsRepository
@@ -52,6 +47,7 @@ from app.synchronization.event_synchronizer import EventSynchronizer
 from app.synchronization.outlook_event_payload_builder import OutlookEventPayloadBuilder
 from app.synchronization.synchronization_orchestrator import SynchronizationOrchestrator
 
+from tests.catalog_support import CatalogInitializer
 from tests.integration.provider_outlook_support import RecordingGraphClient
 from tests.providers.football_data.support import snapshot
 
@@ -68,8 +64,8 @@ class SnapshotAdapter:
         return self.snapshot
 
 
-def create_harness(database_path):
-    Database(database_path).initialize()
+def create_harness(database_path, *, initialize_test_catalog: CatalogInitializer):
+    initialize_test_catalog(database_path)
     sports = SportsRepository(database_path)
     competitions = CompetitionsRepository(database_path)
     seasons = SeasonsRepository(database_path)
@@ -78,12 +74,6 @@ def create_harness(database_path):
     sources = DataSourcesRepository(database_path)
     mappings = SourceMappingsRepository(database_path)
     runs = SyncRunsRepository(database_path)
-    initialize_sports_catalog(sports)
-    initialize_competitions_catalog(competitions, sports)
-    initialize_seasons_catalog(seasons, competitions, sports)
-    initialize_participants_catalog(
-        participants, memberships, sports, competitions, seasons
-    )
 
     settings = FootballDataSettings(enabled=True, api_key="test-token")
     source = register_football_data_source(settings, sources)
@@ -114,10 +104,6 @@ def create_harness(database_path):
             CHAMPIONSHIP_PROFILE,
         )
     }
-    batches = {
-        competition_key: service.fetch_normalized_snapshot()
-        for competition_key, service in services.items()
-    }
     jobs = {
         competition_key: SourceJobDefinition(
             job_key=f"football-data-{competition_key.replace('_', '-')}",
@@ -128,19 +114,26 @@ def create_harness(database_path):
         )
         for competition_key in services
     }
-    SourceAssignmentsRepository(database_path).synchronize(
-        tuple(
+    # Resolve assignment IDs without normalizing provider snapshots during setup.
+    football = sports.get_by_key("football")
+    assert football is not None
+    assignments = []
+    for competition_key, job in jobs.items():
+        competition = competitions.get_by_key(football.id, competition_key)
+        assert competition is not None
+        season = seasons.get_by_key(competition.id, job.scope.season_key)
+        assert season is not None
+        assignments.append(
             SourceAssignmentWrite(
                 job_key=job.job_key,
                 source_id=source.id,
-                competition_id=batches[competition_key].competition_id,
-                season_id=batches[competition_key].season_id,
+                competition_id=competition.id,
+                season_id=season.id,
                 role=job.role,
                 interval_seconds=job.interval_seconds,
             )
-            for competition_key, job in jobs.items()
         )
-    )
+    SourceAssignmentsRepository(database_path).synchronize(tuple(assignments))
     providers = {
         competition_key: FootballDataImportOrchestrator(
             competition_service=service,
@@ -169,11 +162,11 @@ def create_harness(database_path):
 
 
 def test_bundesliga_snapshot_is_idempotent_and_updates_existing_outlook_event(
-    tmp_path,
+    tmp_path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
     database_path = tmp_path / "bundesliga-football-data.db"
     providers, calendar, adapters, graph, source, mappings = create_harness(
-        database_path
+        database_path, initialize_test_catalog=initialize_test_catalog
     )
     provider = providers["bundesliga"]
     adapter = adapters["bundesliga"]
@@ -229,10 +222,12 @@ def test_bundesliga_snapshot_is_idempotent_and_updates_existing_outlook_event(
 
 
 def test_premier_league_and_bundesliga_share_sqlite_without_identity_collisions(
-    tmp_path,
+    tmp_path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
     database_path = tmp_path / "multi-competition-football-data.db"
-    providers, calendar, _, graph, source, mappings = create_harness(database_path)
+    providers, calendar, _, graph, source, mappings = create_harness(
+        database_path, initialize_test_catalog=initialize_test_catalog
+    )
 
     premier_league_import = providers["premier_league"].import_current_competition()
     bundesliga_import = providers["bundesliga"].import_current_competition()
@@ -280,11 +275,11 @@ def test_premier_league_and_bundesliga_share_sqlite_without_identity_collisions(
 
 
 def test_championship_regular_season_is_stage_bounded_and_idempotent(
-    tmp_path,
+    tmp_path, *, initialize_test_catalog: CatalogInitializer
 ) -> None:
     database_path = tmp_path / "championship-football-data.db"
     providers, calendar, adapters, graph, source, mappings = create_harness(
-        database_path
+        database_path, initialize_test_catalog=initialize_test_catalog
     )
     provider = providers["championship"]
 

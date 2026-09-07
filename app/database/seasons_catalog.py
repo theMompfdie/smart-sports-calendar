@@ -114,6 +114,14 @@ SEASON_CATALOG = (
         end_date="2027-01-27",
     ),
     SeasonCatalogEntry(
+        sport_key="football",
+        competition_key="uefa_europa_league",
+        season_key="2026_27",
+        name="2026/27 league phase",
+        start_date="2026-09-16",
+        end_date="2027-01-28",
+    ),
+    SeasonCatalogEntry(
         sport_key="american_football",
         competition_key="nfl",
         season_key="2026",

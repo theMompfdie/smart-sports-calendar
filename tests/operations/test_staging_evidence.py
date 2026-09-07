@@ -537,7 +537,7 @@ def test_collect_staging_evidence_returns_only_safe_operational_fields(
     payload = json.loads(rendered)
 
     assert payload["database_quick_check"] == "ok"
-    assert payload["schema_version"] == "014_manual_review_appointments"
+    assert payload["schema_version"] == "015_scope_retirement"
     assert payload["startup_records"] == 1
     assert payload["sports_events"] == 0
     assert payload["active_authorities"] == []
@@ -960,6 +960,51 @@ def test_collect_staging_evidence_keeps_six_authorities_isolated(
     assert (
         len({scope.source_event_ids_sha256 for scope in fixture_scopes.values()}) == 6
     )
+
+
+def test_cli_reports_manual_authority_without_timer(
+    tmp_path: Path, initialize_test_catalog, capsys
+) -> None:
+    from app.application.manual_import_service import ManualImportService
+    from app.application.manual_preview_service import parse_preview_configuration
+    from app.database.manual_import_repository import ManualImportRepository
+
+    database_path = tmp_path / "manual-uel.db"
+    initialize_test_catalog(database_path)
+    configuration = parse_preview_configuration(
+        json.dumps(
+            {
+                "instance_ref": "test-staging",
+                "namespace": "manual-uel-2026-27",
+                "scope": {
+                    "sport_key": "football",
+                    "competition_key": "uefa_europa_league",
+                    "season_key": "2026_27",
+                },
+                "competition_format": "hybrid_tournament",
+                "boundaries": [
+                    {
+                        "stage": "LEAGUE_PHASE",
+                        "stage_kind": "league_phase",
+                        "round_name": "1",
+                    }
+                ],
+            }
+        ).encode()
+    )
+    ManualImportService(ManualImportRepository(database_path)).configure(configuration)
+    before = database_path.read_bytes()
+
+    assert main(["--database", str(database_path)]) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert len(report["active_authorities"]) == 1
+    authority = report["active_authorities"][0]
+    assert authority["source_key"] == "manual"
+    assert authority["competition_key"] == "uefa_europa_league"
+    assert authority["role"] == "authoritative"
+    assert authority["interval_seconds"] is None
+    assert report["database_quick_check"] == "ok"
+    assert database_path.read_bytes() == before
 
 
 def test_collect_staging_evidence_is_read_only(tmp_path: Path) -> None:

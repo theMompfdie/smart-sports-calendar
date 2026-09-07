@@ -7,6 +7,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
+from app.database.scope_retirement_repository import ScopeRetirementRepository
 from app.domain.competition_lifecycle import (
     CompetitionFormat,
     CompetitionLifecycleScope,
@@ -203,7 +204,7 @@ class FixtureImportRepository:
         namespace: str | None,
     ) -> frozenset[str] | None:
         rows = connection.execute(
-            """SELECT source_id,namespace,stages_json,is_enabled
+            """SELECT job_key,source_id,namespace,stages_json,is_enabled
             FROM source_assignments WHERE competition_id=? AND season_id=?
             AND role='authoritative'""",
             (scope.competition_id, scope.season_id),
@@ -215,6 +216,11 @@ class FixtureImportRepository:
             and row["namespace"] == namespace
             and row["is_enabled"]
         ]
+        if any(
+            ScopeRetirementRepository.blocked_connection(connection, row["job_key"])
+            for row in own
+        ):
+            raise FixtureImportConflictError("Competition scope is retired.")
         if not own:
             if rows or namespace is not None:
                 raise FixtureImportConflictError("No active authoritative assignment.")
