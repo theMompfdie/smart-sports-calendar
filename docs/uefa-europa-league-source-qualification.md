@@ -130,8 +130,13 @@ publication-safety checks passed. The fix changes no source scheduling,
 authority grants, SQLite schema or Graph operations. The operator committed
 the reviewed fix as `d16155cf19d4a7b447467b6720159778196c0f80`; its contents
 and valid GPG signature were verified locally on 2026-09-07.
-Deployment and CI for this correction are not yet claimed. A scoped read-only
-inventory can inspect the existing staging image before its later upgrade.
+PR #278 integrated the correction and evidence into develop as signed merge
+`ade9117dfc2cdf8006933bcd011825d747f372ef` on 2026-09-07. All five PR jobs
+and all five [merge CI jobs][uel-fix-ci] passed; merge CI reports 1,532 tests
+passed in 215.89 seconds. Deployment of this correction to staging is not
+claimed: the accepted live evidence remains tied to `uel-d4c9e41`.
+
+[uel-fix-ci]: https://github.com/theMompfdie/smart-sports-calendar/actions/runs/34109730053
 
 ### Remaining qualification and future publication boundaries
 
@@ -188,10 +193,14 @@ The September 14 API checkpoint is separate and cannot switch the writer.
 
 [uel-overview]: https://www.uefa.com/uefaeuropaleague/news/02a6-20d57d095740-e1e0b3de85df-1000/
 
-Before closing #269, record the following remaining evidence:
-
-- integration and CI for the diagnostic fix and updated delivery evidence;
-- final delivery acceptance and accurate v1.0 release/production documentation.
+The operator reconfirmed the complete 144-fixture league phase in staging on
+2026-09-07 and confirmed that knockout rounds follow in the new year. This
+accepts the league-phase delivery without reducing the intended scope through
+the final. The [UEL delivery record](uefa-europa-league-delivery.md) supplies
+the current source matrix, ongoing operations, release-note entry and
+production runbook. Issue #269 can close after this documentation is reviewed,
+merged and its applicable CI passes; stable publication and production
+promotion remain separate gates under #201 and #270.
 
 Reuse the generic deterministic lifecycle/failure tests and accepted Phase 9
 evidence where the implementation is unchanged. Do not manufacture live

@@ -780,10 +780,13 @@ The delivered boundary is league-phase rounds 1-8. Later knockout rounds
 through the final require new reviewed packages, explicit authority/profile
 extensions under the accepted publication-review cadence. No automated UEL
 writer or production deployment is claimed. Post-import backup, isolated
-restore and staging restart passed; final UEL acceptance and release gates
-remain open. See the dated
-[UEL qualification and operations record][uel-qualification] for evidence,
-remaining checks and the applied future-stage review cadence.
+restore and staging restart passed. The operator reconfirmed the complete
+league phase; diagnostic fix #278 is integrated with all five CI jobs green.
+See the dated [UEL qualification record][uel-qualification] for evidence and
+the [UEL delivery record](docs/uefa-europa-league-delivery.md) for the current
+source matrix, update procedure, release-note entry and production runbook.
+Final documentation integration and the separate v1.0 release gates remain
+open.
 
 [uel-delivery]: https://github.com/theMompfdie/smart-sports-calendar/issues/269
 [uel-qualification]: docs/uefa-europa-league-source-qualification.md
