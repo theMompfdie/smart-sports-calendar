@@ -17,7 +17,6 @@ from app.database.scope_retirement_repository import ScopeRetirementRepository
 from app.database.source_assignments_repository import (
     SourceAssignmentsRepository,
 )
-from app.graph.client import GraphClientError
 from app.imports.manual_inbox import encoded
 from app.operations.instance_lock import instance_lock
 from app.operations.season_retirement import main
@@ -67,10 +66,8 @@ def test_retirement_restart_replay_and_late_correction_preserve_history(tmp_path
     job = "manual:" + raw["namespace"]
     service = retirement(h.path)
     report = deactivate(service, job)
-    assert report["status"] == "retiring"
+    assert report["status"] == "retired"
     assert service.repository.blocked(job)
-    with pytest.raises(ValueError, match="pending review"):
-        service.reactivate(job, "operator", "late-correction")
     restarted = Harness(tmp_path, h.graph)
     assert restarted.converge().items_created == 0
     assert retirement(h.path).preview(job, DECISION)["status"] == "retired"
@@ -86,6 +83,8 @@ def test_retirement_restart_replay_and_late_correction_preserve_history(tmp_path
         "calendar_event_mappings",
         "manual_import_receipts",
         "source_assignments",
+        "manual_review_plans",
+        "manual_review_appointments",
     ):
         assert after[table] == before[table], table
     assert audit(h.path) == [("deactivate",)]
@@ -207,23 +206,35 @@ def test_stale_preview_and_instance_lock_block_mutation(tmp_path):
     assert audit(h.path) == []
 
 
-def test_graph_review_failure_recovers_after_restart(tmp_path, monkeypatch):
+@pytest.mark.parametrize("pending", [False, True])
+def test_retirement_freezes_review_history_without_graph_calls(
+    tmp_path, monkeypatch, pending
+):
     h = Harness(tmp_path)
     raw = sample("efl-cup")
     h.apply(raw)
     h.converge()
+    if pending:
+        # A pending update must also remain frozen across retirement and restart.
+        with sqlite3.connect(h.path) as conn:
+            conn.execute("UPDATE manual_review_appointments SET applied_hash=NULL")
+    before = h.snapshot()
     service = retirement(h.path)
     job = "manual:" + raw["namespace"]
     deactivate(service, job)
-    original = h.graph.delete_event
-    monkeypatch.setattr(
-        h.graph, "delete_event", Mock(side_effect=GraphClientError("temporary"))
-    )
-    h.converge()
-    assert service.preview(job, DECISION)["status"] == "retiring"
-    monkeypatch.setattr(h.graph, "delete_event", original)
-    Harness(tmp_path, h.graph).converge()
+    for method in ("create_event", "update_event", "delete_event"):
+        monkeypatch.setattr(h.graph, method, Mock(side_effect=AssertionError(method)))
+    restarted = Harness(tmp_path, h.graph)
+    restarted.converge()
+    restarted.converge()
     assert service.preview(job, DECISION)["status"] == "retired"
+    after = h.snapshot()
+    for table in ("manual_review_plans", "manual_review_appointments"):
+        assert after[table] == before[table]
+    assert restarted.reviews.repository.snapshot(CALENDAR)[1:] == ([], [])
+    service.reactivate(job, "operator", "late-correction")
+    assert restarted.reviews.repository.snapshot(CALENDAR)[1]
+    assert restarted.reviews.repository.snapshot(CALENDAR)[2]
 
 
 def test_broad_grant_restart_scheduler_gate_and_future_season(tmp_path):

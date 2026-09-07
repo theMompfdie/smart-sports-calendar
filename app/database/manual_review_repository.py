@@ -4,6 +4,8 @@ import sqlite3
 from contextlib import closing
 from pathlib import Path
 
+from app.database.scope_retirement_repository import ScopeRetirementRepository
+
 
 class ManualReviewRepository:
     def __init__(self, path: Path):
@@ -37,7 +39,21 @@ class ManualReviewRepository:
                     (calendar,),
                 )
             ]
-            return identity, plans, rows
+            # Exclude both sides of the projection: omitting only plans would
+            # turn preserved appointments into deletion candidates.
+            namespaces = {row["namespace"] for row in [*plans, *rows]}
+            frozen = {
+                namespace
+                for namespace in namespaces
+                if ScopeRetirementRepository.blocked_connection(
+                    conn, "manual:" + namespace
+                )
+            }
+            return (
+                identity,
+                [plan for plan in plans if plan["namespace"] not in frozen],
+                [row for row in rows if row["namespace"] not in frozen],
+            )
 
     def desired(self, rows: list[dict]) -> None:
         with closing(self._connect()) as conn, conn:
