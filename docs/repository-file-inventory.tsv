@@ -1,0 +1,438 @@
+path	classification	action	reason
+.dockerignore	tooling	retain	build, dependency, configuration boundary or project metadata
+.env.example	tooling	retain	build, dependency, configuration boundary or project metadata
+.github/ISSUE_TEMPLATE/bug_report.md	tooling	retain	required CI or contribution template
+.github/ISSUE_TEMPLATE/feature_request.md	tooling	retain	required CI or contribution template
+.github/PULL_REQUEST_TEMPLATE.md	tooling	retain	required CI or contribution template
+.github/workflows/ci.yml	tooling	retain	required CI or contribution template
+.gitignore	tooling	retain	build, dependency, configuration boundary or project metadata
+AGENTS.md	documentation	retain	product entry point, license or contribution instructions
+Dockerfile	tooling	retain	build, dependency, configuration boundary or project metadata
+LICENSE	documentation	retain	product entry point, license or contribution instructions
+README.md	documentation	retain	product entry point, license or contribution instructions
+app/__init__.py	source	retain	runtime architecture or deterministic migration
+app/application/__init__.py	source	retain	runtime architecture or deterministic migration
+app/application/api_football_catalog_service.py	source	retain	runtime architecture or deterministic migration
+app/application/api_football_fixture_import_service.py	source	retain	runtime architecture or deterministic migration
+app/application/api_football_fixture_normalization_service.py	source	retain	runtime architecture or deterministic migration
+app/application/api_football_import_orchestrator.py	source	retain	runtime architecture or deterministic migration
+app/application/api_football_import_runtime_service.py	source	retain	runtime architecture or deterministic migration
+app/application/container.py	source	retain	runtime architecture or deterministic migration
+app/application/football_data_import_orchestrator.py	source	retain	runtime architecture or deterministic migration
+app/application/football_data_import_runtime_service.py	source	retain	runtime architecture or deterministic migration
+app/application/football_data_premier_league_service.py	source	retain	runtime architecture or deterministic migration
+app/application/manual_import_service.py	source	retain	runtime architecture or deterministic migration
+app/application/manual_import_worker.py	source	retain	runtime architecture or deterministic migration
+app/application/manual_preview_service.py	source	retain	runtime architecture or deterministic migration
+app/application/manual_review_service.py	source	retain	runtime architecture or deterministic migration
+app/application/nflverse_competition_service.py	source	retain	runtime architecture or deterministic migration
+app/application/nflverse_import_orchestrator.py	source	retain	runtime architecture or deterministic migration
+app/application/nflverse_import_runtime_service.py	source	retain	runtime architecture or deterministic migration
+app/application/oefb_ical_competition_service.py	source	retain	runtime architecture or deterministic migration
+app/application/oefb_ical_import_orchestrator.py	source	retain	runtime architecture or deterministic migration
+app/application/oefb_ical_import_runtime_service.py	source	retain	runtime architecture or deterministic migration
+app/application/openligadb_competition_service.py	source	retain	runtime architecture or deterministic migration
+app/application/openligadb_import_orchestrator.py	source	retain	runtime architecture or deterministic migration
+app/application/openligadb_import_runtime_service.py	source	retain	runtime architecture or deterministic migration
+app/application/scope_retirement_service.py	source	retain	runtime architecture or deterministic migration
+app/application/source_registry.py	source	retain	runtime architecture or deterministic migration
+app/config/__init__.py	source	retain	runtime architecture or deterministic migration
+app/config/settings.py	source	retain	runtime architecture or deterministic migration
+app/database/__init__.py	source	retain	runtime architecture or deterministic migration
+app/database/calendar_event_mappings_repository.py	source	retain	runtime architecture or deterministic migration
+app/database/competitions_catalog.py	source	retain	runtime architecture or deterministic migration
+app/database/competitions_repository.py	source	retain	runtime architecture or deterministic migration
+app/database/data_sources_repository.py	source	retain	runtime architecture or deterministic migration
+app/database/database.py	source	retain	runtime architecture or deterministic migration
+app/database/event_asset_attachments_repository.py	source	retain	runtime architecture or deterministic migration
+app/database/event_participants_repository.py	source	retain	runtime architecture or deterministic migration
+app/database/event_results_repository.py	source	retain	runtime architecture or deterministic migration
+app/database/event_statistics_repository.py	source	retain	runtime architecture or deterministic migration
+app/database/fixture_import_repository.py	source	retain	runtime architecture or deterministic migration
+app/database/manual_import_repository.py	source	retain	runtime architecture or deterministic migration
+app/database/manual_preview_repository.py	source	retain	runtime architecture or deterministic migration
+app/database/manual_review_repository.py	source	retain	runtime architecture or deterministic migration
+app/database/media_assets_repository.py	source	retain	runtime architecture or deterministic migration
+app/database/migrations/001_initial_schema.sql	source	retain	runtime architecture or deterministic migration
+app/database/migrations/002_create_season_participants.sql	source	retain	runtime architecture or deterministic migration
+app/database/migrations/003_extend_sync_run_counters.sql	source	retain	runtime architecture or deterministic migration
+app/database/migrations/004_add_mapping_transaction_id.sql	source	retain	runtime architecture or deterministic migration
+app/database/migrations/005_create_fixture_reconciliation_state.sql	source	retain	runtime architecture or deterministic migration
+app/database/migrations/006_extend_provider_import_runs.sql	source	retain	runtime architecture or deterministic migration
+app/database/migrations/007_create_source_assignments.sql	source	retain	runtime architecture or deterministic migration
+app/database/migrations/008_add_calendar_sync_revisions.sql	source	retain	runtime architecture or deterministic migration
+app/database/migrations/009_create_reminder_rules.sql	source	retain	runtime architecture or deterministic migration
+app/database/migrations/010_add_presentation_sync_revisions.sql	source	retain	runtime architecture or deterministic migration
+app/database/migrations/011_create_media_assets.sql	source	retain	runtime architecture or deterministic migration
+app/database/migrations/012_create_calendar_event_asset_attachments.sql	source	retain	runtime architecture or deterministic migration
+app/database/migrations/013_manual_import_persistence.sql	source	retain	runtime architecture or deterministic migration
+app/database/migrations/014_manual_review_appointments.sql	source	retain	runtime architecture or deterministic migration
+app/database/migrations/015_scope_retirement.sql	source	retain	runtime architecture or deterministic migration
+app/database/migrations/__init__.py	source	retain	runtime architecture or deterministic migration
+app/database/participants_catalog.py	source	retain	runtime architecture or deterministic migration
+app/database/participants_repository.py	source	retain	runtime architecture or deterministic migration
+app/database/reminder_rules_repository.py	source	retain	runtime architecture or deterministic migration
+app/database/scope_retirement_repository.py	source	retain	runtime architecture or deterministic migration
+app/database/season_participants_repository.py	source	retain	runtime architecture or deterministic migration
+app/database/seasons_catalog.py	source	retain	runtime architecture or deterministic migration
+app/database/seasons_repository.py	source	retain	runtime architecture or deterministic migration
+app/database/source_assignments_repository.py	source	retain	runtime architecture or deterministic migration
+app/database/source_mappings_repository.py	source	retain	runtime architecture or deterministic migration
+app/database/sports_catalog.py	source	retain	runtime architecture or deterministic migration
+app/database/sports_events_repository.py	source	retain	runtime architecture or deterministic migration
+app/database/sports_repository.py	source	retain	runtime architecture or deterministic migration
+app/database/sync_runs_repository.py	source	retain	runtime architecture or deterministic migration
+app/database/synchronization_query_repository.py	source	retain	runtime architecture or deterministic migration
+app/domain/__init__.py	source	retain	runtime architecture or deterministic migration
+app/domain/competition_lifecycle.py	source	retain	runtime architecture or deterministic migration
+app/domain/media_assets.py	source	retain	runtime architecture or deterministic migration
+app/domain/operator_notice.py	source	retain	runtime architecture or deterministic migration
+app/domain/reminder_rules.py	source	retain	runtime architecture or deterministic migration
+app/domain/reminder_schedule.py	source	retain	runtime architecture or deterministic migration
+app/graph/__init__.py	source	retain	runtime architecture or deterministic migration
+app/graph/authentication.py	source	retain	runtime architecture or deterministic migration
+app/graph/client.py	source	retain	runtime architecture or deterministic migration
+app/imports/__init__.py	source	retain	runtime architecture or deterministic migration
+app/imports/manual_authority.py	source	retain	runtime architecture or deterministic migration
+app/imports/manual_files.py	source	retain	runtime architecture or deterministic migration
+app/imports/manual_inbox.py	source	retain	runtime architecture or deterministic migration
+app/imports/manual_manifest.py	source	retain	runtime architecture or deterministic migration
+app/logging/__init__.py	source	retain	runtime architecture or deterministic migration
+app/logging/logger.py	source	retain	runtime architecture or deterministic migration
+app/main.py	source	retain	runtime architecture or deterministic migration
+app/media/__init__.py	source	retain	runtime architecture or deterministic migration
+app/media/asset_service.py	source	retain	runtime architecture or deterministic migration
+app/media/event_asset_selector.py	source	retain	runtime architecture or deterministic migration
+app/operations/__init__.py	source	retain	runtime architecture or deterministic migration
+app/operations/football_data_qualification.py	source	retain	runtime architecture or deterministic migration
+app/operations/instance_lock.py	source	retain	runtime architecture or deterministic migration
+app/operations/manual_import.py	source	retain	runtime architecture or deterministic migration
+app/operations/manual_import_preview.py	source	retain	runtime architecture or deterministic migration
+app/operations/media_assets.py	source	retain	runtime architecture or deterministic migration
+app/operations/oefb_ical_catalog_candidates.py	source	retain	runtime architecture or deterministic migration
+app/operations/openligadb_qualification.py	source	retain	runtime architecture or deterministic migration
+app/operations/presentation_revisions.py	source	retain	runtime architecture or deterministic migration
+app/operations/reminder_rules.py	source	retain	runtime architecture or deterministic migration
+app/operations/season_retirement.py	source	retain	runtime architecture or deterministic migration
+app/operations/staging_evidence.py	source	retain	runtime architecture or deterministic migration
+app/providers/__init__.py	source	retain	runtime architecture or deterministic migration
+app/providers/api_football/__init__.py	source	retain	runtime architecture or deterministic migration
+app/providers/api_football/catalog_adapter.py	source	retain	runtime architecture or deterministic migration
+app/providers/api_football/catalog_models.py	source	retain	runtime architecture or deterministic migration
+app/providers/api_football/client.py	source	retain	runtime architecture or deterministic migration
+app/providers/api_football/exceptions.py	source	retain	runtime architecture or deterministic migration
+app/providers/api_football/fixture_adapter.py	source	retain	runtime architecture or deterministic migration
+app/providers/api_football/fixture_models.py	source	retain	runtime architecture or deterministic migration
+app/providers/api_football/models.py	source	retain	runtime architecture or deterministic migration
+app/providers/api_football/team_mappings.py	source	retain	runtime architecture or deterministic migration
+app/providers/api_football/transport.py	source	retain	runtime architecture or deterministic migration
+app/providers/contracts.py	source	retain	runtime architecture or deterministic migration
+app/providers/football_data/__init__.py	source	retain	runtime architecture or deterministic migration
+app/providers/football_data/adapter.py	source	retain	runtime architecture or deterministic migration
+app/providers/football_data/client.py	source	retain	runtime architecture or deterministic migration
+app/providers/football_data/competition_mappings.py	source	retain	runtime architecture or deterministic migration
+app/providers/football_data/exceptions.py	source	retain	runtime architecture or deterministic migration
+app/providers/football_data/models.py	source	retain	runtime architecture or deterministic migration
+app/providers/football_data/profiles.py	source	retain	runtime architecture or deterministic migration
+app/providers/football_data/team_mappings.py	source	retain	runtime architecture or deterministic migration
+app/providers/football_data/transport.py	source	retain	runtime architecture or deterministic migration
+app/providers/nflverse/__init__.py	source	retain	runtime architecture or deterministic migration
+app/providers/nflverse/adapter.py	source	retain	runtime architecture or deterministic migration
+app/providers/nflverse/client.py	source	retain	runtime architecture or deterministic migration
+app/providers/nflverse/exceptions.py	source	retain	runtime architecture or deterministic migration
+app/providers/nflverse/models.py	source	retain	runtime architecture or deterministic migration
+app/providers/nflverse/profiles.py	source	retain	runtime architecture or deterministic migration
+app/providers/nflverse/team_mappings.py	source	retain	runtime architecture or deterministic migration
+app/providers/nflverse/transport.py	source	retain	runtime architecture or deterministic migration
+app/providers/oefb_ical/__init__.py	source	retain	runtime architecture or deterministic migration
+app/providers/oefb_ical/adapter.py	source	retain	runtime architecture or deterministic migration
+app/providers/oefb_ical/client.py	source	retain	runtime architecture or deterministic migration
+app/providers/oefb_ical/exceptions.py	source	retain	runtime architecture or deterministic migration
+app/providers/oefb_ical/models.py	source	retain	runtime architecture or deterministic migration
+app/providers/oefb_ical/profiles.py	source	retain	runtime architecture or deterministic migration
+app/providers/oefb_ical/team_mappings.py	source	retain	runtime architecture or deterministic migration
+app/providers/oefb_ical/transport.py	source	retain	runtime architecture or deterministic migration
+app/providers/openligadb/__init__.py	source	retain	runtime architecture or deterministic migration
+app/providers/openligadb/adapter.py	source	retain	runtime architecture or deterministic migration
+app/providers/openligadb/client.py	source	retain	runtime architecture or deterministic migration
+app/providers/openligadb/exceptions.py	source	retain	runtime architecture or deterministic migration
+app/providers/openligadb/models.py	source	retain	runtime architecture or deterministic migration
+app/providers/openligadb/profiles.py	source	retain	runtime architecture or deterministic migration
+app/providers/openligadb/team_mappings.py	source	retain	runtime architecture or deterministic migration
+app/providers/openligadb/transport.py	source	retain	runtime architecture or deterministic migration
+app/scheduler/__init__.py	source	retain	runtime architecture or deterministic migration
+app/scheduler/scheduler.py	source	retain	runtime architecture or deterministic migration
+app/synchronization/__init__.py	source	retain	runtime architecture or deterministic migration
+app/synchronization/content_hash.py	source	retain	runtime architecture or deterministic migration
+app/synchronization/event_media_synchronizer.py	source	retain	runtime architecture or deterministic migration
+app/synchronization/event_reminder_resolver.py	source	retain	runtime architecture or deterministic migration
+app/synchronization/event_synchronizer.py	source	retain	runtime architecture or deterministic migration
+app/synchronization/outlook_event_payload_builder.py	source	retain	runtime architecture or deterministic migration
+app/synchronization/outlook_html_event_body_renderer.py	source	retain	runtime architecture or deterministic migration
+app/synchronization/synchronization_orchestrator.py	source	retain	runtime architecture or deterministic migration
+app/synchronization/synchronization_runtime_service.py	source	retain	runtime architecture or deterministic migration
+config/.gitkeep	tooling	retain	build, dependency, configuration boundary or project metadata
+docker-compose.yml	tooling	retain	build, dependency, configuration boundary or project metadata
+docs/adr/0001-select-api-football.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/adr/0002-reject-ecal-as-automated-source.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/adr/0003-select-football-data-for-premier-league.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/adr/0004-model-competition-lifecycle-scopes.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/adr/0005-bound-phase-5-source-qualification.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/adr/0006-select-football-data-for-bundesliga.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/adr/0007-select-openligadb-for-dfb-pokal.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/adr/0008-select-football-data-for-championship-regular-season.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/adr/0009-select-openligadb-for-2-bundesliga.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/adr/0010-select-oefb-calendar-for-oefb-cup.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/adr/0011-model-hybrid-uefa-lifecycle.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/adr/0012-select-openligadb-for-nations-league-a.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/adr/0013-select-nflverse-for-nfl-regular-season.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/adr/0013-select-openligadb-for-champions-league-league-phase.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/adr/0014-model-outlook-presentation-reminders-and-media.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/adr/0015-import-reviewed-manual-fixture-manifests.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/api-football-catalog-mapping.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/api-football-fixture-import.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/api-football-fixture-normalization.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/api-football-import-runtime.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/austrian-bundesliga-source-qualification.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/champions-league-staging-validation.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/deployment.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/efl-cup-source-qualification.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/examples/manual-import/austrian-bundesliga-corrected.json	synthetic-documentation	retain	schema or synthetic import example; no private schedule
+docs/examples/manual-import/austrian-bundesliga-initial.json	synthetic-documentation	retain	schema or synthetic import example; no private schedule
+docs/examples/manual-import/efl-cup-corrected.json	synthetic-documentation	retain	schema or synthetic import example; no private schedule
+docs/examples/manual-import/efl-cup-initial.json	synthetic-documentation	retain	schema or synthetic import example; no private schedule
+docs/examples/manual-import/fa-cup-corrected.json	synthetic-documentation	retain	schema or synthetic import example; no private schedule
+docs/examples/manual-import/fa-cup-initial.json	synthetic-documentation	retain	schema or synthetic import example; no private schedule
+docs/examples/manual-import/nations-league-b-corrected.json	synthetic-documentation	retain	schema or synthetic import example; no private schedule
+docs/examples/manual-import/nations-league-b-initial.json	synthetic-documentation	retain	schema or synthetic import example; no private schedule
+docs/examples/manual-import/nations-league-c-corrected.json	synthetic-documentation	retain	schema or synthetic import example; no private schedule
+docs/examples/manual-import/nations-league-c-initial.json	synthetic-documentation	retain	schema or synthetic import example; no private schedule
+docs/examples/manual-import/nations-league-d-corrected.json	synthetic-documentation	retain	schema or synthetic import example; no private schedule
+docs/examples/manual-import/nations-league-d-initial.json	synthetic-documentation	retain	schema or synthetic import example; no private schedule
+docs/examples/manual-import/profiles/efl-cup-preview-profile.json	synthetic-documentation	retain	schema or synthetic import example; no private schedule
+docs/examples/manual-import/uefa-conference-league-corrected.json	synthetic-documentation	retain	schema or synthetic import example; no private schedule
+docs/examples/manual-import/uefa-conference-league-initial.json	synthetic-documentation	retain	schema or synthetic import example; no private schedule
+docs/fa-cup-source-qualification.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/football-data-bundesliga-import.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/football-data-championship-import.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/football-data-premier-league-import.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/football-data-qualification.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/football-data-status-recovery.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/installation.md	documentation	add	operator, qualification, architecture or historical release record
+docs/logo-rights-workflow.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/manual-import-apply.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/manual-import-preparation.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/manual-import-preview.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/manual-import-workflow.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/media-asset-registry.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/multi-competition-catalog.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/nations-league-a-staging-validation.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/nfl-source-qualification.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/oefb-cup-source-qualification.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/openligadb-2-bundesliga-qualification.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/openligadb-champions-league-import.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/openligadb-dfb-pokal-import.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/openligadb-dfb-pokal-qualification.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/openligadb-nations-league-a-import.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/openligadb-second-bundesliga-import.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/outlook-presentation-reminder-media-contract.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/phase-4-live-validation.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/phase-4-release-checklist.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/phase-5-multi-competition-staging-validation.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/phase-5-source-authority-matrix.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/phase-6-source-authority-matrix.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/phase-7-source-authority-matrix.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/phase-7-staging-validation.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/phase-8-staging-validation.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/phase-9-staging-preparation.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/premier-league-official-feed-qualification.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/provider-evaluation.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/provider-integration-contract.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/provider-outlook-end-to-end-testing.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/public-repository-data-safety.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/pytest-runtime.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/releases/README.md	documentation	add	operator, qualification, architecture or historical release record
+docs/releases/v0.3.0-alpha.1.md	documentation	move	operator, qualification, architecture or historical release record
+docs/releases/v0.4.0-alpha.1.md	documentation	move	operator, qualification, architecture or historical release record
+docs/releases/v0.4.5-beta.1.md	documentation	move	operator, qualification, architecture or historical release record
+docs/releases/v0.5.0-beta.1.md	documentation	move	operator, qualification, architecture or historical release record
+docs/releases/v0.6.0-beta.1.md	documentation	move	operator, qualification, architecture or historical release record
+docs/releases/v0.7.0-beta.1.md	documentation	move	operator, qualification, architecture or historical release record
+docs/releases/v0.8.0-beta.1.md	documentation	move	operator, qualification, architecture or historical release record
+docs/releases/v0.9.0-beta.1.md	documentation	move	operator, qualification, architecture or historical release record
+docs/releases/v1.0.0.md	documentation	move	operator, qualification, architecture or historical release record
+docs/repository-audit-v1.0.0.md	documentation	add	operator, qualification, architecture or historical release record
+docs/repository-file-inventory.tsv	generated-documentation	add	reviewable file-purpose inventory; no runtime data
+docs/runtime-reminder-rules.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/schemas/manual-fixture-schedule-v1.schema.json	synthetic-documentation	retain	schema or synthetic import example; no private schedule
+docs/schemas/manual-import-approval-v1.schema.json	synthetic-documentation	retain	schema or synthetic import example; no private schedule
+docs/season-retirement-cookbook.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/source-orchestration.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/templates/logo-permission-request.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/templates/logo-rights-catalog.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/uefa-champions-league-source-qualification.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/uefa-conference-league-source-qualification.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/uefa-europa-league-delivery.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/uefa-europa-league-source-qualification.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/uefa-nations-league-source-qualification.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/v0.4-stabilization-roadmap.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/v0.4.5-beta.1-release-checklist.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/v0.5.0-beta.1-release-checklist.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/v0.6.0-beta.1-release-checklist.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/v0.7.0-beta.1-release-checklist.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/v0.8.0-beta.1-release-checklist.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/v0.9.0-beta.1-release-checklist.md	documentation	retain	operator, qualification, architecture or historical release record
+docs/v1.0.0-release-checklist.md	documentation	add	operator, qualification, architecture or historical release record
+pyproject.toml	tooling	retain	build, dependency, configuration boundary or project metadata
+requirements-dev.txt	tooling	retain	build, dependency, configuration boundary or project metadata
+requirements.txt	tooling	retain	build, dependency, configuration boundary or project metadata
+scripts/check_publication_safety.py	tooling	retain	CI or operator validation command
+scripts/check_startup_ready.py	tooling	retain	CI or operator validation command
+scripts/phase9_staging_preflight.py	tooling	retain	CI or operator validation command
+scripts/validate_multi_instance.py	tooling	retain	CI or operator validation command
+tests/__init__.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/application/__init__.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/application/test_api_football_catalog_service.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/application/test_api_football_fixture_import_service.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/application/test_api_football_fixture_normalization_service.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/application/test_api_football_import_orchestrator.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/application/test_api_football_import_runtime_service.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/application/test_container.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/application/test_football_data_competition_service.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/application/test_football_data_import_runtime_service.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/application/test_nflverse_competition_service.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/application/test_nflverse_import_orchestrator.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/application/test_oefb_ical_competition_service.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/application/test_oefb_ical_import_orchestrator.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/application/test_oefb_ical_import_runtime_service.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/application/test_openligadb_dfb_pokal_service.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/application/test_openligadb_import_orchestrator.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/application/test_openligadb_import_runtime_service.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/application/test_source_registry.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/catalog_support.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/config/test_settings.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/conftest.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/database/__init__.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/database/test_calendar_event_mappings_repository.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/database/test_competitions_catalog.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/database/test_competitions_repository.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/database/test_data_sources_repository.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/database/test_database.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/database/test_event_asset_attachments_repository.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/database/test_event_participants_repository.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/database/test_event_results_repository.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/database/test_event_statistics_repository.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/database/test_media_assets_repository.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/database/test_participants_catalog.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/database/test_participants_repository.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/database/test_reminder_rules_repository.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/database/test_season_participants_repository.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/database/test_seasons_catalog.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/database/test_seasons_repository.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/database/test_source_assignments_repository.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/database/test_source_mappings_repository.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/database/test_sports_catalog.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/database/test_sports_events_repository.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/database/test_sports_repository.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/database/test_sync_runs_repository.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/database/test_synchronization_query_repository.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/deployment/docker-compose.multi-instance.yml	synthetic-test	retain	offline regression coverage and synthetic support
+tests/deployment/test_nflverse_compose.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/deployment/test_phase9_staging_preflight.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/deployment/test_startup_readiness.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/domain/__init__.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/domain/test_competition_lifecycle.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/domain/test_operator_notice.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/domain/test_reminder_rules.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/domain/test_reminder_schedule.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/fixtures/api_football/catalog_metadata.json	synthetic-test	retain	offline regression coverage and synthetic support
+tests/fixtures/api_football/premier_league.json	synthetic-test	retain	offline regression coverage and synthetic support
+tests/fixtures/api_football/premier_league_fixtures.json	synthetic-test	retain	offline regression coverage and synthetic support
+tests/fixtures/api_football/premier_league_teams.json	synthetic-test	retain	offline regression coverage and synthetic support
+tests/graph/__init__.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/graph/test_authentication.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/graph/test_client.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/imports/__init__.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/imports/test_europa_league_catalog_preview.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/imports/test_manual_apply.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/imports/test_manual_end_to_end.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/imports/test_manual_manifest.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/imports/test_manual_preview.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/imports/test_manual_workflow.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/integration/__init__.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/integration/conftest.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/integration/provider_outlook_support.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/integration/test_bundesliga_football_data_to_outlook.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/integration/test_cup_reconciliation_to_outlook.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/integration/test_football_data_to_outlook_end_to_end.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/integration/test_nflverse_to_outlook_end_to_end.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/integration/test_oefb_ical_cup_to_outlook.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/integration/test_openligadb_champions_league_to_outlook.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/integration/test_openligadb_dfb_pokal_to_outlook.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/integration/test_openligadb_nations_league_a_to_outlook.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/integration/test_openligadb_second_bundesliga_to_outlook.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/integration/test_provider_to_outlook_end_to_end.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/integration/test_scope_retirement.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/integration/test_synchronization_lifecycle.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/media/__init__.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/media/test_asset_service.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/media/test_event_asset_selector.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/operations/__init__.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/operations/test_football_data_qualification.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/operations/test_media_assets.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/operations/test_oefb_ical_catalog_candidates.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/operations/test_openligadb_qualification.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/operations/test_presentation_revisions.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/operations/test_publication_safety.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/operations/test_reminder_rules.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/operations/test_staging_evidence.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/__init__.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/api_football/__init__.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/api_football/catalog_test_support.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/api_football/test_catalog_adapter.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/api_football/test_catalog_fixtures.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/api_football/test_catalog_models.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/api_football/test_client.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/api_football/test_fixture_adapter.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/api_football/test_fixture_models.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/api_football/test_transport.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/football_data/__init__.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/football_data/support.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/football_data/test_adapter.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/football_data/test_client.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/football_data/test_competition_mappings.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/football_data/test_models.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/football_data/test_profiles.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/football_data/test_transport.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/nflverse/__init__.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/nflverse/support.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/nflverse/test_client.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/nflverse/test_models.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/nflverse/test_transport.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/oefb_ical/__init__.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/oefb_ical/support.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/oefb_ical/test_adapter.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/oefb_ical/test_client.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/oefb_ical/test_models.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/oefb_ical/test_profiles.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/oefb_ical/test_team_mappings.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/oefb_ical/test_transport.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/openligadb/__init__.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/openligadb/support.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/openligadb/test_adapter.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/openligadb/test_client.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/openligadb/test_models.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/openligadb/test_team_mappings.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/openligadb/test_transport.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/providers/test_contracts.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/scheduler/__init__.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/scheduler/test_scheduler.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/synchronization/__init__.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/synchronization/test_content_hash.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/synchronization/test_event_media_synchronizer.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/synchronization/test_event_reminder_resolver.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/synchronization/test_event_synchronizer.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/synchronization/test_outlook_event_payload_builder.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/synchronization/test_synchronization_orchestrator.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/synchronization/test_synchronization_runtime_service.py	synthetic-test	retain	offline regression coverage and synthetic support
+tests/test_catalog_support.py	synthetic-test	retain	offline regression coverage and synthetic support

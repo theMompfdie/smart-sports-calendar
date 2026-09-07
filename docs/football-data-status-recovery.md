@@ -1,9 +1,11 @@
 # Championship status incident: recovery checkpoint
 
 Issue [#233][incident] tracks intermittent timestamp-shaped values in the
-football-data.org match `status` field. This checkpoint records operator-supplied
-staging evidence from 2026-09-07. It does not close the incident or authorize
-production promotion.
+football-data.org match `status` field. This checkpoint records
+operator-supplied
+staging evidence from 2026-09-07. The operator accepted recovery and closed
+issue #233 after no further failure was reproduced in the reviewed observations.
+The evidence limitations below remain; production promotion is separate.
 
 ## Observed recovery
 
@@ -44,14 +46,14 @@ kickoff, no malformed fixture is skipped, and no partial response is accepted.
 A legitimate `POSTPONED` to `TIMED` change continues to read kickoff from
 `utcDate` and preserve fixture identity.
 
-The diagnostic correction must be built and deployed to staging before relying
-on the new message. A successful qualification cannot retroactively recover
+The operator verified the diagnostic correction in staging candidate `59dd553`.
+A successful qualification cannot retroactively recover
 fields from a discarded malformed response.
 
-## Remaining acceptance
+## Accepted limitations and future diagnostics
 
-- Identify the original malformed-response match from retained incident
-  evidence, or capture its validated ID on recurrence with the new diagnostic.
+- The original malformed-response match was not identified. On recurrence,
+  capture its validated ID with the new diagnostic.
   Do not equate the later rescheduled fixture with that match without evidence.
 - Identity retention against the pre-incident backup is verified above.
   Any claim of unchanged canonical content during the precise failure window

@@ -18,7 +18,8 @@ before an intentional authority reconfiguration.
 The scheduler skips provider work for overlapping retired scopes, manual
 preview/apply rejects their new work, and routine sports-event synchronization
 excludes their historical fixtures. Other seasons and disjoint stages continue.
-Retirement is never fixture cancellation, deletion, or missing-snapshot evidence.
+Retirement is never fixture cancellation, deletion, or missing-snapshot
+evidence.
 
 Matching manual review plans and their Outlook appointments remain unchanged.
 The retirement gate excludes both from routine synchronization, including
@@ -123,9 +124,11 @@ image=$(docker inspect --format '{{.Image}}' "$container")
 Verify that `container` is exactly the stopped target container and `image` is
 the qualified image containing this feature. Adjust `database` for a custom
 `DATABASE_PATH`. For manual grants, set `inbox` to the actual
-`MANUAL_IMPORT_ROOT`; its instance and database markers must match. Automated-only
+`MANUAL_IMPORT_ROOT`; its instance and database markers must match.
+Automated-only
 grants do not require `--inbox`. Set `calendar_id` to the configured
-`OUTLOOK_CALENDAR_ID`; do not copy a staging ID to production. The maintenance container
+`OUTLOOK_CALENDAR_ID`; do not copy a staging ID to production. The maintenance
+container
 uses that immutable local image and the stopped owner's volume mounts. It
 does not run application bootstrap, retrieve credentials, or contact Graph.
 
@@ -152,7 +155,8 @@ are rejected by the worker while the scope remains retired.
 The preview binds the decision, database identity, calendar, fixture snapshot
 and affected work into `preview_sha256`.
 
-Proceed only with an empty `blockers` list and the intended scope. An overlapping
+Proceed only with an empty `blockers` list and the intended scope. An
+overlapping
 job extending beyond the selected boundary is refused. For example, retiring
 a disjoint Nations League B grant leaves League A/C/D untouched, while a legacy
 broad Nations League grant cannot be silently narrowed into a League B grant.
@@ -225,7 +229,11 @@ feature does not invent future-season catalogue entries or qualify a provider.
 
 ## Staging evidence and rollback
 
-Before release, use an isolated staging database and SMART calendar to verify:
+Issue #267 live acceptance completed on existing isolated staging with synthetic
+scopes on candidate `59dd553`. Deactivation, restart, retained Outlook history,
+control-scope updates and reactivation/correction were verified. Repeat
+deactivation and unchanged replay also retain deterministic regression coverage.
+For future qualification, use a staging database and SMART calendar to verify:
 
 1. Preview and deactivate an actually completed, reviewed boundary.
 2. Confirm unchanged fixture and review Outlook IDs and historical content.
