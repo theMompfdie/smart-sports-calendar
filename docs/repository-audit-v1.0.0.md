@@ -88,7 +88,9 @@ Optional image fallback and target-specific source review remain documented.
   and no failure is hidden or converted into a pass.
 - Docker Desktop's Linux daemon is unavailable locally. No local Docker build
   success is claimed. Required PR CI supplies fresh build/startup, SQLite and
-  three-instance validation after the operator signs and the branch is pushed.
+  three-instance validation. PR #284 passed these checks in run 34165368974;
+  all five jobs passed, including 1,556 tests in 221.71 seconds. The operator
+  merged the identical tested tree into develop as `4e47bb8`.
 - Existing live staging accepted the additive upgrade and the actual Graph
   lifecycle on `59dd553`. These docs introduce no production-code/schema change.
   Final candidate CI, current operational readiness and release merge/tag
